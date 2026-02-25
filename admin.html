@@ -72,7 +72,7 @@
                   <tr>
                     <th>Username</th>
                     <th>Display Name</th>
-                    <th>User ID</th>
+                    <th>User name and email</th>
                     <th>Created</th>
                     <th>Role</th>
                   </tr>
@@ -90,7 +90,8 @@
                 <thead>
                   <tr>
                     <th>Title</th>
-                    <th>Author ID</th>
+                    <th>Username</th>
+                    <th>Email</th>
                     <th>Content</th>
                     <th>Created</th>
                     <th>Actions</th>
@@ -108,8 +109,8 @@
               <table class="table table-striped align-middle">
                 <thead>
                   <tr>
-                    <th>Post ID</th>
-                    <th>Author ID</th>
+                    <th>Post Title</th>
+                    <th>User name and email</th>
                     <th>Comment</th>
                     <th>Created</th>
                     <th>Actions</th>
@@ -137,6 +138,24 @@
           <div class="modal-footer">
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="button" class="btn btn-danger" data-confirm-action>Confirm</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="adminPreviewModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" data-preview-title>Post Preview</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p class="text-secondary small mb-2" data-preview-meta></p>
+            <p class="mb-0" data-preview-body></p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
           </div>
         </div>
       </div>

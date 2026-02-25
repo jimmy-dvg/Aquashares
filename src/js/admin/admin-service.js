@@ -4,38 +4,67 @@ function throwServiceError(error, fallbackMessage) {
   throw new Error(error?.message || fallbackMessage);
 }
 
-function mapRoleValue(roleRow) {
-  if (!roleRow) {
-    return 'user';
-  }
-
-  if (Array.isArray(roleRow)) {
-    return roleRow[0]?.role || 'user';
-  }
-
-  return roleRow.role || 'user';
-}
-
 export async function getAllUsers() {
-  const { data, error } = await supabase
+  const { data: authors, error: authorsError } = await supabase
+    .rpc('get_admin_user_directory');
+
+  if (authorsError) {
+    throwServiceError(authorsError, 'Failed to load user directory.');
+  }
+
+  const directoryByUserId = new Map((authors ?? []).map((author) => [author.user_id, {
+    username: author.username || '',
+    email: author.email || ''
+  }]));
+
+  const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
-    .select('id, username, display_name, created_at, user_roles(role)')
+    .select('id, username, display_name, created_at')
     .order('created_at', { ascending: false });
 
-  if (error) {
-    throwServiceError(error, 'Failed to load users.');
+  if (profilesError) {
+    throwServiceError(profilesError, 'Failed to load users.');
   }
 
-  return (data ?? []).map((item) => ({
+  const userIds = (profiles ?? []).map((profile) => profile.id);
+  let rolesByUserId = new Map();
+
+  if (userIds.length) {
+    const { data: roles, error: rolesError } = await supabase
+      .from('user_roles')
+      .select('user_id, role')
+      .in('user_id', userIds);
+
+    if (rolesError) {
+      throwServiceError(rolesError, 'Failed to load user roles.');
+    }
+
+    rolesByUserId = new Map((roles ?? []).map((roleRow) => [roleRow.user_id, roleRow.role]));
+  }
+
+  return (profiles ?? []).map((item) => ({
     id: item.id,
-    username: item.username || '',
+    username: item.username || directoryByUserId.get(item.id)?.username || '',
+    email: directoryByUserId.get(item.id)?.email || '',
     displayName: item.display_name || '',
-    role: mapRoleValue(item.user_roles),
+    role: rolesByUserId.get(item.id) || 'user',
     createdAt: item.created_at
   }));
 }
 
 export async function getAllPosts() {
+  const { data: authors, error: authorsError } = await supabase
+    .rpc('get_admin_user_directory');
+
+  if (authorsError) {
+    throwServiceError(authorsError, 'Failed to load author details.');
+  }
+
+  const authorsById = new Map((authors ?? []).map((author) => [author.user_id, {
+    username: author.username || '',
+    email: author.email || ''
+  }]));
+
   const { data, error } = await supabase
     .from('posts')
     .select('id, user_id, title, body, created_at')
@@ -48,6 +77,8 @@ export async function getAllPosts() {
   return (data ?? []).map((item) => ({
     id: item.id,
     userId: item.user_id,
+    authorUsername: authorsById.get(item.user_id)?.username || '-',
+    authorEmail: authorsById.get(item.user_id)?.email || '-',
     title: item.title,
     body: item.body,
     createdAt: item.created_at
@@ -55,6 +86,28 @@ export async function getAllPosts() {
 }
 
 export async function getAllComments() {
+  const { data: authors, error: authorsError } = await supabase
+    .rpc('get_admin_user_directory');
+
+  if (authorsError) {
+    throwServiceError(authorsError, 'Failed to load comment author details.');
+  }
+
+  const authorsById = new Map((authors ?? []).map((author) => [author.user_id, {
+    username: author.username || '-',
+    email: author.email || '-'
+  }]));
+
+  const { data: posts, error: postsError } = await supabase
+    .from('posts')
+    .select('id, title');
+
+  if (postsError) {
+    throwServiceError(postsError, 'Failed to load post titles.');
+  }
+
+  const postsById = new Map((posts ?? []).map((post) => [post.id, post.title || '-']));
+
   const { data, error } = await supabase
     .from('comments')
     .select('id, post_id, user_id, body, created_at')
@@ -68,6 +121,9 @@ export async function getAllComments() {
     id: item.id,
     postId: item.post_id,
     userId: item.user_id,
+    postTitle: postsById.get(item.post_id) || '-',
+    authorUsername: authorsById.get(item.user_id)?.username || '-',
+    authorEmail: authorsById.get(item.user_id)?.email || '-',
     body: item.body,
     createdAt: item.created_at
   }));

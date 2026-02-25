@@ -39,7 +39,11 @@ function getElements() {
     confirmModalElement: document.getElementById('adminConfirmModal'),
     confirmTitle: document.querySelector('[data-confirm-title]'),
     confirmText: document.querySelector('[data-confirm-text]'),
-    confirmAction: document.querySelector('[data-confirm-action]')
+    confirmAction: document.querySelector('[data-confirm-action]'),
+    previewModalElement: document.getElementById('adminPreviewModal'),
+    previewTitle: document.querySelector('[data-preview-title]'),
+    previewMeta: document.querySelector('[data-preview-meta]'),
+    previewBody: document.querySelector('[data-preview-body]')
   };
 }
 
@@ -47,6 +51,12 @@ function createCell(text) {
   const td = document.createElement('td');
   td.textContent = text || '';
   return td;
+}
+
+function formatUserNameAndEmail(username, email) {
+  const safeUsername = username || '-';
+  const safeEmail = email || '-';
+  return `${safeUsername} (${safeEmail})`;
 }
 
 function setVisible(element, isVisible) {
@@ -120,6 +130,16 @@ function createDeleteButton(action, id) {
   return button;
 }
 
+function createActionButton(label, action, id, style = 'btn-outline-primary') {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = `btn btn-sm ${style}`;
+  button.dataset.action = action;
+  button.dataset.id = id;
+  button.textContent = label;
+  return button;
+}
+
 export function renderUsersTable(users, elements) {
   if (!elements.usersBody) {
     return;
@@ -142,7 +162,7 @@ export function renderUsersTable(users, elements) {
     row.append(
       createCell(user.username || '-'),
       createCell(user.displayName || '-'),
-      createCell(user.id),
+      createCell(formatUserNameAndEmail(user.username, user.email)),
       createCell(formatDate(user.createdAt))
     );
 
@@ -177,14 +197,27 @@ export function renderPostsTable(posts, elements) {
 
     row.append(
       createCell(post.title),
-      createCell(post.userId),
+      createCell(post.authorUsername),
+      createCell(post.authorEmail),
       createCell(post.body.length > 120 ? `${post.body.slice(0, 120)}...` : post.body),
       createCell(formatDate(post.createdAt))
     );
 
     const actionsCell = document.createElement('td');
-    actionsCell.append(createDeleteButton('delete-post', post.id));
+    actionsCell.className = 'd-flex flex-wrap gap-2';
+    actionsCell.append(
+      createActionButton('Preview', 'preview-post', post.id, 'btn-outline-secondary'),
+      createActionButton('Edit', 'edit-post', post.id, 'btn-outline-primary'),
+      createDeleteButton('delete-post', post.id)
+    );
     row.append(actionsCell);
+
+    row.dataset.postId = post.id;
+    row.dataset.postTitle = post.title;
+    row.dataset.postBody = post.body;
+    row.dataset.postAuthorUsername = post.authorUsername;
+    row.dataset.postAuthorEmail = post.authorEmail;
+    row.dataset.postCreatedAt = post.createdAt;
 
     fragment.append(row);
   });
@@ -211,9 +244,11 @@ export function renderCommentsTable(comments, elements) {
   comments.forEach((comment) => {
     const row = document.createElement('tr');
 
+    const authorDisplay = `${comment.authorUsername} (${comment.authorEmail})`;
+
     row.append(
-      createCell(comment.postId),
-      createCell(comment.userId),
+      createCell(comment.postTitle),
+      createCell(authorDisplay),
       createCell(comment.body.length > 120 ? `${comment.body.slice(0, 120)}...` : comment.body),
       createCell(formatDate(comment.createdAt))
     );
@@ -310,6 +345,40 @@ function attachDeleteHandlers(elements, confirmController, refreshDashboard) {
     elements.postsBody.addEventListener('click', (event) => {
       const target = event.target;
       if (!(target instanceof HTMLElement)) {
+        return;
+      }
+
+      const previewButton = target.closest('[data-action="preview-post"]');
+      if (previewButton instanceof HTMLButtonElement) {
+        const row = previewButton.closest('tr');
+        if (row instanceof HTMLTableRowElement && elements.previewModalElement) {
+          if (elements.previewTitle) {
+            elements.previewTitle.textContent = row.dataset.postTitle || '';
+          }
+
+          if (elements.previewMeta) {
+            const username = row.dataset.postAuthorUsername || '-';
+            const email = row.dataset.postAuthorEmail || '-';
+            const createdAt = formatDate(row.dataset.postCreatedAt || '');
+            elements.previewMeta.textContent = `By ${username} (${email}) • ${createdAt}`;
+          }
+
+          if (elements.previewBody) {
+            elements.previewBody.textContent = row.dataset.postBody || '';
+          }
+
+          const modal = new window.bootstrap.Modal(elements.previewModalElement);
+          modal.show();
+        }
+        return;
+      }
+
+      const editButton = target.closest('[data-action="edit-post"]');
+      if (editButton instanceof HTMLButtonElement) {
+        const postId = editButton.dataset.id;
+        if (postId) {
+          window.location.assign(`/post-create.html?id=${encodeURIComponent(postId)}`);
+        }
         return;
       }
 

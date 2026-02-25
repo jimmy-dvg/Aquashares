@@ -42,13 +42,19 @@ export async function getPostById(id) {
     .from('posts')
     .select('id, user_id, title, body, created_at, updated_at, photos(id, post_id, user_id, storage_path, public_url, created_at)')
     .eq('id', id)
-    .single();
+    .limit(1);
 
   if (error) {
     throwServiceError(error, 'Failed to load post.');
   }
 
-  return mapPost(data);
+  const post = data?.[0] ?? null;
+
+  if (!post) {
+    throw new Error('Post not found.');
+  }
+
+  return mapPost(post);
 }
 
 export async function createPost(data) {
@@ -61,14 +67,19 @@ export async function createPost(data) {
   const { data: result, error } = await supabase
     .from('posts')
     .insert([payload])
-    .select('id, user_id, title, body, created_at, updated_at, photos(id, post_id, user_id, storage_path, public_url, created_at)')
-    .single();
+    .select('id, user_id, title, body, created_at, updated_at')
+    .limit(1);
 
   if (error) {
     throwServiceError(error, 'Failed to create post.');
   }
 
-  return mapPost(result);
+  const post = result?.[0] ?? null;
+  if (!post) {
+    throw new Error('Failed to create post.');
+  }
+
+  return mapPost(post);
 }
 
 export async function updatePost(id, data) {
@@ -81,14 +92,20 @@ export async function updatePost(id, data) {
     .from('posts')
     .update(payload)
     .eq('id', id)
-    .select('id, user_id, title, body, created_at, updated_at, photos(id, post_id, user_id, storage_path, public_url, created_at)')
-    .single();
+    .select('id, user_id, title, body, created_at, updated_at')
+    .limit(1);
 
   if (error) {
     throwServiceError(error, 'Failed to update post.');
   }
 
-  return mapPost(result);
+  const updatedPost = result?.[0] ?? null;
+
+  if (!updatedPost) {
+    throw new Error('Post not found or you do not have permission to update it.');
+  }
+
+  return mapPost(updatedPost);
 }
 
 export async function deletePost(id) {
@@ -130,4 +147,15 @@ export async function createPhotoRecord(data) {
     publicUrl: result.public_url,
     createdAt: result.created_at
   };
+}
+
+export async function deletePhotoRecord(photoId) {
+  const { error } = await supabase
+    .from('photos')
+    .delete()
+    .eq('id', photoId);
+
+  if (error) {
+    throwServiceError(error, 'Failed to delete image metadata.');
+  }
 }
