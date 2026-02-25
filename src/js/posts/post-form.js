@@ -1,14 +1,17 @@
 import { requireAuth } from '../auth/auth-guard.js';
-import { createPost, getPostById, updatePost } from './posts-service.js';
+import { createPost, createPhotoRecord, deletePost, getPostById, updatePost } from './posts-service.js';
+import { deletePostImage, getPublicUrl, uploadPostImage } from '../services/storage-service.js';
 
 function getElements() {
   return {
     form: document.querySelector('[data-post-form]'),
     titleInput: document.querySelector('[data-post-title]'),
     bodyInput: document.querySelector('[data-post-body]'),
+    imageInput: document.querySelector('[data-post-image]'),
     errorBox: document.querySelector('[data-post-form-error]'),
     submitButton: document.querySelector('[data-post-submit]'),
-    heading: document.querySelector('[data-post-form-title]')
+    heading: document.querySelector('[data-post-form-title]'),
+    loadingBox: document.querySelector('[data-post-form-loading]')
   };
 }
 
@@ -70,6 +73,19 @@ function setSubmittingState(submitButton, isSubmitting, isEditMode) {
   submitButton.textContent = isEditMode ? 'Save Changes' : 'Publish Post';
 }
 
+function setLoadingState(loadingBox, isLoading) {
+  if (!loadingBox) {
+    return;
+  }
+
+  if (isLoading) {
+    loadingBox.classList.remove('d-none');
+    return;
+  }
+
+  loadingBox.classList.add('d-none');
+}
+
 async function prefillFormForEdit(postId, elements) {
   const post = await getPostById(postId);
   elements.titleInput.value = post.title;
@@ -100,6 +116,7 @@ export async function initializePostForm() {
   const isEditMode = Boolean(postId);
 
   clearError(elements.errorBox);
+  setLoadingState(elements.loadingBox, false);
 
   if (isEditMode) {
     try {
@@ -124,22 +141,55 @@ export async function initializePostForm() {
     }
 
     setSubmittingState(elements.submitButton, true, isEditMode);
+    setLoadingState(elements.loadingBox, true);
 
     try {
       if (isEditMode) {
         await updatePost(postId, { title, body });
       } else {
-        await createPost({
+        const createdPost = await createPost({
           title,
           body,
           userId: session.user.id
         });
+
+        const file = elements.imageInput?.files?.[0];
+        if (file) {
+          let storagePath = null;
+
+          try {
+            storagePath = await uploadPostImage(file, session.user.id, createdPost.id);
+            const publicUrl = getPublicUrl(storagePath);
+
+            await createPhotoRecord({
+              postId: createdPost.id,
+              userId: session.user.id,
+              storagePath,
+              publicUrl
+            });
+          } catch (uploadError) {
+            if (storagePath) {
+              try {
+                await deletePostImage(storagePath);
+              } catch {
+              }
+            }
+
+            try {
+              await deletePost(createdPost.id);
+            } catch {
+            }
+
+            throw uploadError;
+          }
+        }
       }
 
       window.location.assign('/index.html');
     } catch (error) {
       showError(elements.errorBox, error.message || 'Unable to save post.');
       setSubmittingState(elements.submitButton, false, isEditMode);
+      setLoadingState(elements.loadingBox, false);
     }
   });
 }

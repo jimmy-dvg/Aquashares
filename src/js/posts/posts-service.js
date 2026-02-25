@@ -7,7 +7,15 @@ function mapPost(post) {
     title: post.title,
     body: post.body,
     createdAt: post.created_at,
-    updatedAt: post.updated_at
+    updatedAt: post.updated_at,
+    photos: (post.photos ?? []).map((photo) => ({
+      id: photo.id,
+      postId: photo.post_id,
+      userId: photo.user_id,
+      storagePath: photo.storage_path,
+      publicUrl: photo.public_url,
+      createdAt: photo.created_at
+    }))
   };
 }
 
@@ -18,7 +26,7 @@ function throwServiceError(error, fallbackMessage) {
 export async function getAllPosts(limit = 50) {
   const { data, error } = await supabase
     .from('posts')
-    .select('id, user_id, title, body, created_at, updated_at')
+    .select('id, user_id, title, body, created_at, updated_at, photos(id, post_id, user_id, storage_path, public_url, created_at)')
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -32,7 +40,7 @@ export async function getAllPosts(limit = 50) {
 export async function getPostById(id) {
   const { data, error } = await supabase
     .from('posts')
-    .select('id, user_id, title, body, created_at, updated_at')
+    .select('id, user_id, title, body, created_at, updated_at, photos(id, post_id, user_id, storage_path, public_url, created_at)')
     .eq('id', id)
     .single();
 
@@ -53,7 +61,7 @@ export async function createPost(data) {
   const { data: result, error } = await supabase
     .from('posts')
     .insert([payload])
-    .select('id, user_id, title, body, created_at, updated_at')
+    .select('id, user_id, title, body, created_at, updated_at, photos(id, post_id, user_id, storage_path, public_url, created_at)')
     .single();
 
   if (error) {
@@ -73,7 +81,7 @@ export async function updatePost(id, data) {
     .from('posts')
     .update(payload)
     .eq('id', id)
-    .select('id, user_id, title, body, created_at, updated_at')
+    .select('id, user_id, title, body, created_at, updated_at, photos(id, post_id, user_id, storage_path, public_url, created_at)')
     .single();
 
   if (error) {
@@ -94,4 +102,32 @@ export async function deletePost(id) {
   }
 
   return { id };
+}
+
+export async function createPhotoRecord(data) {
+  const payload = {
+    post_id: data.postId,
+    user_id: data.userId,
+    storage_path: data.storagePath,
+    public_url: data.publicUrl
+  };
+
+  const { data: result, error } = await supabase
+    .from('photos')
+    .insert([payload])
+    .select('id, post_id, user_id, storage_path, public_url, created_at')
+    .single();
+
+  if (error) {
+    throwServiceError(error, 'Failed to save image metadata.');
+  }
+
+  return {
+    id: result.id,
+    postId: result.post_id,
+    userId: result.user_id,
+    storagePath: result.storage_path,
+    publicUrl: result.public_url,
+    createdAt: result.created_at
+  };
 }

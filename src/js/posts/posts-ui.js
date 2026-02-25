@@ -23,6 +23,40 @@ function createNotification(message, type = 'danger') {
   return alert;
 }
 
+function createImagePlaceholder() {
+  const placeholder = document.createElement('div');
+  placeholder.className = 'bg-light border-bottom d-flex align-items-center justify-content-center text-secondary';
+  placeholder.style.height = '180px';
+  placeholder.textContent = 'No image';
+  return placeholder;
+}
+
+function createCardImage(post) {
+  const primaryPhoto = post.photos?.[0];
+
+  if (!primaryPhoto?.publicUrl) {
+    return createImagePlaceholder();
+  }
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'position-relative';
+
+  const image = document.createElement('img');
+  image.className = 'card-img-top';
+  image.style.height = '180px';
+  image.style.objectFit = 'cover';
+  image.src = primaryPhoto.publicUrl;
+  image.alt = post.title;
+  image.loading = 'lazy';
+
+  image.addEventListener('error', () => {
+    wrapper.replaceChildren(createImagePlaceholder());
+  }, { once: true });
+
+  wrapper.append(image);
+  return wrapper;
+}
+
 export function renderPostCard(post, canManage = false) {
   const column = document.createElement('div');
   column.className = 'col-12 col-md-6 col-lg-4';
@@ -30,6 +64,8 @@ export function renderPostCard(post, canManage = false) {
 
   const article = document.createElement('article');
   article.className = 'card h-100';
+
+  const imageElement = createCardImage(post);
 
   const cardBody = document.createElement('div');
   cardBody.className = 'card-body d-flex flex-column';
@@ -69,7 +105,7 @@ export function renderPostCard(post, canManage = false) {
     actions.append(editButton, deleteButton);
     cardBody.append(actions);
   }
-  article.append(cardBody);
+  article.append(imageElement, cardBody);
   column.append(article);
 
   return column;
