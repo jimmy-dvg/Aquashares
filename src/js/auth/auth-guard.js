@@ -62,3 +62,11 @@ export async function requireAdmin(redirectTo = '/index.html') {
 
   return session;
 }
+
+export async function protectAdminPage(redirectTo = '/index.html') {
+  if (!window.location.pathname.endsWith('/admin.html')) {
+    return null;
+  }
+
+  return requireAdmin(redirectTo);
+}
