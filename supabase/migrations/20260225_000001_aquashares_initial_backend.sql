@@ -328,7 +328,10 @@ using (
   and (storage.foldername(name))[1] = auth.uid()::text
 );
 
--- Seed admin example
+-- Seed admin example (safe)
 insert into public.user_roles (user_id, role)
-values ('00000000-0000-0000-0000-000000000000', 'admin')
-on conflict (user_id) do update set role = excluded.role;
+select u.id, 'admin'
+from auth.users u
+where u.email = 'demo@aquashares.com'
+on conflict (user_id) do update
+set role = excluded.role;
