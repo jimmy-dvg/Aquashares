@@ -1,36 +1,73 @@
-import { supabase } from './services/supabase-client.js';
+import { getCurrentUser, getCurrentUserRole, requireAdmin, requireAuth } from './auth/auth-guard.js';
+import { initializeLoginForm } from './auth/login.js';
+import { initializeLogout } from './auth/logout.js';
+import { initializeRegisterForm } from './auth/register.js';
 import { loadFeed } from './posts/posts-ui.js';
 import { initializePostForm } from './posts/post-form.js';
 
-async function initializeAuthUi() {
-  const authStatusElement = document.querySelector('[data-auth-status]');
-  const authActionElement = document.querySelector('[data-auth-action]');
+function toggleElements(elements, isVisible) {
+  elements.forEach((element) => {
+    if (isVisible) {
+      element.classList.remove('d-none');
+      return;
+    }
 
-  if (!authStatusElement || !authActionElement) {
-    return;
-  }
-
-  const { data, error } = await supabase.auth.getSession();
-
-  if (error || !data.session) {
-    authStatusElement.textContent = 'Guest';
-    authStatusElement.setAttribute('href', '/login.html');
-    authActionElement.textContent = 'Login';
-    authActionElement.setAttribute('href', '/login.html');
-    return;
-  }
-
-  authStatusElement.textContent = data.session.user.email;
-  authStatusElement.setAttribute('href', '/profile.html');
-  authActionElement.textContent = 'Logout';
-  authActionElement.setAttribute('href', '#');
-  authActionElement.addEventListener('click', async (event) => {
-    event.preventDefault();
-    await supabase.auth.signOut();
-    window.location.replace('/login.html');
+    element.classList.add('d-none');
   });
 }
 
-initializeAuthUi();
-loadFeed();
-initializePostForm();
+async function initializeNavbar() {
+  const guestElements = document.querySelectorAll('[data-nav-guest]');
+  const authElements = document.querySelectorAll('[data-nav-auth]');
+  const adminElements = document.querySelectorAll('[data-nav-admin]');
+  const statusElement = document.querySelector('[data-nav-status]');
+
+  const user = await getCurrentUser();
+
+  if (!user) {
+    toggleElements(guestElements, true);
+    toggleElements(authElements, false);
+    toggleElements(adminElements, false);
+
+    if (statusElement) {
+      statusElement.textContent = 'Guest';
+    }
+
+    return;
+  }
+
+  toggleElements(guestElements, false);
+  toggleElements(authElements, true);
+
+  const role = await getCurrentUserRole(user.id);
+  toggleElements(adminElements, role === 'admin');
+
+  if (statusElement) {
+    statusElement.textContent = user.email || 'User';
+  }
+}
+
+async function enforcePageAccess() {
+  const path = window.location.pathname;
+
+  if (path.endsWith('/post-create.html') || path.endsWith('/profile.html')) {
+    await requireAuth('/login.html');
+  }
+
+  if (path.endsWith('/admin.html')) {
+    await requireAdmin('/index.html');
+  }
+}
+
+async function bootstrap() {
+  await enforcePageAccess();
+  await initializeNavbar();
+  initializeLogout();
+
+  loadFeed();
+  initializePostForm();
+  initializeLoginForm();
+  initializeRegisterForm();
+}
+
+bootstrap();
