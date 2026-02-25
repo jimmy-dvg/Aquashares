@@ -33,7 +33,7 @@
             <li class="nav-item"><a class="nav-link" href="/post-create.html">Create Post</a></li>
             <li class="nav-item"><a class="nav-link" href="/profile.html">Profile</a></li>
             <li class="nav-item"><a class="nav-link" href="/admin.html">Admin</a></li>
-            <li class="nav-item"><span class="nav-link" data-auth-status>Guest</span></li>
+            <li class="nav-item"><a class="nav-link" data-auth-status href="/login.html">Guest</a></li>
             <li class="nav-item"><a class="nav-link" data-auth-action href="/login.html">Login</a></li>
           </ul>
         </div>
@@ -46,16 +46,11 @@
         <a href="/post-create.html" class="btn btn-primary">New Post</a>
       </div>
 
-      <div class="row g-3">
-        <div class="col-12 col-md-6 col-lg-4">
-          <article class="card h-100">
-            <div class="card-body">
-              <h2 class="h5 card-title">Welcome to Aquashares</h2>
-              <p class="card-text text-secondary mb-0">Your post feed will appear here after backend integration.</p>
-            </div>
-          </article>
-        </div>
-      </div>
+      <div class="alert alert-danger d-none" role="alert" data-feed-error></div>
+
+      <div class="text-secondary mb-3" data-feed-loading>Loading feed...</div>
+
+      <div class="row g-3" data-feed-list></div>
     </main>
 
     <script
