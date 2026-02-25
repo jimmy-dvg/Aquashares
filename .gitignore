@@ -1,0 +1,49 @@
+# =========================
+# Aquashares .gitignore
+# =========================
+
+# Node.js dependencies
+node_modules/
+
+# Package manager debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Generic logs
+*.log
+
+# Build and cache output
+/dist/
+/.vite/
+/coverage/
+
+# Environment variables (secrets)
+.env
+.env.*
+!.env.example
+
+# Supabase local development artifacts
+/supabase/.temp/
+/supabase/.branches/
+/supabase/.cache/
+/supabase/.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor files
+.vscode/
+.idea/
+
+# Tooling and generated artifacts
+# Add new tool/environment/generated directories/files below as they are introduced.
+
+# Never ignore required tracked files and directories
+!supabase/migrations/
+!package.json
+!package-lock.json
+!vite.config.js
+!.github/
