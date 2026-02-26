@@ -63,9 +63,153 @@
       </div>
     </nav>
 
-    <main class="container page-content">
-      <h1 class="h4 mb-3">Profile</h1>
-      <p class="text-secondary mb-0">Profile module goes here.</p>
+    <main class="container page-content" data-profile-page>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0">My Profile</h1>
+      </div>
+
+      <div class="alert alert-danger d-none" role="alert" data-profile-feedback></div>
+      <div class="text-secondary mb-3" data-profile-loading>Loading profile...</div>
+
+      <div class="row g-3">
+        <div class="col-12 col-lg-4">
+          <div class="card">
+            <div class="card-body text-center">
+              <img
+                src="https://placehold.co/160x160?text=Avatar"
+                alt="Profile avatar"
+                class="rounded-circle mb-3 profile-avatar"
+                data-profile-avatar
+              />
+
+              <h2 class="h5 mb-1" data-profile-name>Aquashares User</h2>
+              <p class="text-secondary mb-1" data-profile-username-display>@user</p>
+              <p class="small text-secondary mb-3" data-profile-joined></p>
+
+              <div class="row g-2 mb-3">
+                <div class="col-6">
+                  <div class="border rounded p-2">
+                    <div class="fw-semibold" data-profile-stat-posts>0</div>
+                    <div class="small text-secondary">Posts</div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="border rounded p-2">
+                    <div class="fw-semibold" data-profile-stat-comments>0</div>
+                    <div class="small text-secondary">Comments</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="text-start">
+                <label for="profile-avatar-input" class="form-label">Change avatar</label>
+                <input id="profile-avatar-input" type="file" class="form-control" accept="image/*" data-profile-avatar-input />
+                <div class="form-text">Max 5MB image.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 col-lg-8">
+          <div class="card mb-3">
+            <div class="card-body">
+              <h2 class="h5 mb-3">Profile Details</h2>
+              <form data-profile-form novalidate>
+                <div class="row g-3">
+                  <div class="col-12 col-md-6">
+                    <label for="profile-display-name" class="form-label">Display name</label>
+                    <input id="profile-display-name" type="text" class="form-control" maxlength="60" required data-profile-display-name />
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label for="profile-username" class="form-label">Username</label>
+                    <input id="profile-username" type="text" class="form-control" maxlength="30" required data-profile-username />
+                  </div>
+                  <div class="col-12">
+                    <label for="profile-bio" class="form-label">Bio</label>
+                    <textarea id="profile-bio" class="form-control" rows="3" maxlength="300" data-profile-bio></textarea>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label for="profile-location" class="form-label">Location</label>
+                    <input id="profile-location" type="text" class="form-control" maxlength="80" data-profile-location />
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label for="profile-website" class="form-label">Website</label>
+                    <input id="profile-website" type="url" class="form-control" maxlength="255" placeholder="https://" data-profile-website />
+                  </div>
+                  <div class="col-12">
+                    <div class="form-check">
+                      <input id="profile-public" class="form-check-input" type="checkbox" data-profile-public />
+                      <label class="form-check-label" for="profile-public">Public profile</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-3">
+                  <button type="submit" class="btn btn-primary" data-profile-submit>Save Profile</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="card mb-3">
+            <div class="card-body">
+              <h2 class="h5 mb-3">My Posts</h2>
+              <div class="list-group" data-profile-posts-list></div>
+            </div>
+          </div>
+
+          <div class="card mb-3">
+            <div class="card-body">
+              <h2 class="h5 mb-3">My Comments</h2>
+              <div class="list-group" data-profile-comments-list></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-body">
+              <h2 class="h5 mb-3">Preferences</h2>
+              <form data-profile-preferences-form>
+                <div class="row g-2">
+                  <div class="col-12 col-md-6">
+                    <div class="form-check">
+                      <input id="pref-notify-comments" class="form-check-input" type="checkbox" data-pref-notify-comments />
+                      <label class="form-check-label" for="pref-notify-comments">Notify on comments</label>
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <div class="form-check">
+                      <input id="pref-notify-replies" class="form-check-input" type="checkbox" data-pref-notify-replies />
+                      <label class="form-check-label" for="pref-notify-replies">Notify on replies</label>
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <div class="form-check">
+                      <input id="pref-notify-moderation" class="form-check-input" type="checkbox" data-pref-notify-moderation />
+                      <label class="form-check-label" for="pref-notify-moderation">Notify on moderation</label>
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <div class="form-check">
+                      <input id="pref-show-email" class="form-check-input" type="checkbox" data-pref-show-email />
+                      <label class="form-check-label" for="pref-show-email">Show email on profile</label>
+                    </div>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <div class="form-check">
+                      <input id="pref-show-activity" class="form-check-input" type="checkbox" data-pref-show-activity />
+                      <label class="form-check-label" for="pref-show-activity">Show activity publicly</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-3">
+                  <button type="submit" class="btn btn-outline-primary" data-pref-submit>Save Preferences</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
     <script
       src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"

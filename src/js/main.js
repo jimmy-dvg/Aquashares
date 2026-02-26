@@ -5,6 +5,7 @@ import { initializeRegisterForm } from './auth/register.js';
 import { cleanupNotifications, initializeNotifications } from './notifications/notifications-ui.js';
 import { loadFeed } from './posts/posts-ui.js';
 import { initializePostForm } from './posts/post-form.js';
+import { initializeProfilePage } from './profile/profile-ui.js';
 
 function toggleElements(elements, isVisible) {
   elements.forEach((element) => {
@@ -75,6 +76,7 @@ async function bootstrap() {
 
   loadFeed();
   initializePostForm();
+  initializeProfilePage();
   initializeLoginForm();
   initializeRegisterForm();
 }
