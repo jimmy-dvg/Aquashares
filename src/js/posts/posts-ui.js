@@ -1,4 +1,5 @@
 import { supabase } from '../services/supabase-client.js';
+import { cleanupCommentsUi, createCommentsBlock, initializeCommentsUi } from '../comments/comments-ui.js';
 import { deletePost, getAllPosts } from './posts-service.js';
 
 function formatDate(value) {
@@ -57,7 +58,7 @@ function createCardImage(post) {
   return wrapper;
 }
 
-export function renderPostCard(post, canManage = false) {
+export function renderPostCard(post, canManage = false, isAuthenticated = false) {
   const column = document.createElement('div');
   column.className = 'col-12 col-md-6 col-lg-4';
   column.dataset.postId = post.id;
@@ -105,6 +106,8 @@ export function renderPostCard(post, canManage = false) {
     actions.append(editButton, deleteButton);
     cardBody.append(actions);
   }
+
+  cardBody.append(createCommentsBlock(post.id, isAuthenticated));
   article.append(imageElement, cardBody);
   column.append(article);
 
@@ -146,7 +149,7 @@ function renderFeedPosts(posts, container, canManagePost) {
 
   const fragment = document.createDocumentFragment();
   posts.forEach((post) => {
-    fragment.append(renderPostCard(post, canManagePost(post)));
+    fragment.append(renderPostCard(post, canManagePost(post), true));
   });
 
   container.append(fragment);
@@ -304,10 +307,24 @@ export async function loadFeed() {
   }
 
   try {
+    cleanupCommentsUi();
+
     const [posts, viewer] = await Promise.all([getAllPosts(), getViewerState()]);
     const canManagePost = (post) => Boolean(viewer.userId) && (viewer.isAdmin || viewer.userId === post.userId);
 
-    renderFeedPosts(posts, feedContainer, canManagePost);
+    feedContainer.replaceChildren();
+
+    if (!posts.length) {
+      renderEmptyState(feedContainer);
+    } else {
+      const fragment = document.createDocumentFragment();
+      posts.forEach((post) => {
+        fragment.append(renderPostCard(post, canManagePost(post), Boolean(viewer.userId)));
+      });
+      feedContainer.append(fragment);
+      await initializeCommentsUi(feedContainer, viewer.userId);
+    }
+
     attachEditHandler(feedContainer);
     attachDeleteHandler(feedContainer, loadFeed);
   } catch (error) {

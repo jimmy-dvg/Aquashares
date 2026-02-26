@@ -7,7 +7,8 @@ function mapComment(row) {
     userId: row.user_id,
     body: row.body,
     createdAt: row.created_at,
-    updatedAt: row.updated_at
+    updatedAt: row.updated_at,
+    authorName: row.author_name || 'User'
   };
 }
 
@@ -26,7 +27,28 @@ export async function getCommentsByPostId(postId) {
     throwServiceError(error, 'Failed to load comments.');
   }
 
-  return (data ?? []).map(mapComment);
+  const rows = data ?? [];
+  const userIds = [...new Set(rows.map((item) => item.user_id).filter(Boolean))];
+  let authorMap = new Map();
+
+  if (userIds.length) {
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, display_name, username')
+      .in('id', userIds);
+
+    if (!profilesError) {
+      authorMap = new Map((profiles ?? []).map((profile) => [
+        profile.id,
+        profile.display_name || profile.username || 'User'
+      ]));
+    }
+  }
+
+  return rows.map((row) => mapComment({
+    ...row,
+    author_name: authorMap.get(row.user_id) || 'User'
+  }));
 }
 
 export async function createComment(data) {
@@ -47,4 +69,50 @@ export async function createComment(data) {
   }
 
   return mapComment(result);
+}
+
+export async function updateComment(commentId, body) {
+  const { data, error } = await supabase
+    .from('comments')
+    .update({ body })
+    .eq('id', commentId)
+    .select('id, post_id, user_id, body, created_at, updated_at')
+    .single();
+
+  if (error) {
+    throwServiceError(error, 'Failed to update comment.');
+  }
+
+  return mapComment(data);
+}
+
+export async function deleteComment(commentId) {
+  const { error } = await supabase
+    .from('comments')
+    .delete()
+    .eq('id', commentId);
+
+  if (error) {
+    throwServiceError(error, 'Failed to delete comment.');
+  }
+}
+
+export function subscribeToPostComments(postId, onInsert) {
+  const channel = supabase
+    .channel(`comments:${postId}`)
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'comments',
+      filter: `post_id=eq.${postId}`
+    }, (payload) => {
+      if (typeof onInsert === 'function' && payload?.new) {
+        onInsert(mapComment(payload.new));
+      }
+    })
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }
