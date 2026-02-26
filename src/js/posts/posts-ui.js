@@ -83,7 +83,8 @@ function createPostImage(post) {
   const wrapper = document.createElement('div');
   wrapper.className = 'ratio ratio-16x9 aqua-post-media';
 
-  const primaryPhoto = post.photos?.[0];
+  const photos = post.photos?.filter((photo) => Boolean(photo?.publicUrl)) || [];
+  const primaryPhoto = photos[0];
 
   if (!primaryPhoto?.publicUrl) {
     const placeholder = document.createElement('div');
@@ -103,7 +104,7 @@ function createPostImage(post) {
   }
 
   const image = document.createElement('img');
-  image.className = 'aqua-post-media-img';
+  image.className = 'aqua-post-media-img aqua-media-fade';
   image.src = primaryPhoto.publicUrl;
   image.alt = post.title;
   image.loading = 'lazy';
@@ -125,6 +126,66 @@ function createPostImage(post) {
     placeholder.append(icon, text);
     wrapper.append(placeholder);
   }, { once: true });
+
+  if (photos.length > 1) {
+    let activeIndex = 0;
+    let intervalId = null;
+
+    const swapToPhoto = (nextPhoto) => {
+      if (!nextPhoto?.publicUrl) {
+        return;
+      }
+
+      image.classList.add('is-fading');
+
+      const handleLoaded = () => {
+        image.classList.remove('is-fading');
+      };
+
+      image.addEventListener('load', handleLoaded, { once: true });
+      image.src = nextPhoto.publicUrl;
+    };
+
+    const updateImage = (nextIndex) => {
+      const nextPhoto = photos[nextIndex];
+      if (!nextPhoto?.publicUrl) {
+        return;
+      }
+
+      activeIndex = nextIndex;
+      swapToPhoto(nextPhoto);
+    };
+
+    const startCarousel = () => {
+      if (intervalId) {
+        return;
+      }
+
+      intervalId = window.setInterval(() => {
+        if (!document.body.contains(wrapper)) {
+          window.clearInterval(intervalId);
+          intervalId = null;
+          return;
+        }
+
+        const nextIndex = (activeIndex + 1) % photos.length;
+        updateImage(nextIndex);
+      }, 1200);
+    };
+
+    const stopCarousel = () => {
+      if (!intervalId) {
+        return;
+      }
+
+      window.clearInterval(intervalId);
+      intervalId = null;
+      updateImage(0);
+    };
+
+    wrapper.addEventListener('mouseenter', startCarousel);
+    wrapper.addEventListener('mouseleave', stopCarousel);
+  }
 
   wrapper.append(image);
   return wrapper;

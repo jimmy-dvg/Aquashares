@@ -103,38 +103,22 @@
                 </div>
 
                 <div class="mb-3">
-                  <label for="post-image" class="form-label">Post Image</label>
+                  <label for="post-image" class="form-label">Post Images</label>
                   <input
                     id="post-image"
-                    name="image"
+                    name="images"
                     type="file"
                     class="form-control"
                     accept="image/*"
+                    multiple
                     data-post-image
                   />
-                  <div class="form-text">Optional. Maximum file size: 5MB.</div>
+                  <div class="form-text">Optional. You can upload multiple images. Maximum file size per image: 5MB.</div>
                 </div>
 
                 <div class="mb-3 d-none" data-current-image-section>
-                  <label class="form-label">Current Image</label>
-                  <div class="border rounded p-2">
-                    <img
-                      src=""
-                      alt="Current post image"
-                      class="img-fluid rounded"
-                      style="max-height: 220px; object-fit: cover;"
-                      data-current-image-preview
-                    />
-                    <div class="form-check mt-2">
-                      <input
-                        class="form-check-input"
-                        type="checkbox"
-                        id="post-remove-image"
-                        data-post-remove-image
-                      />
-                      <label class="form-check-label" for="post-remove-image">Delete current image</label>
-                    </div>
-                  </div>
+                  <label class="form-label">Current Images</label>
+                  <div class="row g-2" data-current-image-list></div>
                 </div>
 
                 <div class="text-secondary mb-3 d-none" data-post-form-loading>Saving post...</div>

@@ -9,8 +9,7 @@ function getElements() {
     bodyInput: document.querySelector('[data-post-body]'),
     imageInput: document.querySelector('[data-post-image]'),
     currentImageSection: document.querySelector('[data-current-image-section]'),
-    currentImagePreview: document.querySelector('[data-current-image-preview]'),
-    removeImageInput: document.querySelector('[data-post-remove-image]'),
+    currentImageList: document.querySelector('[data-current-image-list]'),
     errorBox: document.querySelector('[data-post-form-error]'),
     submitButton: document.querySelector('[data-post-submit]'),
     heading: document.querySelector('[data-post-form-title]'),
@@ -89,6 +88,14 @@ function setLoadingState(loadingBox, isLoading) {
   loadingBox.classList.add('d-none');
 }
 
+function getFilesFromInput(inputElement) {
+  if (!(inputElement instanceof HTMLInputElement) || !inputElement.files?.length) {
+    return [];
+  }
+
+  return [...inputElement.files];
+}
+
 async function prefillFormForEdit(postId, elements) {
   const post = await getPostById(postId);
   elements.titleInput.value = post.title;
@@ -105,31 +112,108 @@ async function prefillFormForEdit(postId, elements) {
   return post;
 }
 
-function setCurrentImageState(elements, photo) {
-  if (!elements.currentImageSection || !elements.currentImagePreview || !elements.removeImageInput) {
+function renderExistingImages(elements, photos) {
+  if (!elements.currentImageSection || !elements.currentImageList) {
     return;
   }
 
-  if (!photo?.publicUrl) {
+  elements.currentImageList.replaceChildren();
+
+  if (!photos.length) {
     elements.currentImageSection.classList.add('d-none');
-    elements.currentImagePreview.src = '';
-    elements.removeImageInput.checked = false;
     return;
   }
 
-  elements.currentImagePreview.src = photo.publicUrl;
-  elements.currentImagePreview.alt = 'Current post image';
-  elements.removeImageInput.checked = false;
+  const fragment = document.createDocumentFragment();
+
+  photos.forEach((photo) => {
+    const col = document.createElement('div');
+    col.className = 'col-12 col-sm-6';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'border rounded p-2 h-100';
+
+    const image = document.createElement('img');
+    image.src = photo.publicUrl;
+    image.alt = 'Current post image';
+    image.className = 'img-fluid rounded mb-2';
+    image.style.maxHeight = '220px';
+    image.style.objectFit = 'cover';
+
+    const formCheck = document.createElement('div');
+    formCheck.className = 'form-check';
+
+    const checkbox = document.createElement('input');
+    checkbox.className = 'form-check-input';
+    checkbox.type = 'checkbox';
+    checkbox.id = `remove-photo-${photo.id}`;
+    checkbox.dataset.removePhoto = 'true';
+    checkbox.dataset.photoId = photo.id;
+    checkbox.dataset.photoPath = photo.storagePath;
+
+    const label = document.createElement('label');
+    label.className = 'form-check-label';
+    label.setAttribute('for', checkbox.id);
+    label.textContent = 'Delete this image';
+
+    formCheck.append(checkbox, label);
+    wrapper.append(image, formCheck);
+    col.append(wrapper);
+    fragment.append(col);
+  });
+
+  elements.currentImageList.append(fragment);
   elements.currentImageSection.classList.remove('d-none');
 }
 
-async function removePhoto(photo) {
-  if (!photo) {
-    return;
+function getSelectedPhotosForRemoval(currentImageList) {
+  if (!(currentImageList instanceof HTMLElement)) {
+    return [];
   }
 
+  const checkedInputs = currentImageList.querySelectorAll('[data-remove-photo="true"]:checked');
+
+  return [...checkedInputs]
+    .map((input) => {
+      if (!(input instanceof HTMLInputElement)) {
+        return null;
+      }
+
+      const photoId = input.dataset.photoId;
+      const storagePath = input.dataset.photoPath;
+
+      if (!photoId || !storagePath) {
+        return null;
+      }
+
+      return {
+        id: photoId,
+        storagePath
+      };
+    })
+    .filter(Boolean);
+}
+
+async function removePhoto(photo) {
   await deletePhotoRecord(photo.id);
   await deletePostImage(photo.storagePath);
+}
+
+async function uploadAndCreatePhoto(file, userId, postId) {
+  const storagePath = await uploadPostImage(file, userId, postId);
+  const publicUrl = getPublicUrl(storagePath);
+
+  const createdPhoto = await createPhotoRecord({
+    postId,
+    userId,
+    storagePath,
+    publicUrl
+  });
+
+  return {
+    ...createdPhoto,
+    storagePath
+  };
 }
 
 async function rollbackPhoto(photo) {
@@ -166,7 +250,6 @@ export async function initializePostForm() {
 
   const postId = getPostIdFromQuery();
   const isEditMode = Boolean(postId);
-  let currentPhoto = null;
 
   clearError(elements.errorBox);
   setLoadingState(elements.loadingBox, false);
@@ -174,8 +257,7 @@ export async function initializePostForm() {
   if (isEditMode) {
     try {
       const post = await prefillFormForEdit(postId, elements);
-      currentPhoto = post.photos?.[0] ?? null;
-      setCurrentImageState(elements, currentPhoto);
+      renderExistingImages(elements, post.photos ?? []);
     } catch (error) {
       showError(elements.errorBox, error.message || 'Unable to load post for editing.');
       return;
@@ -202,39 +284,22 @@ export async function initializePostForm() {
       if (isEditMode) {
         await updatePost(postId, { title, body });
 
-        const file = elements.imageInput?.files?.[0] ?? null;
-        const shouldRemoveCurrentImage = Boolean(elements.removeImageInput?.checked);
+        const files = getFilesFromInput(elements.imageInput);
+        const photosToRemove = getSelectedPhotosForRemoval(elements.currentImageList);
+        const newlyCreatedPhotos = [];
 
-        if (file) {
-          const newStoragePath = await uploadPostImage(file, session.user.id, postId);
-          const newPublicUrl = getPublicUrl(newStoragePath);
-
-          let newPhoto = null;
-
-          try {
-            newPhoto = await createPhotoRecord({
-              postId,
-              userId: session.user.id,
-              storagePath: newStoragePath,
-              publicUrl: newPublicUrl
-            });
-
-            if (currentPhoto) {
-              await removePhoto(currentPhoto);
-            }
-
-            currentPhoto = newPhoto;
-          } catch (imageUpdateError) {
-            await rollbackPhoto(newPhoto || {
-              id: null,
-              storagePath: newStoragePath
-            });
-
-            throw imageUpdateError;
+        try {
+          for (const file of files) {
+            const createdPhoto = await uploadAndCreatePhoto(file, session.user.id, postId);
+            newlyCreatedPhotos.push(createdPhoto);
           }
-        } else if (shouldRemoveCurrentImage && currentPhoto) {
-          await removePhoto(currentPhoto);
-          currentPhoto = null;
+        } catch (uploadError) {
+          await Promise.all(newlyCreatedPhotos.map((photo) => rollbackPhoto(photo)));
+          throw uploadError;
+        }
+
+        for (const photo of photosToRemove) {
+          await removePhoto(photo);
         }
       } else {
         const createdPost = await createPost({
@@ -243,35 +308,23 @@ export async function initializePostForm() {
           userId: session.user.id
         });
 
-        const file = elements.imageInput?.files?.[0];
-        if (file) {
-          let storagePath = null;
+        const files = getFilesFromInput(elements.imageInput);
+        const uploadedPhotos = [];
+
+        try {
+          for (const file of files) {
+            const createdPhoto = await uploadAndCreatePhoto(file, session.user.id, createdPost.id);
+            uploadedPhotos.push(createdPhoto);
+          }
+        } catch (uploadError) {
+          await Promise.all(uploadedPhotos.map((photo) => rollbackPhoto(photo)));
 
           try {
-            storagePath = await uploadPostImage(file, session.user.id, createdPost.id);
-            const publicUrl = getPublicUrl(storagePath);
-
-            await createPhotoRecord({
-              postId: createdPost.id,
-              userId: session.user.id,
-              storagePath,
-              publicUrl
-            });
-          } catch (uploadError) {
-            if (storagePath) {
-              try {
-                await deletePostImage(storagePath);
-              } catch {
-              }
-            }
-
-            try {
-              await deletePost(createdPost.id);
-            } catch {
-            }
-
-            throw uploadError;
+            await deletePost(createdPost.id);
+          } catch {
           }
+
+          throw uploadError;
         }
       }
 

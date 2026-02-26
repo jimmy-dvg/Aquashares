@@ -39,6 +39,28 @@ function getCommentIdFromQuery() {
   return value && value.trim() ? value.trim() : null;
 }
 
+async function resolvePostId(postId, commentId) {
+  if (postId) {
+    return postId;
+  }
+
+  if (!commentId) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from('comments')
+    .select('post_id')
+    .eq('id', commentId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message || 'Unable to resolve post from comment.');
+  }
+
+  return data?.post_id || null;
+}
+
 function setLoading(elements, isLoading) {
   if (!elements.loading) {
     return;
@@ -141,59 +163,87 @@ async function getAuthorData(authorId) {
   };
 }
 
-function renderGalleryMain(mainElement, photo, title) {
-  if (!mainElement) {
-    return;
-  }
-
-  mainElement.replaceChildren();
-
-  if (!photo?.publicUrl) {
-    const placeholder = document.createElement('div');
-    placeholder.className = 'aqua-post-media-placeholder';
-
-    const icon = document.createElement('i');
-    icon.className = 'bi bi-image';
-    icon.setAttribute('aria-hidden', 'true');
-
-    const text = document.createElement('span');
-    text.className = 'small';
-    text.textContent = 'No image';
-
-    placeholder.append(icon, text);
-    mainElement.append(placeholder);
-    return;
-  }
-
-  const image = document.createElement('img');
-  image.className = 'aqua-post-detail-main-image';
-  image.src = photo.publicUrl;
-  image.alt = title || 'Post image';
-  image.loading = 'eager';
-
-  image.addEventListener('error', () => {
-    renderGalleryMain(mainElement, null, title);
-  }, { once: true });
-
-  mainElement.append(image);
-}
-
 function renderGallery(mainElement, thumbsElement, photos, title) {
   if (!mainElement || !thumbsElement) {
     return;
   }
 
+  mainElement.replaceChildren();
   thumbsElement.replaceChildren();
 
+  const placeholder = document.createElement('div');
+  placeholder.className = 'aqua-post-media-placeholder';
+
+  const placeholderIcon = document.createElement('i');
+  placeholderIcon.className = 'bi bi-image';
+  placeholderIcon.setAttribute('aria-hidden', 'true');
+
+  const placeholderText = document.createElement('span');
+  placeholderText.className = 'small';
+  placeholderText.textContent = 'No image';
+
+  placeholder.append(placeholderIcon, placeholderText);
+
+  const image = document.createElement('img');
+  image.className = 'aqua-post-detail-main-image aqua-media-fade d-none';
+  image.alt = title || 'Post image';
+  image.loading = 'eager';
+
+  const prevButton = document.createElement('button');
+  prevButton.type = 'button';
+  prevButton.className = 'btn btn-dark aqua-post-carousel-nav aqua-post-carousel-nav-prev d-none';
+  prevButton.setAttribute('aria-label', 'Previous image');
+  prevButton.innerHTML = '<i class="bi bi-chevron-left" aria-hidden="true"></i>';
+
+  const nextButton = document.createElement('button');
+  nextButton.type = 'button';
+  nextButton.className = 'btn btn-dark aqua-post-carousel-nav aqua-post-carousel-nav-next d-none';
+  nextButton.setAttribute('aria-label', 'Next image');
+  nextButton.innerHTML = '<i class="bi bi-chevron-right" aria-hidden="true"></i>';
+
+  const counter = document.createElement('span');
+  counter.className = 'badge text-bg-dark aqua-post-carousel-counter d-none';
+
+  mainElement.append(placeholder, image, prevButton, nextButton, counter);
+
   if (!photos.length) {
-    renderGalleryMain(mainElement, null, title);
     return;
   }
 
   let activePhotoIndex = 0;
 
+  const setPhoto = (nextIndex, animated = true) => {
+    const nextPhoto = photos[nextIndex];
+    if (!nextPhoto?.publicUrl) {
+      return;
+    }
+
+    activePhotoIndex = nextIndex;
+
+    if (animated) {
+      image.classList.add('is-fading');
+    }
+
+    image.addEventListener('load', () => {
+      image.classList.remove('d-none');
+      placeholder.classList.add('d-none');
+      image.classList.remove('is-fading');
+    }, { once: true });
+
+    image.addEventListener('error', () => {
+      image.classList.add('d-none');
+      placeholder.classList.remove('d-none');
+      image.classList.remove('is-fading');
+    }, { once: true });
+
+    image.src = nextPhoto.publicUrl;
+    image.alt = `${title || 'Post image'} ${nextIndex + 1}`;
+
+    counter.textContent = `${nextIndex + 1} / ${photos.length}`;
+  };
+
   const updateActiveState = () => {
-    renderGalleryMain(mainElement, photos[activePhotoIndex], title);
+    setPhoto(activePhotoIndex);
 
     thumbsElement.querySelectorAll('[data-photo-index]').forEach((button) => {
       if (!(button instanceof HTMLButtonElement)) {
@@ -235,6 +285,56 @@ function renderGallery(mainElement, thumbsElement, photos, title) {
   });
 
   thumbsElement.append(fragment);
+  if (photos.length > 1) {
+    let autoplayIntervalId = null;
+
+    const stopAutoplay = () => {
+      if (!autoplayIntervalId) {
+        return;
+      }
+
+      window.clearInterval(autoplayIntervalId);
+      autoplayIntervalId = null;
+    };
+
+    const startAutoplay = () => {
+      if (autoplayIntervalId) {
+        return;
+      }
+
+      autoplayIntervalId = window.setInterval(() => {
+        if (!document.body.contains(mainElement)) {
+          stopAutoplay();
+          return;
+        }
+
+        activePhotoIndex = (activePhotoIndex + 1) % photos.length;
+        updateActiveState();
+      }, 2500);
+    };
+
+    prevButton.classList.remove('d-none');
+    nextButton.classList.remove('d-none');
+    counter.classList.remove('d-none');
+
+    prevButton.addEventListener('click', () => {
+      activePhotoIndex = (activePhotoIndex - 1 + photos.length) % photos.length;
+      updateActiveState();
+    });
+
+    nextButton.addEventListener('click', () => {
+      activePhotoIndex = (activePhotoIndex + 1) % photos.length;
+      updateActiveState();
+    });
+
+    mainElement.addEventListener('mouseenter', stopAutoplay);
+    mainElement.addEventListener('mouseleave', startAutoplay);
+    mainElement.addEventListener('focusin', stopAutoplay);
+    mainElement.addEventListener('focusout', startAutoplay);
+
+    startAutoplay();
+  }
+
   updateActiveState();
 }
 
@@ -332,18 +432,27 @@ export async function initializePostDetailPage() {
     return;
   }
 
-  const postId = getPostIdFromQuery();
-  if (!postId) {
-    showError(elements, 'Missing post ID.');
-    setLoading(elements, false);
-    return;
-  }
+  const requestedPostId = getPostIdFromQuery();
+  const commentId = getCommentIdFromQuery();
 
   setLoading(elements, true);
   clearError(elements);
   cleanupCommentsUi();
 
   try {
+    const postId = await resolvePostId(requestedPostId, commentId);
+
+    if (!postId) {
+      throw new Error('Missing post ID.');
+    }
+
+    if (!requestedPostId && commentId) {
+      const nextParams = new URLSearchParams(window.location.search);
+      nextParams.set('id', postId);
+      const nextUrl = `${window.location.pathname}?${nextParams.toString()}`;
+      window.history.replaceState(null, '', nextUrl);
+    }
+
     const [post, viewer] = await Promise.all([
       getPostById(postId),
       getViewerState()

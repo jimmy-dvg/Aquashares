@@ -16,11 +16,11 @@ function getNotificationHref(notification) {
   const referenceType = notification.referenceType || 'post';
 
   if (referenceType === 'comment' && notification.referenceId) {
-    return `/index.html?comment=${encodeURIComponent(notification.referenceId)}`;
+    return `/post-detail.html?comment=${encodeURIComponent(notification.referenceId)}`;
   }
 
   if (notification.referenceId) {
-    return `/index.html#post-${encodeURIComponent(notification.referenceId)}`;
+    return `/post-detail.html?id=${encodeURIComponent(notification.referenceId)}`;
   }
 
   return '/index.html';
