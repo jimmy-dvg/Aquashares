@@ -1,11 +1,28 @@
 import { supabase } from '../services/supabase-client.js';
-import { cleanupCommentsUi, createCommentsBlock, initializeCommentsUi } from '../comments/comments-ui.js';
+import { cleanupCommentsUi, initializeCommentsUi } from '../comments/comments-ui.js';
 import { deletePost, getAllPosts, getCategories } from './posts-service.js';
 import { showConfirmModal } from '../utils/confirm-modal.js';
+import {
+  bindCategoryFilter,
+  bindFeedPopstate,
+  clearError,
+  getUiElements,
+  setCategoryFilterOptions,
+  setLoadingState,
+  showError,
+  updateFeedFilterUi
+} from './posts-ui-controls.js';
+import {
+  createNotification,
+  focusCommentFromQuery,
+  focusPostFromHash,
+  getCategoryFromQuery,
+  renderEmptyState,
+  renderPostCard,
+  setCategoryInQuery
+} from './posts-ui-view.js';
 
 const feedState = {
-  categoriesBound: false,
-  popstateBound: false,
   loadDebounceTimer: null,
   cache: {
     postsWithUiData: null,
@@ -26,194 +43,6 @@ function scheduleFeedLoad(options = {}) {
   }, 100);
 }
 
-function formatDate(value) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  return new Intl.DateTimeFormat('en', {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit'
-  }).format(date);
-}
-
-function formatRelativeTime(value) {
-  const timestamp = new Date(value).getTime();
-  if (Number.isNaN(timestamp)) {
-    return '';
-  }
-
-  const diff = timestamp - Date.now();
-  const minute = 60 * 1000;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
-
-  if (Math.abs(diff) < hour) {
-    return rtf.format(Math.round(diff / minute), 'minute');
-  }
-
-  if (Math.abs(diff) < day) {
-    return rtf.format(Math.round(diff / hour), 'hour');
-  }
-
-  return rtf.format(Math.round(diff / day), 'day');
-}
-
-function createNotification(message, type = 'danger') {
-  const alert = document.createElement('div');
-  alert.className = `alert alert-${type} mb-3`;
-  alert.setAttribute('role', 'alert');
-  alert.textContent = message;
-  return alert;
-}
-
-function getRoleLabel(author) {
-  if (author.role === 'admin') {
-    return 'Admin';
-  }
-
-  return 'User';
-}
-
-function getCategoryLabel(post) {
-  return post.categoryName || 'Uncategorized';
-}
-
-function getPostDetailHref(postId) {
-  return `/post-detail.html?id=${encodeURIComponent(postId)}`;
-}
-
-function createAvatar(author) {
-  const avatar = document.createElement('img');
-  avatar.className = 'rounded-circle flex-shrink-0 aqua-post-avatar';
-  avatar.width = 40;
-  avatar.height = 40;
-  avatar.loading = 'lazy';
-  avatar.alt = `${author.displayName} avatar`;
-  avatar.src = author.avatarUrl || '/assets/avatars/default-avatar.svg';
-
-  avatar.addEventListener('error', () => {
-    avatar.src = '/assets/avatars/default-avatar.svg';
-  }, { once: true });
-
-  return avatar;
-}
-
-function createPostImage(post) {
-  const wrapper = document.createElement('div');
-  wrapper.className = 'ratio ratio-16x9 aqua-post-media';
-
-  const photos = post.photos?.filter((photo) => Boolean(photo?.publicUrl)) || [];
-  const primaryPhoto = photos[0];
-
-  if (!primaryPhoto?.publicUrl) {
-    const placeholder = document.createElement('div');
-    placeholder.className = 'aqua-post-media-placeholder';
-
-    const icon = document.createElement('i');
-    icon.className = 'bi bi-image';
-    icon.setAttribute('aria-hidden', 'true');
-
-    const text = document.createElement('span');
-    text.className = 'small';
-    text.textContent = 'No image';
-
-    placeholder.append(icon, text);
-    wrapper.append(placeholder);
-    return wrapper;
-  }
-
-  const image = document.createElement('img');
-  image.className = 'aqua-post-media-img aqua-media-fade';
-  image.src = primaryPhoto.publicUrl;
-  image.alt = post.title;
-  image.loading = 'lazy';
-
-  image.addEventListener('error', () => {
-    wrapper.replaceChildren();
-
-    const placeholder = document.createElement('div');
-    placeholder.className = 'aqua-post-media-placeholder';
-
-    const icon = document.createElement('i');
-    icon.className = 'bi bi-image';
-    icon.setAttribute('aria-hidden', 'true');
-
-    const text = document.createElement('span');
-    text.className = 'small';
-    text.textContent = 'Image unavailable';
-
-    placeholder.append(icon, text);
-    wrapper.append(placeholder);
-  }, { once: true });
-
-  if (photos.length > 1) {
-    let activeIndex = 0;
-    let intervalId = null;
-
-    const swapToPhoto = (nextPhoto) => {
-      if (!nextPhoto?.publicUrl) {
-        return;
-      }
-
-      image.classList.add('is-fading');
-
-      const handleLoaded = () => {
-        image.classList.remove('is-fading');
-      };
-
-      image.addEventListener('load', handleLoaded, { once: true });
-      image.src = nextPhoto.publicUrl;
-    };
-
-    const updateImage = (nextIndex) => {
-      const nextPhoto = photos[nextIndex];
-      if (!nextPhoto?.publicUrl) {
-        return;
-      }
-
-      activeIndex = nextIndex;
-      swapToPhoto(nextPhoto);
-    };
-
-    const startCarousel = () => {
-      if (intervalId) {
-        return;
-      }
-
-      intervalId = window.setInterval(() => {
-        if (!document.body.contains(wrapper)) {
-          window.clearInterval(intervalId);
-          intervalId = null;
-          return;
-        }
-
-        const nextIndex = (activeIndex + 1) % photos.length;
-        updateImage(nextIndex);
-      }, 1200);
-    };
-
-    const stopCarousel = () => {
-      if (!intervalId) {
-        return;
-      }
-
-      window.clearInterval(intervalId);
-      intervalId = null;
-      updateImage(0);
-    };
-
-    wrapper.addEventListener('mouseenter', startCarousel);
-    wrapper.addEventListener('mouseleave', stopCarousel);
-  }
-
-  wrapper.append(image);
-  return wrapper;
-}
 
 function mapPostWithUiData(post, authorById, commentCountByPostId) {
   const author = authorById.get(post.userId) || {
@@ -294,358 +123,7 @@ async function buildCommentCountMap(posts) {
   return counts;
 }
 
-export function renderPostCard(post, canManage = false, isAuthenticated = false) {
-  const column = document.createElement('div');
-  column.className = 'col-12 col-md-6 col-xl-4';
-  column.dataset.postId = post.id;
-  column.id = `post-${post.id}`;
 
-  const article = document.createElement('article');
-  article.className = 'card h-100 aqua-post-card';
-
-  const cardBody = document.createElement('div');
-  cardBody.className = 'card-body d-flex flex-column gap-3';
-
-  const header = document.createElement('div');
-  header.className = 'd-flex justify-content-between align-items-start gap-2';
-
-  const authorWrap = document.createElement('div');
-  authorWrap.className = 'd-flex align-items-center gap-2 min-w-0';
-
-  const avatar = createAvatar(post.author);
-
-  const authorMeta = document.createElement('div');
-  authorMeta.className = 'min-w-0';
-
-  const authorLink = document.createElement('a');
-  authorLink.href = `/profile.html?user=${encodeURIComponent(post.author.id)}`;
-  authorLink.className = 'fw-semibold text-decoration-none d-inline-block aqua-truncate-1';
-  authorLink.textContent = post.author.username ? `@${post.author.username}` : '@user';
-
-  const subMeta = document.createElement('div');
-  subMeta.className = 'd-flex align-items-center gap-2 text-muted small';
-
-  const roleBadge = document.createElement('span');
-  roleBadge.className = 'badge rounded-pill text-bg-light border';
-  roleBadge.textContent = getRoleLabel(post.author);
-
-  const timestamp = document.createElement('span');
-  timestamp.textContent = formatRelativeTime(post.createdAt);
-  timestamp.title = formatDate(post.createdAt);
-
-  subMeta.append(roleBadge, timestamp);
-  authorMeta.append(authorLink, subMeta);
-  authorWrap.append(avatar, authorMeta);
-  header.append(authorWrap);
-
-  if (canManage) {
-    const dropdown = document.createElement('div');
-    dropdown.className = 'dropdown';
-
-    const toggleButton = document.createElement('button');
-    toggleButton.type = 'button';
-    toggleButton.className = 'btn btn-sm btn-outline-secondary';
-    toggleButton.setAttribute('data-bs-toggle', 'dropdown');
-    toggleButton.setAttribute('aria-expanded', 'false');
-    toggleButton.setAttribute('aria-label', 'Post actions');
-
-    const dotsIcon = document.createElement('i');
-    dotsIcon.className = 'bi bi-three-dots-vertical';
-    dotsIcon.setAttribute('aria-hidden', 'true');
-    toggleButton.append(dotsIcon);
-
-    const menu = document.createElement('ul');
-    menu.className = 'dropdown-menu dropdown-menu-end';
-
-    const editItemWrap = document.createElement('li');
-    const editButton = document.createElement('button');
-    editButton.type = 'button';
-    editButton.className = 'dropdown-item';
-    editButton.dataset.action = 'edit-post';
-    editButton.dataset.postId = post.id;
-    editButton.textContent = 'Edit Post';
-    editItemWrap.append(editButton);
-
-    const deleteItemWrap = document.createElement('li');
-    const deleteButton = document.createElement('button');
-    deleteButton.type = 'button';
-    deleteButton.className = 'dropdown-item text-danger';
-    deleteButton.dataset.action = 'delete-post';
-    deleteButton.dataset.postId = post.id;
-    deleteButton.textContent = 'Delete Post';
-    deleteItemWrap.append(deleteButton);
-
-    menu.append(editItemWrap, deleteItemWrap);
-    dropdown.append(toggleButton, menu);
-    header.append(dropdown);
-  }
-
-  const media = createPostImage(post);
-  const mediaLink = document.createElement('a');
-  mediaLink.href = getPostDetailHref(post.id);
-  mediaLink.className = 'text-decoration-none';
-  mediaLink.append(media);
-
-  const content = document.createElement('div');
-
-  const category = document.createElement(post.categorySlug ? 'a' : 'span');
-  category.className = 'badge text-bg-secondary-subtle text-secondary-emphasis mb-2 text-decoration-none';
-  category.textContent = getCategoryLabel(post);
-
-  if (post.categorySlug) {
-    category.href = `/index.html?category=${encodeURIComponent(post.categorySlug)}`;
-    category.classList.add('aqua-category-link');
-    category.setAttribute('aria-label', `Filter by ${getCategoryLabel(post)} category`);
-  }
-
-  const title = document.createElement('h2');
-  title.className = 'h6 mb-1 aqua-truncate-2';
-
-  const titleLink = document.createElement('a');
-  titleLink.href = getPostDetailHref(post.id);
-  titleLink.className = 'text-decoration-none text-body';
-  titleLink.textContent = post.title;
-
-  title.append(titleLink);
-
-  const body = document.createElement('p');
-  body.className = 'text-secondary mb-0 aqua-truncate-3';
-  body.textContent = post.body;
-
-  content.append(category, title, body);
-
-  const interactionBar = document.createElement('div');
-  interactionBar.className = 'd-flex align-items-center justify-content-between mt-auto pt-2 border-top';
-
-  const commentsInfo = document.createElement('div');
-  commentsInfo.className = 'd-inline-flex align-items-center gap-1 text-muted small';
-
-  const commentsIcon = document.createElement('i');
-  commentsIcon.className = 'bi bi-chat-dots';
-  commentsIcon.setAttribute('aria-hidden', 'true');
-
-  const commentsText = document.createElement('span');
-  commentsText.textContent = `${post.commentCount} comments`;
-  commentsInfo.append(commentsIcon, commentsText);
-
-  const likeButton = document.createElement('button');
-  likeButton.type = 'button';
-  likeButton.className = 'btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1';
-  likeButton.disabled = true;
-  likeButton.setAttribute('aria-label', 'Like post (coming soon)');
-
-  const likeIcon = document.createElement('i');
-  likeIcon.className = 'bi bi-heart';
-  likeIcon.setAttribute('aria-hidden', 'true');
-
-  const likeText = document.createElement('span');
-  likeText.textContent = 'Like';
-  likeButton.append(likeIcon, likeText);
-
-  interactionBar.append(commentsInfo, likeButton);
-
-  cardBody.append(header, mediaLink, content, interactionBar, createCommentsBlock(post.id, isAuthenticated));
-  article.append(cardBody);
-  column.append(article);
-
-  return column;
-}
-
-function focusPostFromHash() {
-  const hash = window.location.hash || '';
-  if (!hash.startsWith('#post-')) {
-    return;
-  }
-
-  const targetId = decodeURIComponent(hash.slice(1));
-  const target = document.getElementById(targetId);
-
-  if (!(target instanceof HTMLElement)) {
-    return;
-  }
-
-  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-  const card = target.querySelector('.card');
-  if (!(card instanceof HTMLElement)) {
-    return;
-  }
-
-  card.classList.add('border-primary', 'border-2');
-  window.setTimeout(() => {
-    card.classList.remove('border-primary', 'border-2');
-  }, 2200);
-}
-
-function getCommentIdFromQuery() {
-  const params = new URLSearchParams(window.location.search);
-  const value = params.get('comment');
-  return value && value.trim() ? value.trim() : null;
-}
-
-function getCategoryFromQuery() {
-  const params = new URLSearchParams(window.location.search);
-  const value = params.get('category');
-  return value && value.trim() ? value.trim() : '';
-}
-
-function setCategoryInQuery(categorySlug) {
-  const params = new URLSearchParams(window.location.search);
-
-  if (categorySlug) {
-    params.set('category', categorySlug);
-  } else {
-    params.delete('category');
-  }
-
-  const query = params.toString();
-  const nextUrl = query ? `${window.location.pathname}?${query}${window.location.hash}` : `${window.location.pathname}${window.location.hash}`;
-
-  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-  if (currentUrl !== nextUrl) {
-    window.history.pushState(null, '', nextUrl);
-  }
-}
-
-function focusCommentFromQuery() {
-  const commentId = getCommentIdFromQuery();
-  if (!commentId) {
-    return;
-  }
-
-  const target = document.getElementById(`comment-${commentId}`);
-  if (!(target instanceof HTMLElement)) {
-    return;
-  }
-
-  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  target.classList.add('border-primary', 'border-2');
-
-  window.setTimeout(() => {
-    target.classList.remove('border-primary', 'border-2');
-  }, 2200);
-}
-
-function renderEmptyState(container, message = 'Be the first to create a post.') {
-  container.replaceChildren();
-
-  const emptyColumn = document.createElement('div');
-  emptyColumn.className = 'col-12';
-
-  const emptyCard = document.createElement('article');
-  emptyCard.className = 'card';
-
-  const emptyBody = document.createElement('div');
-  emptyBody.className = 'card-body';
-
-  const emptyTitle = document.createElement('h2');
-  emptyTitle.className = 'h5 card-title';
-  emptyTitle.textContent = 'No posts yet';
-
-  const emptyText = document.createElement('p');
-  emptyText.className = 'card-text text-secondary mb-0';
-  emptyText.textContent = message;
-
-  emptyBody.append(emptyTitle, emptyText);
-  emptyCard.append(emptyBody);
-  emptyColumn.append(emptyCard);
-  container.append(emptyColumn);
-}
-
-function getUiElements() {
-  return {
-    feedContainer: document.querySelector('[data-feed-list]'),
-    loadingElement: document.querySelector('[data-feed-loading]'),
-    errorElement: document.querySelector('[data-feed-error]'),
-    notificationRoot: document.querySelector('[data-feed-notifications]'),
-    categoryFilter: document.querySelector('[data-feed-category-filter]'),
-    clearFilterButton: document.querySelector('[data-feed-clear-filter]'),
-    filterStatus: document.querySelector('[data-feed-filter-status]')
-  };
-}
-
-function updateFeedFilterUi(filterElement, clearFilterButton, filterStatus, categories) {
-  const selectedSlug = filterElement instanceof HTMLSelectElement ? filterElement.value || '' : '';
-
-  if (clearFilterButton) {
-    clearFilterButton.classList.toggle('d-none', !selectedSlug);
-  }
-
-  if (!filterStatus) {
-    return;
-  }
-
-  if (!selectedSlug) {
-    filterStatus.textContent = '';
-    filterStatus.classList.add('d-none');
-    return;
-  }
-
-  const categoryName = (categories || []).find((category) => category.slug === selectedSlug)?.name || 'Selected category';
-  filterStatus.textContent = `Filtering by: ${categoryName}`;
-  filterStatus.classList.remove('d-none');
-}
-
-function setCategoryFilterOptions(filterElement, categories, selectedSlug) {
-  if (!(filterElement instanceof HTMLSelectElement)) {
-    return;
-  }
-
-  const previousValue = selectedSlug || filterElement.value || '';
-  filterElement.replaceChildren();
-
-  const allOption = document.createElement('option');
-  allOption.value = '';
-  allOption.textContent = 'All Categories';
-  filterElement.append(allOption);
-
-  categories.forEach((category) => {
-    const option = document.createElement('option');
-    option.value = category.slug;
-    option.textContent = category.name;
-    filterElement.append(option);
-  });
-
-  const hasCurrentValue = categories.some((category) => category.slug === previousValue);
-  filterElement.value = hasCurrentValue ? previousValue : '';
-}
-
-function bindCategoryFilter(filterElement, clearFilterButton) {
-  if (!(filterElement instanceof HTMLSelectElement) || feedState.categoriesBound) {
-    return;
-  }
-
-  feedState.categoriesBound = true;
-  filterElement.addEventListener('change', () => {
-    const selectedSlug = filterElement.value || '';
-    setCategoryInQuery(selectedSlug);
-    scheduleFeedLoad();
-  });
-
-  if (clearFilterButton && clearFilterButton.dataset.bound !== 'true') {
-    clearFilterButton.dataset.bound = 'true';
-    clearFilterButton.addEventListener('click', () => {
-      filterElement.value = '';
-      setCategoryInQuery('');
-      scheduleFeedLoad();
-    });
-  }
-}
-
-function bindFeedPopstate() {
-  if (feedState.popstateBound) {
-    return;
-  }
-
-  feedState.popstateBound = true;
-  window.addEventListener('popstate', () => {
-    if (!window.location.pathname.endsWith('/index.html') && window.location.pathname !== '/') {
-      return;
-    }
-
-    scheduleFeedLoad();
-  });
-}
 
 async function getFeedData(forceRefresh = false) {
   if (!forceRefresh && feedState.cache.postsWithUiData && feedState.cache.viewer) {
@@ -694,36 +172,6 @@ async function getFeedData(forceRefresh = false) {
   }
 }
 
-function setLoadingState(isLoading, loadingElement) {
-  if (!loadingElement) {
-    return;
-  }
-
-  if (isLoading) {
-    loadingElement.classList.remove('d-none');
-    return;
-  }
-
-  loadingElement.classList.add('d-none');
-}
-
-function clearError(errorElement) {
-  if (!errorElement) {
-    return;
-  }
-
-  errorElement.classList.add('d-none');
-  errorElement.textContent = '';
-}
-
-function showError(errorElement, message) {
-  if (!errorElement) {
-    return;
-  }
-
-  errorElement.textContent = message;
-  errorElement.classList.remove('d-none');
-}
 
 async function getViewerState() {
   const { data } = await supabase.auth.getSession();
@@ -848,7 +296,9 @@ export async function loadFeed(options = {}) {
     return;
   }
 
-  bindFeedPopstate();
+  bindFeedPopstate(() => {
+    scheduleFeedLoad();
+  });
 
   setLoadingState(true, loadingElement);
   if (categoryFilter instanceof HTMLSelectElement) {
@@ -871,7 +321,10 @@ export async function loadFeed(options = {}) {
 
     if (categoryFilter) {
       setCategoryFilterOptions(categoryFilter, categories, selectedCategorySlugFromQuery);
-      bindCategoryFilter(categoryFilter, clearFilterButton);
+      bindCategoryFilter(categoryFilter, clearFilterButton, (selectedSlug) => {
+        setCategoryInQuery(selectedSlug);
+        scheduleFeedLoad();
+      });
       updateFeedFilterUi(categoryFilter, clearFilterButton, filterStatus, categories);
     }
 

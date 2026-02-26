@@ -1,0 +1,23 @@
+[data-admin-posts-category-filter] {
+  min-width: 220px;
+}
+
+.aqua-spin {
+  animation: aquaSpin 0.9s linear infinite;
+}
+
+@keyframes aquaSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 575.98px) {
+  [data-admin-posts-category-filter] {
+    min-width: 0;
+  }
+}

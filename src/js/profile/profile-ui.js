@@ -9,8 +9,13 @@ import {
   updateMyProfilePreferences
 } from './profile-service.js';
 import { deleteProfileAvatar, uploadProfileAvatar } from '../services/storage-service.js';
-
-const DEFAULT_AVATAR = '/assets/avatars/default-avatar.svg';
+import {
+  renderComments,
+  renderPosts,
+  renderPreferences,
+  renderProfileForm,
+  renderProfileSummary
+} from './profile-ui-render.js';
 
 const state = {
   user: null,
@@ -49,27 +54,6 @@ function getElements() {
   };
 }
 
-function formatDate(value) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return '';
-  }
-
-  return new Intl.DateTimeFormat('en', {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit'
-  }).format(date);
-}
-
-function truncate(text, maxLength) {
-  if (!text || text.length <= maxLength) {
-    return text || '';
-  }
-
-  return `${text.slice(0, maxLength)}...`;
-}
 
 function setLoading(isLoading, elements) {
   if (!elements.loading) {
@@ -127,162 +111,6 @@ function validateProfileInput(payload) {
   return null;
 }
 
-function renderProfileSummary(profile, stats, elements) {
-  if (elements.profileName) {
-    elements.profileName.textContent = profile.displayName || 'Aquashares User';
-  }
-
-  if (elements.profileUsername) {
-    elements.profileUsername.textContent = profile.username ? `@${profile.username}` : '@user';
-  }
-
-  if (elements.profileJoined) {
-    elements.profileJoined.textContent = profile.createdAt ? `Joined ${formatDate(profile.createdAt)}` : '';
-  }
-
-  if (elements.statPosts) {
-    elements.statPosts.textContent = String(stats.postCount);
-  }
-
-  if (elements.statComments) {
-    elements.statComments.textContent = String(stats.commentCount);
-  }
-
-  if (elements.avatarImage) {
-    elements.avatarImage.src = profile.avatarUrl || DEFAULT_AVATAR;
-    elements.avatarImage.alt = `${profile.displayName || 'User'} avatar`;
-  }
-}
-
-function renderProfileForm(profile, elements) {
-  if (elements.displayName) {
-    elements.displayName.value = profile.displayName || '';
-  }
-
-  if (elements.username) {
-    elements.username.value = profile.username || '';
-  }
-
-  if (elements.bio) {
-    elements.bio.value = profile.bio || '';
-  }
-
-  if (elements.location) {
-    elements.location.value = profile.location || '';
-  }
-
-  if (elements.website) {
-    elements.website.value = profile.website || '';
-  }
-
-  if (elements.isPublic) {
-    elements.isPublic.checked = Boolean(profile.isPublic);
-  }
-}
-
-function renderPreferences(preferences, elements) {
-  if (elements.notifyComments) {
-    elements.notifyComments.checked = preferences.notifyComments;
-  }
-
-  if (elements.notifyReplies) {
-    elements.notifyReplies.checked = preferences.notifyReplies;
-  }
-
-  if (elements.notifyModeration) {
-    elements.notifyModeration.checked = preferences.notifyModeration;
-  }
-
-  if (elements.showEmail) {
-    elements.showEmail.checked = preferences.showEmail;
-  }
-
-  if (elements.showActivity) {
-    elements.showActivity.checked = preferences.showActivity;
-  }
-}
-
-function renderPosts(posts, elements) {
-  if (!elements.postsList) {
-    return;
-  }
-
-  elements.postsList.replaceChildren();
-
-  if (!posts.length) {
-    const empty = document.createElement('div');
-    empty.className = 'text-secondary';
-    empty.textContent = 'No posts yet.';
-    elements.postsList.append(empty);
-    return;
-  }
-
-  const fragment = document.createDocumentFragment();
-
-  posts.forEach((post) => {
-    const item = document.createElement('a');
-    item.className = 'list-group-item list-group-item-action';
-    item.href = `/post-detail.html?id=${encodeURIComponent(post.id)}`;
-
-    const title = document.createElement('div');
-    title.className = 'fw-semibold';
-    title.textContent = post.title;
-
-    const body = document.createElement('div');
-    body.className = 'small text-secondary';
-    body.textContent = truncate(post.body, 120);
-
-    const meta = document.createElement('div');
-    meta.className = 'small text-secondary';
-    meta.textContent = formatDate(post.createdAt);
-
-    item.append(title, body, meta);
-    fragment.append(item);
-  });
-
-  elements.postsList.append(fragment);
-}
-
-function renderComments(comments, elements) {
-  if (!elements.commentsList) {
-    return;
-  }
-
-  elements.commentsList.replaceChildren();
-
-  if (!comments.length) {
-    const empty = document.createElement('div');
-    empty.className = 'text-secondary';
-    empty.textContent = 'No comments yet.';
-    elements.commentsList.append(empty);
-    return;
-  }
-
-  const fragment = document.createDocumentFragment();
-
-  comments.forEach((comment) => {
-    const item = document.createElement('a');
-    item.className = 'list-group-item list-group-item-action';
-    item.href = `/post-detail.html?id=${encodeURIComponent(comment.postId)}&comment=${encodeURIComponent(comment.id)}`;
-
-    const title = document.createElement('div');
-    title.className = 'fw-semibold';
-    title.textContent = comment.postTitle;
-
-    const body = document.createElement('div');
-    body.className = 'small';
-    body.textContent = truncate(comment.body, 180);
-
-    const meta = document.createElement('div');
-    meta.className = 'small text-secondary';
-    meta.textContent = formatDate(comment.createdAt);
-
-    item.append(title, body, meta);
-    fragment.append(item);
-  });
-
-  elements.commentsList.append(fragment);
-}
 
 async function handleProfileSave(event, elements) {
   event.preventDefault();

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Aquashares - Create Post</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
+    <link rel="stylesheet" href="./post-create.css" />
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg bg-body-tertiary border-bottom">
+      <div class="container">
+        <a class="navbar-brand fw-semibold" href="/index.html">Aquashares</a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#mainNavbar"
+          aria-controls="mainNavbar"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="mainNavbar">
+          <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+            <li class="nav-item"><a class="nav-link" href="/index.html">Feed</a></li>
+            <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/profile.html">Profile</a></li>
+            <li class="nav-item d-none" data-nav-admin><a class="nav-link" href="/admin.html">Admin</a></li>
+            <li class="nav-item" data-nav-guest><a class="nav-link" href="/login.html">Login</a></li>
+            <li class="nav-item" data-nav-guest><a class="nav-link" href="/register.html">Register</a></li>
+            <li class="nav-item dropdown d-none" data-nav-auth data-notifications-dropdown>
+              <button
+                type="button"
+                class="btn btn-link nav-link p-0 position-relative"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                aria-label="Notifications"
+              >
+                <i class="bi bi-bell-fill" aria-hidden="true"></i>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" data-notifications-badge>0</span>
+              </button>
+              <div class="dropdown-menu dropdown-menu-end p-0 aqua-notifications-menu">
+                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                  <strong class="small">Notifications</strong>
+                  <button type="button" class="btn btn-link btn-sm p-0" data-notifications-mark-all>Mark all read</button>
+                </div>
+                <div class="list-group list-group-flush" data-notifications-list></div>
+                <div class="px-3 py-2 text-secondary small" data-notifications-empty>No notifications yet.</div>
+              </div>
+            </li>
+            <li class="nav-item d-none" data-nav-auth><span class="nav-link" data-nav-status></span></li>
+            <li class="nav-item d-none" data-nav-auth><button type="button" class="btn btn-link nav-link p-0" data-nav-logout>Logout</button></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container page-content">
+      <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+          <div class="card">
+            <div class="card-body">
+              <h1 class="h4 mb-3" data-post-form-title>Create Post</h1>
+
+              <div class="alert alert-danger d-none" role="alert" data-post-form-error></div>
+
+              <form data-post-form novalidate>
+                <div class="mb-3">
+                  <label for="post-title" class="form-label">Title</label>
+                  <input
+                    id="post-title"
+                    name="title"
+                    type="text"
+                    class="form-control"
+                    maxlength="120"
+                    required
+                    data-post-title
+                  />
+                </div>
+
+                <div class="mb-3">
+                  <label for="post-category" class="form-label">Category</label>
+                  <select
+                    id="post-category"
+                    name="category"
+                    class="form-select"
+                    data-post-category
+                    required
+                  >
+                    <option value="">Loading categories...</option>
+                  </select>
+                </div>
+
+                <div class="mb-3">
+                  <label for="post-body" class="form-label">Content</label>
+                  <textarea
+                    id="post-body"
+                    name="body"
+                    class="form-control"
+                    rows="8"
+                    maxlength="5000"
+                    required
+                    data-post-body
+                  ></textarea>
+                </div>
+
+                <div class="mb-3">
+                  <label for="post-image" class="form-label">Post Images</label>
+                  <input
+                    id="post-image"
+                    name="images"
+                    type="file"
+                    class="form-control"
+                    accept="image/*"
+                    multiple
+                    data-post-image
+                  />
+                  <div class="form-text">Optional. You can upload multiple images. Maximum file size per image: 5MB.</div>
+                </div>
+
+                <div class="mb-3 d-none" data-current-image-section>
+                  <label class="form-label">Current Images</label>
+                  <div class="row g-2" data-current-image-list></div>
+                </div>
+
+                <div class="text-secondary mb-3 d-none" data-post-form-loading>Saving post...</div>
+
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-primary" data-post-submit>Publish Post</button>
+                  <a href="/index.html" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
+      crossorigin="anonymous"
+    ></script>
+    <script type="module" src="./post-create.js"></script>
+  </body>
+</html>

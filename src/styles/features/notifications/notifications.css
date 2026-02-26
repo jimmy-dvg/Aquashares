@@ -1,0 +1,9 @@
+[data-notifications-list] {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.aqua-notifications-menu {
+  width: 320px;
+  max-width: 90vw;
+}
