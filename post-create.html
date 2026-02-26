@@ -90,6 +90,19 @@
                 </div>
 
                 <div class="mb-3">
+                  <label for="post-category" class="form-label">Category</label>
+                  <select
+                    id="post-category"
+                    name="category"
+                    class="form-select"
+                    data-post-category
+                    required
+                  >
+                    <option value="">Loading categories...</option>
+                  </select>
+                </div>
+
+                <div class="mb-3">
                   <label for="post-body" class="form-label">Content</label>
                   <textarea
                     id="post-body"

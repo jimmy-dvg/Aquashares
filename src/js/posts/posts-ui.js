@@ -1,6 +1,10 @@
 import { supabase } from '../services/supabase-client.js';
 import { cleanupCommentsUi, createCommentsBlock, initializeCommentsUi } from '../comments/comments-ui.js';
-import { deletePost, getAllPosts } from './posts-service.js';
+import { deletePost, getAllPosts, getCategories } from './posts-service.js';
+
+const feedState = {
+  categoriesBound: false
+};
 
 function formatDate(value) {
   const date = new Date(value);
@@ -364,9 +368,15 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false)
 
   const content = document.createElement('div');
 
-  const category = document.createElement('span');
-  category.className = 'badge text-bg-secondary-subtle text-secondary-emphasis mb-2';
+  const category = document.createElement(post.categorySlug ? 'a' : 'span');
+  category.className = 'badge text-bg-secondary-subtle text-secondary-emphasis mb-2 text-decoration-none';
   category.textContent = getCategoryLabel(post);
+
+  if (post.categorySlug) {
+    category.href = `/index.html?category=${encodeURIComponent(post.categorySlug)}`;
+    category.classList.add('aqua-category-link');
+    category.setAttribute('aria-label', `Filter by ${getCategoryLabel(post)} category`);
+  }
 
   const title = document.createElement('h2');
   title.className = 'h6 mb-1 aqua-truncate-2';
@@ -453,6 +463,26 @@ function getCommentIdFromQuery() {
   return value && value.trim() ? value.trim() : null;
 }
 
+function getCategoryFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const value = params.get('category');
+  return value && value.trim() ? value.trim() : '';
+}
+
+function setCategoryInQuery(categorySlug) {
+  const params = new URLSearchParams(window.location.search);
+
+  if (categorySlug) {
+    params.set('category', categorySlug);
+  } else {
+    params.delete('category');
+  }
+
+  const query = params.toString();
+  const nextUrl = query ? `${window.location.pathname}?${query}${window.location.hash}` : `${window.location.pathname}${window.location.hash}`;
+  window.history.replaceState(null, '', nextUrl);
+}
+
 function focusCommentFromQuery() {
   const commentId = getCommentIdFromQuery();
   if (!commentId) {
@@ -472,7 +502,7 @@ function focusCommentFromQuery() {
   }, 2200);
 }
 
-function renderEmptyState(container) {
+function renderEmptyState(container, message = 'Be the first to create a post.') {
   container.replaceChildren();
 
   const emptyColumn = document.createElement('div');
@@ -490,7 +520,7 @@ function renderEmptyState(container) {
 
   const emptyText = document.createElement('p');
   emptyText.className = 'card-text text-secondary mb-0';
-  emptyText.textContent = 'Be the first to create a post.';
+  emptyText.textContent = message;
 
   emptyBody.append(emptyTitle, emptyText);
   emptyCard.append(emptyBody);
@@ -503,8 +533,46 @@ function getUiElements() {
     feedContainer: document.querySelector('[data-feed-list]'),
     loadingElement: document.querySelector('[data-feed-loading]'),
     errorElement: document.querySelector('[data-feed-error]'),
-    notificationRoot: document.querySelector('[data-feed-notifications]')
+    notificationRoot: document.querySelector('[data-feed-notifications]'),
+    categoryFilter: document.querySelector('[data-feed-category-filter]')
   };
+}
+
+function setCategoryFilterOptions(filterElement, categories, selectedSlug) {
+  if (!(filterElement instanceof HTMLSelectElement)) {
+    return;
+  }
+
+  const previousValue = selectedSlug || filterElement.value || '';
+  filterElement.replaceChildren();
+
+  const allOption = document.createElement('option');
+  allOption.value = '';
+  allOption.textContent = 'All Categories';
+  filterElement.append(allOption);
+
+  categories.forEach((category) => {
+    const option = document.createElement('option');
+    option.value = category.slug;
+    option.textContent = category.name;
+    filterElement.append(option);
+  });
+
+  const hasCurrentValue = categories.some((category) => category.slug === previousValue);
+  filterElement.value = hasCurrentValue ? previousValue : '';
+}
+
+function bindCategoryFilter(filterElement) {
+  if (!(filterElement instanceof HTMLSelectElement) || feedState.categoriesBound) {
+    return;
+  }
+
+  feedState.categoriesBound = true;
+  filterElement.addEventListener('change', () => {
+    const selectedSlug = filterElement.value || '';
+    setCategoryInQuery(selectedSlug);
+    loadFeed();
+  });
 }
 
 function setLoadingState(isLoading, loadingElement) {
@@ -637,7 +705,7 @@ export function attachDeleteHandler(container, afterDelete) {
 }
 
 export async function loadFeed() {
-  const { feedContainer, loadingElement, errorElement, notificationRoot } = getUiElements();
+  const { feedContainer, loadingElement, errorElement, notificationRoot, categoryFilter } = getUiElements();
 
   if (!feedContainer) {
     return;
@@ -652,19 +720,47 @@ export async function loadFeed() {
   try {
     cleanupCommentsUi();
 
+    const selectedCategorySlugFromQuery = getCategoryFromQuery();
+
+    let categories = [];
+    try {
+      categories = await getCategories();
+    } catch {
+      categories = [];
+    }
+
+    if (categoryFilter) {
+      setCategoryFilterOptions(categoryFilter, categories, selectedCategorySlugFromQuery);
+      bindCategoryFilter(categoryFilter);
+    }
+
+    const categorySlugs = new Set(categories.map((category) => category.slug));
+    const selectedCategorySlug = categorySlugs.has(selectedCategorySlugFromQuery) ? selectedCategorySlugFromQuery : '';
+
+    if (selectedCategorySlugFromQuery && !selectedCategorySlug) {
+      setCategoryInQuery('');
+    }
+
     const [posts, viewer] = await Promise.all([getAllPosts(), getViewerState()]);
     const [authorMap, commentCountMap] = await Promise.all([
       buildAuthorMap(posts, viewer),
       buildCommentCountMap(posts)
     ]);
 
-    const postsWithUiData = posts.map((post) => mapPostWithUiData(post, authorMap, commentCountMap));
+    const filteredPosts = selectedCategorySlug
+      ? posts.filter((post) => post.categorySlug === selectedCategorySlug)
+      : posts;
+
+    const postsWithUiData = filteredPosts.map((post) => mapPostWithUiData(post, authorMap, commentCountMap));
     const canManagePost = (post) => Boolean(viewer.userId) && (viewer.isAdmin || viewer.userId === post.userId);
 
     feedContainer.replaceChildren();
 
     if (!postsWithUiData.length) {
-      renderEmptyState(feedContainer);
+      renderEmptyState(
+        feedContainer,
+        selectedCategorySlug ? 'No posts found in this category yet.' : 'Be the first to create a post.'
+      );
     } else {
       const fragment = document.createDocumentFragment();
       postsWithUiData.forEach((post) => {

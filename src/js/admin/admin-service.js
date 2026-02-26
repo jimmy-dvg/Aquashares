@@ -67,7 +67,7 @@ export async function getAllPosts() {
 
   const { data, error } = await supabase
     .from('posts')
-    .select('id, user_id, title, body, created_at')
+    .select('id, user_id, title, body, created_at, categories(slug, name)')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -77,6 +77,8 @@ export async function getAllPosts() {
   return (data ?? []).map((item) => ({
     id: item.id,
     userId: item.user_id,
+    categorySlug: item.categories?.slug || '',
+    categoryName: item.categories?.name || 'Uncategorized',
     authorUsername: authorsById.get(item.user_id)?.username || '-',
     authorEmail: authorsById.get(item.user_id)?.email || '-',
     title: item.title,

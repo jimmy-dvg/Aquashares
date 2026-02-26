@@ -8,6 +8,31 @@ import {
 } from './admin-service.js';
 import { requireAdmin } from '../auth/auth-guard.js';
 
+const adminState = {
+  posts: [],
+  postsFilterBound: false
+};
+
+function getCategoryFilterFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const value = params.get('category');
+  return value && value.trim() ? value.trim() : '';
+}
+
+function setCategoryFilterInQuery(categorySlug) {
+  const params = new URLSearchParams(window.location.search);
+
+  if (categorySlug) {
+    params.set('category', categorySlug);
+  } else {
+    params.delete('category');
+  }
+
+  const query = params.toString();
+  const nextUrl = query ? `${window.location.pathname}?${query}${window.location.hash}` : `${window.location.pathname}${window.location.hash}`;
+  window.history.replaceState(null, '', nextUrl);
+}
+
 function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -32,6 +57,7 @@ function getElements() {
     commentsLoading: document.querySelector('[data-comments-loading]'),
     usersBody: document.querySelector('[data-users-body]'),
     postsBody: document.querySelector('[data-posts-body]'),
+    postsCategoryFilter: document.querySelector('[data-admin-posts-category-filter]'),
     commentsBody: document.querySelector('[data-comments-body]'),
     usersEmpty: document.querySelector('[data-users-empty]'),
     postsEmpty: document.querySelector('[data-posts-empty]'),
@@ -184,7 +210,7 @@ export function renderPostsTable(posts, elements) {
   elements.postsBody.replaceChildren();
 
   if (!posts.length) {
-    elements.postsBody.append(createEmptyRow('No posts found.', 5));
+    elements.postsBody.append(createEmptyRow('No posts found.', 7));
     setVisible(elements.postsEmpty, true);
     return;
   }
@@ -197,6 +223,7 @@ export function renderPostsTable(posts, elements) {
 
     row.append(
       createCell(post.title),
+      createCell(post.categoryName || 'Uncategorized'),
       createCell(post.authorUsername),
       createCell(post.authorEmail),
       createCell(post.body.length > 120 ? `${post.body.slice(0, 120)}...` : post.body),
@@ -223,6 +250,68 @@ export function renderPostsTable(posts, elements) {
   });
 
   elements.postsBody.append(fragment);
+}
+
+function setPostsFilterOptions(posts, elements) {
+  if (!(elements.postsCategoryFilter instanceof HTMLSelectElement)) {
+    return;
+  }
+
+  const queryValue = getCategoryFilterFromQuery();
+  const previousValue = queryValue || elements.postsCategoryFilter.value || '';
+  elements.postsCategoryFilter.replaceChildren();
+
+  const allOption = document.createElement('option');
+  allOption.value = '';
+  allOption.textContent = 'All Categories';
+  elements.postsCategoryFilter.append(allOption);
+
+  const categoryMap = new Map();
+  posts.forEach((post) => {
+    const slug = post.categorySlug || 'uncategorized';
+    const name = post.categoryName || 'Uncategorized';
+    if (!categoryMap.has(slug)) {
+      categoryMap.set(slug, name);
+    }
+  });
+
+  [...categoryMap.entries()].sort((a, b) => a[1].localeCompare(b[1])).forEach(([slug, name]) => {
+    const option = document.createElement('option');
+    option.value = slug;
+    option.textContent = name;
+    elements.postsCategoryFilter.append(option);
+  });
+
+  const hasPrevious = [...elements.postsCategoryFilter.options].some((option) => option.value === previousValue);
+  elements.postsCategoryFilter.value = hasPrevious ? previousValue : '';
+
+  if (queryValue && !hasPrevious) {
+    setCategoryFilterInQuery('');
+  }
+}
+
+function renderFilteredPosts(elements) {
+  const selectedCategory = elements.postsCategoryFilter instanceof HTMLSelectElement
+    ? elements.postsCategoryFilter.value
+    : '';
+
+  const filteredPosts = selectedCategory
+    ? adminState.posts.filter((post) => (post.categorySlug || 'uncategorized') === selectedCategory)
+    : adminState.posts;
+
+  renderPostsTable(filteredPosts, elements);
+}
+
+function attachPostsFilterHandler(elements) {
+  if (!(elements.postsCategoryFilter instanceof HTMLSelectElement) || adminState.postsFilterBound) {
+    return;
+  }
+
+  adminState.postsFilterBound = true;
+  elements.postsCategoryFilter.addEventListener('change', () => {
+    setCategoryFilterInQuery(elements.postsCategoryFilter.value || '');
+    renderFilteredPosts(elements);
+  });
 }
 
 export function renderCommentsTable(comments, elements) {
@@ -470,8 +559,10 @@ export async function loadDashboard() {
         getAllComments()
       ]);
 
+      adminState.posts = posts;
       renderUsersTable(users, elements);
-      renderPostsTable(posts, elements);
+      setPostsFilterOptions(posts, elements);
+      renderFilteredPosts(elements);
       renderCommentsTable(comments, elements);
     } catch (error) {
       showFeedback(elements, error.message || 'Unable to load admin dashboard.');
@@ -483,6 +574,7 @@ export async function loadDashboard() {
   };
 
   attachRoleChangeHandlers(elements, refreshDashboard);
+  attachPostsFilterHandler(elements);
   attachDeleteHandlers(elements, confirmController, refreshDashboard);
   await refreshDashboard();
 }

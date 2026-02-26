@@ -1,11 +1,20 @@
 import { requireAuth } from '../auth/auth-guard.js';
-import { createPost, createPhotoRecord, deletePhotoRecord, deletePost, getPostById, updatePost } from './posts-service.js';
+import {
+  createPost,
+  createPhotoRecord,
+  deletePhotoRecord,
+  deletePost,
+  getCategories,
+  getPostById,
+  updatePost
+} from './posts-service.js';
 import { deletePostImage, getPublicUrl, uploadPostImage } from '../services/storage-service.js';
 
 function getElements() {
   return {
     form: document.querySelector('[data-post-form]'),
     titleInput: document.querySelector('[data-post-title]'),
+    categoryInput: document.querySelector('[data-post-category]'),
     bodyInput: document.querySelector('[data-post-body]'),
     imageInput: document.querySelector('[data-post-image]'),
     currentImageSection: document.querySelector('[data-current-image-section]'),
@@ -41,7 +50,7 @@ function clearError(errorBox) {
   errorBox.classList.add('d-none');
 }
 
-function validateForm(title, body) {
+function validateForm(title, body, categoryId, categoryRequired) {
   if (!title || title.length < 3) {
     return 'Title must be at least 3 characters long.';
   }
@@ -58,7 +67,45 @@ function validateForm(title, body) {
     return 'Post content must be 5000 characters or less.';
   }
 
+  if (categoryRequired && !categoryId) {
+    return 'Please select a category.';
+  }
+
   return null;
+}
+
+function populateCategorySelect(selectElement, categories, selectedCategoryId = null, isEditMode = false) {
+  if (!(selectElement instanceof HTMLSelectElement)) {
+    return;
+  }
+
+  selectElement.replaceChildren();
+
+  const placeholderOption = document.createElement('option');
+  placeholderOption.value = '';
+  placeholderOption.textContent = categories.length ? 'Select category' : 'Uncategorized';
+  selectElement.append(placeholderOption);
+
+  categories.forEach((category) => {
+    const option = document.createElement('option');
+    option.value = category.id;
+    option.textContent = category.name;
+    selectElement.append(option);
+  });
+
+  if (selectedCategoryId) {
+    selectElement.value = selectedCategoryId;
+    return;
+  }
+
+  if (isEditMode) {
+    return;
+  }
+
+  const fallbackCategory = categories.find((category) => category.slug === 'other') || categories[0] || null;
+  if (fallbackCategory?.id) {
+    selectElement.value = fallbackCategory.id;
+  }
 }
 
 function setSubmittingState(submitButton, isSubmitting, isEditMode) {
@@ -239,7 +286,7 @@ async function rollbackPhoto(photo) {
 export async function initializePostForm() {
   const elements = getElements();
 
-  if (!elements.form || !elements.titleInput || !elements.bodyInput) {
+  if (!elements.form || !elements.titleInput || !elements.bodyInput || !elements.categoryInput) {
     return;
   }
 
@@ -250,13 +297,25 @@ export async function initializePostForm() {
 
   const postId = getPostIdFromQuery();
   const isEditMode = Boolean(postId);
+  let categoryRequired = false;
+
+  let categories = [];
+  try {
+    categories = await getCategories();
+  } catch (error) {
+    categories = [];
+  }
+
+  categoryRequired = categories.length > 0;
 
   clearError(elements.errorBox);
   setLoadingState(elements.loadingBox, false);
+  populateCategorySelect(elements.categoryInput, categories, null, isEditMode);
 
   if (isEditMode) {
     try {
       const post = await prefillFormForEdit(postId, elements);
+      populateCategorySelect(elements.categoryInput, categories, post.categoryId, true);
       renderExistingImages(elements, post.photos ?? []);
     } catch (error) {
       showError(elements.errorBox, error.message || 'Unable to load post for editing.');
@@ -269,9 +328,10 @@ export async function initializePostForm() {
     clearError(elements.errorBox);
 
     const title = elements.titleInput.value.trim();
+    const categoryId = elements.categoryInput.value.trim();
     const body = elements.bodyInput.value.trim();
 
-    const validationError = validateForm(title, body);
+    const validationError = validateForm(title, body, categoryId, categoryRequired);
     if (validationError) {
       showError(elements.errorBox, validationError);
       return;
@@ -282,7 +342,7 @@ export async function initializePostForm() {
 
     try {
       if (isEditMode) {
-        await updatePost(postId, { title, body });
+        await updatePost(postId, { title, body, categoryId });
 
         const files = getFilesFromInput(elements.imageInput);
         const photosToRemove = getSelectedPhotosForRemoval(elements.currentImageList);
@@ -305,6 +365,7 @@ export async function initializePostForm() {
         const createdPost = await createPost({
           title,
           body,
+          categoryId,
           userId: session.user.id
         });
 

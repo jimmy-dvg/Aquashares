@@ -366,6 +366,20 @@ function renderPost(elements, post, author) {
 
   if (elements.category) {
     elements.category.textContent = post.categoryName || 'Uncategorized';
+
+    if (post.categorySlug) {
+      if (elements.category.tagName !== 'A') {
+        const categoryLink = document.createElement('a');
+        categoryLink.dataset.postCategory = 'true';
+        categoryLink.className = elements.category.className;
+        elements.category.replaceWith(categoryLink);
+        elements.category = categoryLink;
+      }
+
+      elements.category.href = `/index.html?category=${encodeURIComponent(post.categorySlug)}`;
+      elements.category.classList.add('text-decoration-none', 'aqua-category-link');
+      elements.category.setAttribute('aria-label', `Filter by ${post.categoryName || 'category'}`);
+    }
   }
 
   if (elements.title) {

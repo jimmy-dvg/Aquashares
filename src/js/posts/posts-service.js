@@ -5,6 +5,7 @@ function mapPost(post) {
     id: post.id,
     userId: post.user_id,
     categoryId: post.category_id || null,
+    categorySlug: post.categories?.slug || '',
     categoryName: post.categories?.name || '',
     title: post.title,
     body: post.body,
@@ -21,6 +22,14 @@ function mapPost(post) {
   };
 }
 
+function mapCategory(category) {
+  return {
+    id: category.id,
+    slug: category.slug,
+    name: category.name
+  };
+}
+
 function throwServiceError(error, fallbackMessage) {
   throw new Error(error?.message || fallbackMessage);
 }
@@ -28,7 +37,7 @@ function throwServiceError(error, fallbackMessage) {
 export async function getAllPosts(limit = 50) {
   const { data, error } = await supabase
     .from('posts')
-    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(name), photos(id, post_id, user_id, storage_path, public_url, created_at)')
+    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name), photos(id, post_id, user_id, storage_path, public_url, created_at)')
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -42,7 +51,7 @@ export async function getAllPosts(limit = 50) {
 export async function getPostById(id) {
   const { data, error } = await supabase
     .from('posts')
-    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(name), photos(id, post_id, user_id, storage_path, public_url, created_at)')
+    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name), photos(id, post_id, user_id, storage_path, public_url, created_at)')
     .eq('id', id)
     .limit(1);
 
@@ -63,13 +72,14 @@ export async function createPost(data) {
   const payload = {
     title: data.title,
     body: data.body,
+    category_id: data.categoryId || null,
     user_id: data.userId
   };
 
   const { data: result, error } = await supabase
     .from('posts')
     .insert([payload])
-    .select('id, user_id, title, body, created_at, updated_at')
+    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name)')
     .limit(1);
 
   if (error) {
@@ -87,14 +97,15 @@ export async function createPost(data) {
 export async function updatePost(id, data) {
   const payload = {
     title: data.title,
-    body: data.body
+    body: data.body,
+    category_id: data.categoryId || null
   };
 
   const { data: result, error } = await supabase
     .from('posts')
     .update(payload)
     .eq('id', id)
-    .select('id, user_id, title, body, created_at, updated_at')
+    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name)')
     .limit(1);
 
   if (error) {
@@ -160,4 +171,17 @@ export async function deletePhotoRecord(photoId) {
   if (error) {
     throwServiceError(error, 'Failed to delete image metadata.');
   }
+}
+
+export async function getCategories() {
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id, slug, name')
+    .order('name', { ascending: true });
+
+  if (error) {
+    throwServiceError(error, 'Failed to load categories.');
+  }
+
+  return (data ?? []).map(mapCategory);
 }
