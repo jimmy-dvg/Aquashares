@@ -10,8 +10,51 @@ import { requireAdmin } from '../auth/auth-guard.js';
 
 const adminState = {
   posts: [],
-  postsFilterBound: false
+  postsFilterBound: false,
+  popstateBound: false,
+  cache: {
+    users: null,
+    posts: null,
+    comments: null,
+    refreshPromise: null
+  }
 };
+
+async function getDashboardData(forceRefresh = false) {
+  if (!forceRefresh && adminState.cache.users && adminState.cache.posts && adminState.cache.comments) {
+    return {
+      users: adminState.cache.users,
+      posts: adminState.cache.posts,
+      comments: adminState.cache.comments
+    };
+  }
+
+  if (!forceRefresh && adminState.cache.refreshPromise) {
+    return adminState.cache.refreshPromise;
+  }
+
+  const refreshPromise = (async () => {
+    const [users, posts, comments] = await Promise.all([
+      getAllUsers(),
+      getAllPosts(),
+      getAllComments()
+    ]);
+
+    adminState.cache.users = users;
+    adminState.cache.posts = posts;
+    adminState.cache.comments = comments;
+
+    return { users, posts, comments };
+  })();
+
+  adminState.cache.refreshPromise = refreshPromise;
+
+  try {
+    return await refreshPromise;
+  } finally {
+    adminState.cache.refreshPromise = null;
+  }
+}
 
 function getCategoryFilterFromQuery() {
   const params = new URLSearchParams(window.location.search);
@@ -30,7 +73,11 @@ function setCategoryFilterInQuery(categorySlug) {
 
   const query = params.toString();
   const nextUrl = query ? `${window.location.pathname}?${query}${window.location.hash}` : `${window.location.pathname}${window.location.hash}`;
-  window.history.replaceState(null, '', nextUrl);
+
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (currentUrl !== nextUrl) {
+    window.history.pushState(null, '', nextUrl);
+  }
 }
 
 function formatDate(value) {
@@ -58,10 +105,15 @@ function getElements() {
     usersBody: document.querySelector('[data-users-body]'),
     postsBody: document.querySelector('[data-posts-body]'),
     postsCategoryFilter: document.querySelector('[data-admin-posts-category-filter]'),
+    postsClearFilter: document.querySelector('[data-admin-posts-clear-filter]'),
+    postsFilterStatus: document.querySelector('[data-admin-posts-filter-status]'),
     commentsBody: document.querySelector('[data-comments-body]'),
     usersEmpty: document.querySelector('[data-users-empty]'),
     postsEmpty: document.querySelector('[data-posts-empty]'),
     commentsEmpty: document.querySelector('[data-comments-empty]'),
+    lastUpdated: document.querySelector('[data-admin-last-updated]'),
+    lastUpdatedText: document.querySelector('[data-admin-last-updated-text]'),
+    lastUpdatedIcon: document.querySelector('[data-admin-last-updated-icon]'),
     confirmModalElement: document.getElementById('adminConfirmModal'),
     confirmTitle: document.querySelector('[data-confirm-title]'),
     confirmText: document.querySelector('[data-confirm-text]'),
@@ -115,6 +167,30 @@ function clearFeedback(elements) {
 
   elements.feedback.textContent = '';
   elements.feedback.classList.add('d-none');
+}
+
+function setLastUpdated(elements, date = new Date()) {
+  const target = elements.lastUpdatedText || elements.lastUpdated;
+  if (!target) {
+    return;
+  }
+
+  target.textContent = `Last updated: ${formatDate(date.toISOString())}`;
+}
+
+function setRefreshingState(elements, isRefreshing) {
+  const target = elements.lastUpdatedText || elements.lastUpdated;
+  if (!target) {
+    return;
+  }
+
+  if (elements.lastUpdatedIcon) {
+    elements.lastUpdatedIcon.classList.toggle('aqua-spin', isRefreshing);
+  }
+
+  if (isRefreshing) {
+    target.textContent = 'Refreshing...';
+  }
 }
 
 function createEmptyRow(message, colSpan) {
@@ -290,6 +366,31 @@ function setPostsFilterOptions(posts, elements) {
   }
 }
 
+function updateAdminPostsFilterUi(elements) {
+  const selectedCategory = elements.postsCategoryFilter instanceof HTMLSelectElement
+    ? elements.postsCategoryFilter.value
+    : '';
+
+  if (elements.postsClearFilter) {
+    elements.postsClearFilter.classList.toggle('d-none', !selectedCategory);
+  }
+
+  if (!elements.postsFilterStatus) {
+    return;
+  }
+
+  if (!selectedCategory) {
+    elements.postsFilterStatus.textContent = '';
+    elements.postsFilterStatus.classList.add('d-none');
+    return;
+  }
+
+  const selectedOption = elements.postsCategoryFilter?.selectedOptions?.[0];
+  const label = selectedOption?.textContent?.trim() || 'Selected category';
+  elements.postsFilterStatus.textContent = `Filtering by: ${label}`;
+  elements.postsFilterStatus.classList.remove('d-none');
+}
+
 function renderFilteredPosts(elements) {
   const selectedCategory = elements.postsCategoryFilter instanceof HTMLSelectElement
     ? elements.postsCategoryFilter.value
@@ -300,6 +401,7 @@ function renderFilteredPosts(elements) {
     : adminState.posts;
 
   renderPostsTable(filteredPosts, elements);
+  updateAdminPostsFilterUi(elements);
 }
 
 function attachPostsFilterHandler(elements) {
@@ -310,6 +412,33 @@ function attachPostsFilterHandler(elements) {
   adminState.postsFilterBound = true;
   elements.postsCategoryFilter.addEventListener('change', () => {
     setCategoryFilterInQuery(elements.postsCategoryFilter.value || '');
+    renderFilteredPosts(elements);
+  });
+
+  if (elements.postsClearFilter && elements.postsClearFilter.dataset.bound !== 'true') {
+    elements.postsClearFilter.dataset.bound = 'true';
+    elements.postsClearFilter.addEventListener('click', () => {
+      elements.postsCategoryFilter.value = '';
+      setCategoryFilterInQuery('');
+      renderFilteredPosts(elements);
+    });
+  }
+}
+
+function attachPopstateHandler(elements) {
+  if (adminState.popstateBound) {
+    return;
+  }
+
+  adminState.popstateBound = true;
+  window.addEventListener('popstate', () => {
+    if (!(elements.postsCategoryFilter instanceof HTMLSelectElement)) {
+      return;
+    }
+
+    const nextCategory = getCategoryFilterFromQuery();
+    const hasOption = [...elements.postsCategoryFilter.options].some((option) => option.value === nextCategory);
+    elements.postsCategoryFilter.value = hasOption ? nextCategory : '';
     renderFilteredPosts(elements);
   });
 }
@@ -418,7 +547,7 @@ function attachRoleChangeHandlers(elements, refreshDashboard) {
       await changeUserRole(userId, nextRole);
       target.dataset.currentRole = nextRole;
       showFeedback(elements, 'User role updated successfully.', 'success');
-      await refreshDashboard();
+      await refreshDashboard({ forceRefresh: true });
     } catch (error) {
       target.value = previousRole;
       showFeedback(elements, error.message || 'Unable to update role.');
@@ -488,7 +617,7 @@ function attachDeleteHandlers(elements, confirmController, refreshDashboard) {
           try {
             await deletePost(postId);
             showFeedback(elements, 'Post deleted successfully.', 'success');
-            await refreshDashboard();
+            await refreshDashboard({ forceRefresh: true });
           } catch (error) {
             showFeedback(elements, error.message || 'Unable to delete post.');
           }
@@ -522,7 +651,7 @@ function attachDeleteHandlers(elements, confirmController, refreshDashboard) {
           try {
             await deleteComment(commentId);
             showFeedback(elements, 'Comment deleted successfully.', 'success');
-            await refreshDashboard();
+            await refreshDashboard({ forceRefresh: true });
           } catch (error) {
             showFeedback(elements, error.message || 'Unable to delete comment.');
           }
@@ -546,37 +675,51 @@ export async function loadDashboard() {
 
   const confirmController = createConfirmationController(elements);
 
-  const refreshDashboard = async () => {
+  const refreshDashboard = async (options = {}) => {
+    const forceRefresh = options.forceRefresh === true;
+
     clearFeedback(elements);
+    setRefreshingState(elements, true);
+    if (elements.postsCategoryFilter instanceof HTMLSelectElement) {
+      elements.postsCategoryFilter.disabled = true;
+    }
+    if (elements.postsClearFilter instanceof HTMLButtonElement) {
+      elements.postsClearFilter.disabled = true;
+    }
     setVisible(elements.usersLoading, true);
     setVisible(elements.postsLoading, true);
     setVisible(elements.commentsLoading, true);
 
     try {
-      const [users, posts, comments] = await Promise.all([
-        getAllUsers(),
-        getAllPosts(),
-        getAllComments()
-      ]);
+      const { users, posts, comments } = await getDashboardData(forceRefresh);
 
       adminState.posts = posts;
       renderUsersTable(users, elements);
       setPostsFilterOptions(posts, elements);
       renderFilteredPosts(elements);
       renderCommentsTable(comments, elements);
+      setLastUpdated(elements);
     } catch (error) {
       showFeedback(elements, error.message || 'Unable to load admin dashboard.');
     } finally {
       setVisible(elements.usersLoading, false);
       setVisible(elements.postsLoading, false);
       setVisible(elements.commentsLoading, false);
+      if (elements.postsCategoryFilter instanceof HTMLSelectElement) {
+        elements.postsCategoryFilter.disabled = false;
+      }
+      if (elements.postsClearFilter instanceof HTMLButtonElement) {
+        elements.postsClearFilter.disabled = false;
+      }
+      setRefreshingState(elements, false);
     }
   };
 
   attachRoleChangeHandlers(elements, refreshDashboard);
   attachPostsFilterHandler(elements);
+  attachPopstateHandler(elements);
   attachDeleteHandlers(elements, confirmController, refreshDashboard);
-  await refreshDashboard();
+  await refreshDashboard({ forceRefresh: true });
 }
 
 loadDashboard();

@@ -2,6 +2,16 @@ body {
   background-color: var(--bs-gray-100);
 }
 
+a:focus-visible,
+button:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+input:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid rgba(var(--bs-primary-rgb), 0.55);
+  outline-offset: 2px;
+}
+
 .page-content {
   padding-top: 2rem;
   padding-bottom: 2rem;
@@ -179,6 +189,20 @@ body {
   transform: translateY(-1px);
 }
 
+.aqua-spin {
+  animation: aquaSpin 0.9s linear infinite;
+}
+
+@keyframes aquaSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .aqua-post-detail-media > .aqua-post-carousel-nav-next {
   right: 0.75rem;
 }
@@ -243,5 +267,24 @@ body {
 
   [data-admin-posts-category-filter] {
     min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .aqua-post-card:hover {
+    transform: none;
+  }
+
+  .aqua-post-card:hover .aqua-post-media-img {
+    transform: none;
   }
 }

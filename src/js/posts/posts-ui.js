@@ -3,8 +3,27 @@ import { cleanupCommentsUi, createCommentsBlock, initializeCommentsUi } from '..
 import { deletePost, getAllPosts, getCategories } from './posts-service.js';
 
 const feedState = {
-  categoriesBound: false
+  categoriesBound: false,
+  popstateBound: false,
+  loadDebounceTimer: null,
+  cache: {
+    postsWithUiData: null,
+    viewer: null,
+    categories: null,
+    refreshPromise: null
+  }
 };
+
+function scheduleFeedLoad(options = {}) {
+  if (feedState.loadDebounceTimer) {
+    window.clearTimeout(feedState.loadDebounceTimer);
+  }
+
+  feedState.loadDebounceTimer = window.setTimeout(() => {
+    feedState.loadDebounceTimer = null;
+    loadFeed(options);
+  }, 100);
+}
 
 function formatDate(value) {
   const date = new Date(value);
@@ -480,7 +499,11 @@ function setCategoryInQuery(categorySlug) {
 
   const query = params.toString();
   const nextUrl = query ? `${window.location.pathname}?${query}${window.location.hash}` : `${window.location.pathname}${window.location.hash}`;
-  window.history.replaceState(null, '', nextUrl);
+
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (currentUrl !== nextUrl) {
+    window.history.pushState(null, '', nextUrl);
+  }
 }
 
 function focusCommentFromQuery() {
@@ -534,8 +557,32 @@ function getUiElements() {
     loadingElement: document.querySelector('[data-feed-loading]'),
     errorElement: document.querySelector('[data-feed-error]'),
     notificationRoot: document.querySelector('[data-feed-notifications]'),
-    categoryFilter: document.querySelector('[data-feed-category-filter]')
+    categoryFilter: document.querySelector('[data-feed-category-filter]'),
+    clearFilterButton: document.querySelector('[data-feed-clear-filter]'),
+    filterStatus: document.querySelector('[data-feed-filter-status]')
   };
+}
+
+function updateFeedFilterUi(filterElement, clearFilterButton, filterStatus, categories) {
+  const selectedSlug = filterElement instanceof HTMLSelectElement ? filterElement.value || '' : '';
+
+  if (clearFilterButton) {
+    clearFilterButton.classList.toggle('d-none', !selectedSlug);
+  }
+
+  if (!filterStatus) {
+    return;
+  }
+
+  if (!selectedSlug) {
+    filterStatus.textContent = '';
+    filterStatus.classList.add('d-none');
+    return;
+  }
+
+  const categoryName = (categories || []).find((category) => category.slug === selectedSlug)?.name || 'Selected category';
+  filterStatus.textContent = `Filtering by: ${categoryName}`;
+  filterStatus.classList.remove('d-none');
 }
 
 function setCategoryFilterOptions(filterElement, categories, selectedSlug) {
@@ -562,7 +609,7 @@ function setCategoryFilterOptions(filterElement, categories, selectedSlug) {
   filterElement.value = hasCurrentValue ? previousValue : '';
 }
 
-function bindCategoryFilter(filterElement) {
+function bindCategoryFilter(filterElement, clearFilterButton) {
   if (!(filterElement instanceof HTMLSelectElement) || feedState.categoriesBound) {
     return;
   }
@@ -571,8 +618,79 @@ function bindCategoryFilter(filterElement) {
   filterElement.addEventListener('change', () => {
     const selectedSlug = filterElement.value || '';
     setCategoryInQuery(selectedSlug);
-    loadFeed();
+    scheduleFeedLoad();
   });
+
+  if (clearFilterButton && clearFilterButton.dataset.bound !== 'true') {
+    clearFilterButton.dataset.bound = 'true';
+    clearFilterButton.addEventListener('click', () => {
+      filterElement.value = '';
+      setCategoryInQuery('');
+      scheduleFeedLoad();
+    });
+  }
+}
+
+function bindFeedPopstate() {
+  if (feedState.popstateBound) {
+    return;
+  }
+
+  feedState.popstateBound = true;
+  window.addEventListener('popstate', () => {
+    if (!window.location.pathname.endsWith('/index.html') && window.location.pathname !== '/') {
+      return;
+    }
+
+    scheduleFeedLoad();
+  });
+}
+
+async function getFeedData(forceRefresh = false) {
+  if (!forceRefresh && feedState.cache.postsWithUiData && feedState.cache.viewer) {
+    return {
+      postsWithUiData: feedState.cache.postsWithUiData,
+      viewer: feedState.cache.viewer,
+      categories: feedState.cache.categories || []
+    };
+  }
+
+  if (!forceRefresh && feedState.cache.refreshPromise) {
+    return feedState.cache.refreshPromise;
+  }
+
+  const refreshPromise = (async () => {
+    const [posts, viewer, categories] = await Promise.all([
+      getAllPosts(),
+      getViewerState(),
+      getCategories().catch(() => [])
+    ]);
+
+    const [authorMap, commentCountMap] = await Promise.all([
+      buildAuthorMap(posts, viewer),
+      buildCommentCountMap(posts)
+    ]);
+
+    const postsWithUiData = posts.map((post) => mapPostWithUiData(post, authorMap, commentCountMap));
+
+    feedState.cache.postsWithUiData = postsWithUiData;
+    feedState.cache.viewer = viewer;
+    feedState.cache.categories = categories;
+
+    return {
+      postsWithUiData,
+      viewer,
+      categories
+    };
+  })();
+
+  feedState.cache.refreshPromise = refreshPromise;
+
+  try {
+    return await refreshPromise;
+  } finally {
+    feedState.cache.refreshPromise = null;
+  }
 }
 
 function setLoadingState(isLoading, loadingElement) {
@@ -704,14 +822,23 @@ export function attachDeleteHandler(container, afterDelete) {
   });
 }
 
-export async function loadFeed() {
-  const { feedContainer, loadingElement, errorElement, notificationRoot, categoryFilter } = getUiElements();
+export async function loadFeed(options = {}) {
+  const forceRefresh = options.forceRefresh === true;
+  const { feedContainer, loadingElement, errorElement, notificationRoot, categoryFilter, clearFilterButton, filterStatus } = getUiElements();
 
   if (!feedContainer) {
     return;
   }
 
+  bindFeedPopstate();
+
   setLoadingState(true, loadingElement);
+  if (categoryFilter instanceof HTMLSelectElement) {
+    categoryFilter.disabled = true;
+  }
+  if (clearFilterButton instanceof HTMLButtonElement) {
+    clearFilterButton.disabled = true;
+  }
   clearError(errorElement);
   if (notificationRoot) {
     notificationRoot.replaceChildren();
@@ -722,16 +849,12 @@ export async function loadFeed() {
 
     const selectedCategorySlugFromQuery = getCategoryFromQuery();
 
-    let categories = [];
-    try {
-      categories = await getCategories();
-    } catch {
-      categories = [];
-    }
+    const { postsWithUiData, viewer, categories } = await getFeedData(forceRefresh);
 
     if (categoryFilter) {
       setCategoryFilterOptions(categoryFilter, categories, selectedCategorySlugFromQuery);
-      bindCategoryFilter(categoryFilter);
+      bindCategoryFilter(categoryFilter, clearFilterButton);
+      updateFeedFilterUi(categoryFilter, clearFilterButton, filterStatus, categories);
     }
 
     const categorySlugs = new Set(categories.map((category) => category.slug));
@@ -741,29 +864,21 @@ export async function loadFeed() {
       setCategoryInQuery('');
     }
 
-    const [posts, viewer] = await Promise.all([getAllPosts(), getViewerState()]);
-    const [authorMap, commentCountMap] = await Promise.all([
-      buildAuthorMap(posts, viewer),
-      buildCommentCountMap(posts)
-    ]);
-
     const filteredPosts = selectedCategorySlug
-      ? posts.filter((post) => post.categorySlug === selectedCategorySlug)
-      : posts;
-
-    const postsWithUiData = filteredPosts.map((post) => mapPostWithUiData(post, authorMap, commentCountMap));
+      ? postsWithUiData.filter((post) => post.categorySlug === selectedCategorySlug)
+      : postsWithUiData;
     const canManagePost = (post) => Boolean(viewer.userId) && (viewer.isAdmin || viewer.userId === post.userId);
 
     feedContainer.replaceChildren();
 
-    if (!postsWithUiData.length) {
+    if (!filteredPosts.length) {
       renderEmptyState(
         feedContainer,
         selectedCategorySlug ? 'No posts found in this category yet.' : 'Be the first to create a post.'
       );
     } else {
       const fragment = document.createDocumentFragment();
-      postsWithUiData.forEach((post) => {
+      filteredPosts.forEach((post) => {
         fragment.append(renderPostCard(post, canManagePost(post), Boolean(viewer.userId)));
       });
 
@@ -774,10 +889,16 @@ export async function loadFeed() {
     }
 
     attachEditHandler(feedContainer);
-    attachDeleteHandler(feedContainer, loadFeed);
+    attachDeleteHandler(feedContainer, () => loadFeed({ forceRefresh: true }));
   } catch (error) {
     showError(errorElement, error.message || 'Unable to load feed right now. Please try again.');
   } finally {
+    if (categoryFilter instanceof HTMLSelectElement) {
+      categoryFilter.disabled = false;
+    }
+    if (clearFilterButton instanceof HTMLButtonElement) {
+      clearFilterButton.disabled = false;
+    }
     setLoadingState(false, loadingElement);
   }
 }

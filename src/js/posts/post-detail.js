@@ -170,6 +170,8 @@ function renderGallery(mainElement, thumbsElement, photos, title) {
 
   mainElement.replaceChildren();
   thumbsElement.replaceChildren();
+  mainElement.removeAttribute('tabindex');
+  mainElement.removeAttribute('aria-label');
 
   const placeholder = document.createElement('div');
   placeholder.className = 'aqua-post-media-placeholder';
@@ -331,6 +333,22 @@ function renderGallery(mainElement, thumbsElement, photos, title) {
     mainElement.addEventListener('mouseleave', startAutoplay);
     mainElement.addEventListener('focusin', stopAutoplay);
     mainElement.addEventListener('focusout', startAutoplay);
+
+    mainElement.setAttribute('tabindex', '0');
+    mainElement.setAttribute('aria-label', 'Post image carousel. Use left and right arrow keys to navigate.');
+    mainElement.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        activePhotoIndex = (activePhotoIndex - 1 + photos.length) % photos.length;
+        updateActiveState();
+      }
+
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        activePhotoIndex = (activePhotoIndex + 1) % photos.length;
+        updateActiveState();
+      }
+    });
 
     startAutoplay();
   }

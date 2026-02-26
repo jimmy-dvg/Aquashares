@@ -73,6 +73,20 @@ function buildSampleData(demoUserId, adminUserId) {
       title: 'Equipment: Canister Filter Maintenance Routine',
       body: 'Monthly workflow for cleaning media without crashing beneficial bacteria.',
       created_at: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'f1f66666-6666-4666-8666-666666666666',
+      user_id: demoUserId,
+      title: 'Inhabitants: Nerite Snails Cleanup Crew',
+      body: 'I added 6 nerite snails to control soft algae and documented how they impacted glass and hardscape over 10 days.',
+      created_at: new Date(now.getTime() - 36 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'f2f77777-7777-4777-8777-777777777777',
+      user_id: demoUserId,
+      title: 'Inhabitants: Amano Shrimp Acclimation Checklist',
+      body: 'Step-by-step drip acclimation routine for Amano shrimp, including TDS checks and first feeding timing.',
+      created_at: new Date(now.getTime() - 30 * 60 * 60 * 1000).toISOString()
     }
   ].map((post) => ({ ...post, updated_at: post.created_at }));
 
@@ -97,6 +111,13 @@ function buildSampleData(demoUserId, adminUserId) {
       user_id: demoUserId,
       body: 'Coconut caves helped reduce aggression significantly.',
       created_at: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000 + 2 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'd8d88888-8888-4888-8888-888888888888',
+      post_id: posts[5].id,
+      user_id: demoUserId,
+      body: 'They started cleaning diatoms from the front glass within the first 24 hours.',
+      created_at: new Date(now.getTime() - 35 * 60 * 60 * 1000).toISOString()
     }
   ].map((comment) => ({ ...comment, updated_at: comment.created_at }));
 
@@ -128,6 +149,13 @@ function buildSampleData(demoUserId, adminUserId) {
       user_id: adminUserId,
       body: 'Excellent maintenance guide. This is exactly what new users need.',
       created_at: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000 + 4 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'd9d99999-9999-4999-8999-999999999999',
+      post_id: posts[6].id,
+      user_id: adminUserId,
+      body: 'Great checklist. This is a helpful reference for beginners adding shrimp colonies.',
+      created_at: new Date(now.getTime() - 28 * 60 * 60 * 1000).toISOString()
     }
   ].map((comment) => ({ ...comment, updated_at: comment.created_at }));
 
@@ -167,6 +195,24 @@ function buildSampleData(demoUserId, adminUserId) {
       public_url: `/storage/v1/object/public/post-images/${demoUserId}/${posts[4].id}/canister-maintenance-steps.jpg`,
       caption: 'Canister filter maintenance step-by-step.',
       created_at: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'e5e55555-5555-4555-8555-555555555555',
+      post_id: posts[5].id,
+      user_id: demoUserId,
+      storage_path: `${demoUserId}/${posts[5].id}/nerite-snails-crew.jpg`,
+      public_url: `/storage/v1/object/public/post-images/${demoUserId}/${posts[5].id}/nerite-snails-crew.jpg`,
+      caption: 'Nerite snails grazing on driftwood and front glass.',
+      created_at: new Date(now.getTime() - 35 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: 'e6e66666-6666-4666-8666-666666666666',
+      post_id: posts[6].id,
+      user_id: demoUserId,
+      storage_path: `${demoUserId}/${posts[6].id}/amano-acclimation.jpg`,
+      public_url: `/storage/v1/object/public/post-images/${demoUserId}/${posts[6].id}/amano-acclimation.jpg`,
+      caption: 'Amano shrimp drip acclimation setup before release.',
+      created_at: new Date(now.getTime() - 30 * 60 * 60 * 1000).toISOString()
     }
   ].map((photo) => ({ ...photo, updated_at: photo.created_at }));
 
