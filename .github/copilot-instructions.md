@@ -268,6 +268,11 @@ password: demo123
 - Never hardcode Supabase keys
 - Ensure RLS is enabled before production
 
+Migration execution workflow:
+- After creating a SQL file in `supabase/migrations/`, always apply it to the linked Supabase project immediately.
+- Use migration tooling (for example `mcp_supabase_apply_migration`) instead of leaving migrations unapplied.
+- Verify migration success before marking the task complete.
+
 ---
 
 # 📚 Documentation Requirements

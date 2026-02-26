@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Aquashares - Register</title>
+    <title>Aquashares - Chat</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -37,7 +37,7 @@
           <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
             <li class="nav-item"><a class="nav-link" href="/index.html">Feed</a></li>
             <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/post-create.html">Create Post</a></li>
-            <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/chat.html">Chat</a></li>
+            <li class="nav-item d-none" data-nav-auth><a class="nav-link active" aria-current="page" href="/chat.html">Chat</a></li>
             <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/profile.html">Profile</a></li>
             <li class="nav-item d-none" data-nav-admin><a class="nav-link" href="/admin.html">Admin</a></li>
             <li class="nav-item" data-nav-guest><a class="nav-link" href="/login.html">Login</a></li>
@@ -69,58 +69,64 @@
       </div>
     </nav>
 
-    <main class="container page-content">
-      <div class="row justify-content-center">
-        <div class="col-12 col-md-6 col-lg-4">
-          <div class="card">
-            <div class="card-body">
-              <h1 class="h4 mb-3">Register</h1>
-
-              <div class="alert alert-success d-none" role="alert" data-register-success></div>
-              <div class="alert alert-danger d-none" role="alert" data-register-error></div>
-
-              <form data-register-form novalidate>
-                <div class="mb-3">
-                  <label for="register-username" class="form-label">Username</label>
-                  <input
-                    id="register-username"
-                    type="text"
-                    class="form-control"
-                    minlength="3"
-                    maxlength="30"
-                    required
-                    data-register-username
-                  />
-                </div>
-
-                <div class="mb-3">
-                  <label for="register-email" class="form-label">Email</label>
-                  <input id="register-email" type="email" class="form-control" autocomplete="email" required data-register-email />
-                </div>
-
-                <div class="mb-3">
-                  <label for="register-password" class="form-label">Password</label>
-                  <input
-                    id="register-password"
-                    type="password"
-                    class="form-control"
-                    minlength="6"
-                    autocomplete="new-password"
-                    required
-                    data-register-password
-                  />
-                </div>
-
-                <div class="d-grid gap-2">
-                  <button type="submit" class="btn btn-primary" data-register-submit>Register</button>
-                  <a href="/login.html" class="btn btn-outline-secondary">Already have an account</a>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+    <main class="container page-content" data-chat-page>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0">Messages</h1>
       </div>
+
+      <div class="text-secondary mb-3" data-chat-loading>Loading chat...</div>
+      <div class="alert alert-danger d-none" role="alert" data-chat-feedback></div>
+
+      <section class="chat-shell">
+        <aside class="chat-sidebar">
+          <div>
+            <label for="chat-user-search" class="form-label small mb-1">Start new chat</label>
+            <input
+              id="chat-user-search"
+              type="search"
+              class="form-control form-control-sm"
+              placeholder="Search by username..."
+              data-chat-user-search
+            />
+          </div>
+
+          <div class="list-group" data-chat-user-results></div>
+
+          <div class="border-top pt-2">
+            <h2 class="h6 mb-2">Conversations</h2>
+            <div class="list-group" data-chat-conversation-list></div>
+          </div>
+        </aside>
+
+        <section class="chat-main">
+          <header class="chat-main-header">
+            <h2 class="h5 mb-0" data-chat-header-title>Select a chat</h2>
+            <p class="small text-secondary mb-0" data-chat-header-meta>Search users to start messaging.</p>
+          </header>
+
+          <div class="chat-main-messages" data-chat-messages></div>
+
+          <div class="chat-main-composer">
+            <form class="d-flex gap-2" data-chat-composer>
+              <textarea
+                id="chat-message-input"
+                name="chatMessage"
+                class="form-control"
+                rows="2"
+                maxlength="4000"
+                placeholder="Type a message..."
+                data-chat-message-input
+                disabled
+              ></textarea>
+              <button type="submit" class="btn btn-primary" data-chat-message-submit disabled>
+                <i class="bi bi-send" aria-hidden="true"></i>
+              </button>
+            </form>
+          </div>
+        </section>
+      </section>
     </main>
+
     <script
       src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
       integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"

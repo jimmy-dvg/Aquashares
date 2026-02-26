@@ -2,6 +2,7 @@ import { getCurrentUser, getCurrentUserRole, requireAdmin, requireAuth } from '.
 import { initializeLoginForm } from './auth/login.js';
 import { initializeLogout } from './auth/logout.js';
 import { initializeRegisterForm } from './auth/register.js';
+import { initializeChatPage } from './chat/chat-ui.js';
 import { cleanupNotifications, initializeNotifications } from './notifications/notifications-ui.js';
 import { initializePostDetailPage } from './posts/post-detail.js';
 import { loadFeed } from './posts/posts-ui.js';
@@ -19,6 +20,27 @@ function toggleElements(elements, isVisible) {
   });
 }
 
+function setActiveNavbarLink() {
+  const pathname = window.location.pathname;
+  const navLinks = document.querySelectorAll('#mainNavbar .navbar-nav .nav-link[href]');
+
+  navLinks.forEach((link) => {
+    if (!(link instanceof HTMLAnchorElement)) {
+      return;
+    }
+
+    const isActive = link.pathname === pathname;
+    link.classList.toggle('active', isActive);
+
+    if (isActive) {
+      link.setAttribute('aria-current', 'page');
+      return;
+    }
+
+    link.removeAttribute('aria-current');
+  });
+}
+
 async function initializeNavbar() {
   const guestElements = document.querySelectorAll('[data-nav-guest]');
   const authElements = document.querySelectorAll('[data-nav-auth]');
@@ -26,6 +48,7 @@ async function initializeNavbar() {
   const statusElement = document.querySelector('[data-nav-status]');
 
   const user = await getCurrentUser();
+  setActiveNavbarLink();
 
   if (!user) {
     toggleElements(guestElements, true);
@@ -55,7 +78,7 @@ async function initializeNavbar() {
 async function enforcePageAccess() {
   const path = window.location.pathname;
 
-  if (path.endsWith('/post-create.html') || path.endsWith('/profile.html')) {
+  if (path.endsWith('/post-create.html') || path.endsWith('/profile.html') || path.endsWith('/chat.html')) {
     await requireAuth('/login.html');
   }
 
@@ -78,6 +101,7 @@ async function bootstrap() {
   loadFeed();
   initializePostDetailPage();
   initializePostForm();
+  initializeChatPage();
   initializeProfilePage();
   initializeLoginForm();
   initializeRegisterForm();
