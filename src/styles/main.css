@@ -6,3 +6,8 @@ body {
   padding-top: 2rem;
   padding-bottom: 2rem;
 }
+
+[data-notifications-list] {
+  max-height: 360px;
+  overflow-y: auto;
+}

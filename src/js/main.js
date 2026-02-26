@@ -2,6 +2,7 @@ import { getCurrentUser, getCurrentUserRole, requireAdmin, requireAuth } from '.
 import { initializeLoginForm } from './auth/login.js';
 import { initializeLogout } from './auth/logout.js';
 import { initializeRegisterForm } from './auth/register.js';
+import { cleanupNotifications, initializeNotifications } from './notifications/notifications-ui.js';
 import { loadFeed } from './posts/posts-ui.js';
 import { initializePostForm } from './posts/post-form.js';
 
@@ -33,7 +34,7 @@ async function initializeNavbar() {
       statusElement.textContent = 'Guest';
     }
 
-    return;
+    return null;
   }
 
   toggleElements(guestElements, false);
@@ -45,6 +46,8 @@ async function initializeNavbar() {
   if (statusElement) {
     statusElement.textContent = user.email || 'User';
   }
+
+  return user;
 }
 
 async function enforcePageAccess() {
@@ -61,8 +64,14 @@ async function enforcePageAccess() {
 
 async function bootstrap() {
   await enforcePageAccess();
-  await initializeNavbar();
+  const user = await initializeNavbar();
   initializeLogout();
+
+  if (user?.id) {
+    await initializeNotifications(user.id);
+  } else {
+    cleanupNotifications();
+  }
 
   loadFeed();
   initializePostForm();
