@@ -4,6 +4,8 @@ function mapPost(post) {
   return {
     id: post.id,
     userId: post.user_id,
+    categoryId: post.category_id || null,
+    categoryName: post.categories?.name || '',
     title: post.title,
     body: post.body,
     createdAt: post.created_at,
@@ -26,7 +28,7 @@ function throwServiceError(error, fallbackMessage) {
 export async function getAllPosts(limit = 50) {
   const { data, error } = await supabase
     .from('posts')
-    .select('id, user_id, title, body, created_at, updated_at, photos(id, post_id, user_id, storage_path, public_url, created_at)')
+    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(name), photos(id, post_id, user_id, storage_path, public_url, created_at)')
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -40,7 +42,7 @@ export async function getAllPosts(limit = 50) {
 export async function getPostById(id) {
   const { data, error } = await supabase
     .from('posts')
-    .select('id, user_id, title, body, created_at, updated_at, photos(id, post_id, user_id, storage_path, public_url, created_at)')
+    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(name), photos(id, post_id, user_id, storage_path, public_url, created_at)')
     .eq('id', id)
     .limit(1);
 

@@ -193,15 +193,10 @@ function bindEvents() {
     root.dataset.notificationsBound = 'true';
 
     root.addEventListener('show.bs.dropdown', async () => {
-      const unread = state.notifications.filter((item) => !item.isRead);
-      if (!unread.length) {
-        return;
+      try {
+        await refreshNotificationsFromServer();
+      } catch {
       }
-
-      const updates = unread.map((item) => markAsRead(item.id));
-      await Promise.all(updates);
-      state.notifications = state.notifications.map((item) => ({ ...item, isRead: true }));
-      renderNotificationDropdown();
     });
   }
 
@@ -232,11 +227,13 @@ function bindEvents() {
       item.setAttribute('aria-disabled', 'true');
       try {
         await handleMarkAsRead(notificationId);
-        window.location.assign(href);
+      } catch {
       } finally {
         item.classList.remove('disabled');
         item.removeAttribute('aria-disabled');
       }
+
+      window.location.assign(href);
     });
   }
 
@@ -251,6 +248,7 @@ function bindEvents() {
         await markAllAsRead();
         state.notifications = state.notifications.map((item) => ({ ...item, isRead: true }));
         renderNotificationDropdown();
+      } catch {
       } finally {
         markAllButton.disabled = false;
       }

@@ -1,5 +1,5 @@
 body {
-  background-color: #f8f9fa;
+  background-color: var(--bs-gray-100);
 }
 
 .page-content {
@@ -12,8 +12,106 @@ body {
   overflow-y: auto;
 }
 
+.aqua-notifications-menu {
+  width: 320px;
+  max-width: 90vw;
+}
+
 .profile-avatar {
   width: 160px;
   height: 160px;
   object-fit: cover;
+}
+
+.min-w-0 {
+  min-width: 0;
+}
+
+.aqua-post-card {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid var(--bs-border-color-translucent);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.aqua-post-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0.75rem 1.8rem rgba(var(--bs-dark-rgb), 0.12);
+  border-color: rgba(var(--bs-primary-rgb), 0.25);
+}
+
+.aqua-post-card .card-body {
+  padding: 1rem;
+}
+
+.aqua-post-avatar {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border: 1px solid rgba(var(--bs-dark-rgb), 0.12);
+}
+
+.aqua-post-media {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: var(--bs-tertiary-bg);
+}
+
+.aqua-post-media-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.aqua-post-card:hover .aqua-post-media-img {
+  transform: scale(1.04);
+}
+
+.aqua-post-media-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  color: var(--bs-secondary-color);
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(var(--bs-secondary-rgb), 0.08), rgba(var(--bs-secondary-rgb), 0.02));
+}
+
+.aqua-post-media-placeholder i {
+  font-size: 1.25rem;
+}
+
+.aqua-truncate-1,
+.aqua-truncate-2,
+.aqua-truncate-3 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.aqua-truncate-1 {
+  -webkit-line-clamp: 1;
+}
+
+.aqua-truncate-2 {
+  -webkit-line-clamp: 2;
+}
+
+.aqua-truncate-3 {
+  -webkit-line-clamp: 3;
+}
+
+@media (max-width: 575.98px) {
+  .feed-toolbar {
+    align-items: stretch !important;
+    gap: 0.75rem;
+  }
+
+  .feed-toolbar .btn {
+    width: 100%;
+  }
 }

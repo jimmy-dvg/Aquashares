@@ -10,6 +10,10 @@
       integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
       crossorigin="anonymous"
     />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
     <link rel="stylesheet" href="/src/styles/main.css" />
   </head>
   <body>
@@ -44,10 +48,10 @@
                 aria-expanded="false"
                 aria-label="Notifications"
               >
-                <span aria-hidden="true">🔔</span>
+                <i class="bi bi-bell-fill" aria-hidden="true"></i>
                 <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" data-notifications-badge>0</span>
               </button>
-              <div class="dropdown-menu dropdown-menu-end p-0" style="width: 320px; max-width: 90vw;">
+              <div class="dropdown-menu dropdown-menu-end p-0 aqua-notifications-menu">
                 <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
                   <strong class="small">Notifications</strong>
                   <button type="button" class="btn btn-link btn-sm p-0" data-notifications-mark-all>Mark all read</button>
