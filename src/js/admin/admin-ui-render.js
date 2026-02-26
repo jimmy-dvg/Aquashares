@@ -20,9 +20,17 @@ function createCell(text) {
 }
 
 function formatUserNameAndEmail(username, email) {
-  const safeUsername = username || '-';
+  const safeUsername = username ? `@${username}` : '-';
   const safeEmail = email || '-';
   return `${safeUsername} (${safeEmail})`;
+}
+
+function formatUserHandle(username, fallback = '-') {
+  if (username) {
+    return `@${username}`;
+  }
+
+  return fallback;
 }
 
 export function setVisible(element, isVisible) {
@@ -107,7 +115,7 @@ export function renderUsersTable(users, elements) {
     const row = document.createElement('tr');
 
     row.append(
-      createCell(user.username || '-'),
+      createCell(formatUserHandle(user.username, user.displayName || '-')),
       createCell(user.displayName || '-'),
       createCell(formatUserNameAndEmail(user.username, user.email)),
       createCell(formatDate(user.createdAt))
@@ -145,7 +153,7 @@ export function renderPostsTable(posts, elements) {
     row.append(
       createCell(post.title),
       createCell(post.categoryName || 'Uncategorized'),
-      createCell(post.authorUsername),
+      createCell(formatUserHandle(post.authorUsername)),
       createCell(post.authorEmail),
       createCell(post.body.length > 120 ? `${post.body.slice(0, 120)}...` : post.body),
       createCell(formatDate(post.createdAt))
@@ -192,7 +200,7 @@ export function renderCommentsTable(comments, elements) {
   comments.forEach((comment) => {
     const row = document.createElement('tr');
 
-    const authorDisplay = `${comment.authorUsername} (${comment.authorEmail})`;
+    const authorDisplay = `${formatUserHandle(comment.authorUsername)} (${comment.authorEmail})`;
 
     row.append(
       createCell(comment.postTitle),

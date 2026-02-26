@@ -83,9 +83,12 @@ function renderCommentItem(comment, listElement) {
   wrapper.dataset.commentBody = comment.body;
   wrapper.dataset.commentOwnerId = comment.userId;
 
-  const author = document.createElement('div');
-  author.className = 'fw-semibold small';
-  author.textContent = comment.authorName || 'User';
+  const author = document.createElement('a');
+  author.className = 'fw-semibold small text-decoration-none';
+  author.href = `/profile.html?user=${encodeURIComponent(comment.userId)}`;
+  author.textContent = comment.authorUsername
+    ? `@${comment.authorUsername}`
+    : (comment.authorName || 'User');
 
   const body = document.createElement('p');
   body.className = 'mb-1 small';

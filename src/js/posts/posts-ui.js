@@ -47,7 +47,7 @@ function scheduleFeedLoad(options = {}) {
 function mapPostWithUiData(post, authorById, commentCountByPostId) {
   const author = authorById.get(post.userId) || {
     id: post.userId,
-    username: 'user',
+    username: '',
     displayName: 'Aquashares User',
     avatarUrl: '',
     role: 'user'
@@ -80,7 +80,7 @@ async function buildAuthorMap(posts, viewer) {
   (profiles ?? []).forEach((profile) => {
     authorById.set(profile.id, {
       id: profile.id,
-      username: profile.username || 'user',
+      username: profile.username || '',
       displayName: profile.display_name || profile.username || 'Aquashares User',
       avatarUrl: profile.avatar_url || '',
       role: 'user'

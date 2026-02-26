@@ -139,7 +139,7 @@ async function getAuthorData(authorId) {
 
   return {
     id: authorId,
-    username: profile?.username || 'user',
+    username: profile?.username || '',
     displayName: profile?.display_name || profile?.username || 'Aquashares User',
     avatarUrl: profile?.avatar_url || DEFAULT_AVATAR,
     role: roleResult.error ? 'user' : (roleResult.data?.role || 'user')

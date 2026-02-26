@@ -226,7 +226,9 @@ export function renderPost(elements, post, author, defaultAvatar) {
 
   if (elements.authorLink) {
     elements.authorLink.href = `/profile.html?user=${encodeURIComponent(author.id)}`;
-    elements.authorLink.textContent = author.username ? `@${author.username}` : '@user';
+    elements.authorLink.textContent = author.username
+      ? `@${author.username}`
+      : (author.displayName || 'User');
   }
 
   if (elements.authorRole) {

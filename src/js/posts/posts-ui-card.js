@@ -207,7 +207,9 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false)
   const authorLink = document.createElement('a');
   authorLink.href = `/profile.html?user=${encodeURIComponent(post.author.id)}`;
   authorLink.className = 'fw-semibold text-decoration-none d-inline-block aqua-truncate-1';
-  authorLink.textContent = post.author.username ? `@${post.author.username}` : '@user';
+  authorLink.textContent = post.author.username
+    ? `@${post.author.username}`
+    : (post.author.displayName || 'User');
 
   const subMeta = document.createElement('div');
   subMeta.className = 'd-flex align-items-center gap-2 text-muted small';

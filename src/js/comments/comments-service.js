@@ -8,7 +8,8 @@ function mapComment(row) {
     body: row.body,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    authorName: row.author_name || 'User'
+    authorName: row.author_name || 'User',
+    authorUsername: row.author_username || ''
   };
 }
 
@@ -40,14 +41,18 @@ export async function getCommentsByPostId(postId) {
     if (!profilesError) {
       authorMap = new Map((profiles ?? []).map((profile) => [
         profile.id,
-        profile.display_name || profile.username || 'User'
+        {
+          authorName: profile.display_name || profile.username || 'User',
+          authorUsername: profile.username || ''
+        }
       ]));
     }
   }
 
   return rows.map((row) => mapComment({
     ...row,
-    author_name: authorMap.get(row.user_id) || 'User'
+    author_name: authorMap.get(row.user_id)?.authorName || 'User',
+    author_username: authorMap.get(row.user_id)?.authorUsername || ''
   }));
 }
 

@@ -1,10 +1,10 @@
 import {
   getAuthenticatedUser,
-  getMyComments,
-  getMyPosts,
-  getMyProfile,
+  getCommentsByUserId,
+  getPostsByUserId,
+  getProfileById,
   getMyProfilePreferences,
-  getMyProfileStats,
+  getProfileStatsByUserId,
   updateMyProfile,
   updateMyProfilePreferences
 } from './profile-service.js';
@@ -52,6 +52,63 @@ function getElements() {
     postsList: document.querySelector('[data-profile-posts-list]'),
     commentsList: document.querySelector('[data-profile-comments-list]')
   };
+}
+
+function getTargetUserId() {
+  const params = new URLSearchParams(window.location.search);
+  const userId = params.get('user');
+
+  if (!userId) {
+    return '';
+  }
+
+  return userId.trim();
+}
+
+function getProfileContext(currentUserId) {
+  const requestedUserId = getTargetUserId();
+  const targetUserId = requestedUserId || currentUserId;
+  const isOwnProfile = targetUserId === currentUserId;
+
+  return {
+    targetUserId,
+    isOwnProfile
+  };
+}
+
+function toggleEditSections(elements, isVisible) {
+  const editableBlocks = [
+    elements.avatarInput?.closest('.text-start'),
+    elements.profileForm?.closest('.card'),
+    elements.preferencesForm?.closest('.card')
+  ].filter(Boolean);
+
+  editableBlocks.forEach((block) => {
+    if (isVisible) {
+      block.classList.remove('d-none');
+      return;
+    }
+
+    block.classList.add('d-none');
+  });
+}
+
+function updateProfileHeadings(elements, isOwnProfile) {
+  const pageTitle = document.querySelector('h1.h3');
+
+  if (pageTitle) {
+    pageTitle.textContent = isOwnProfile ? 'My Profile' : 'Profile';
+  }
+
+  const postsHeading = elements.postsList?.closest('.card-body')?.querySelector('h2.h5');
+  if (postsHeading) {
+    postsHeading.textContent = isOwnProfile ? 'My Posts' : 'Posts';
+  }
+
+  const commentsHeading = elements.commentsList?.closest('.card-body')?.querySelector('h2.h5');
+  if (commentsHeading) {
+    commentsHeading.textContent = isOwnProfile ? 'My Comments' : 'Comments';
+  }
 }
 
 
@@ -249,11 +306,15 @@ export async function initializeProfilePage() {
   try {
     state.user = await getAuthenticatedUser();
 
+    const profileContext = getProfileContext(state.user.id);
+    const targetUserId = profileContext.targetUserId;
+    const isOwnProfile = profileContext.isOwnProfile;
+
     const [profile, stats, posts, comments] = await Promise.all([
-      getMyProfile(state.user.id),
-      getMyProfileStats(state.user.id),
-      getMyPosts(state.user.id),
-      getMyComments(state.user.id)
+      getProfileById(targetUserId),
+      getProfileStatsByUserId(targetUserId),
+      getPostsByUserId(targetUserId),
+      getCommentsByUserId(targetUserId)
     ]);
 
     let preferences = {
@@ -264,19 +325,27 @@ export async function initializeProfilePage() {
       showActivity: true
     };
 
-    try {
-      preferences = await getMyProfilePreferences(state.user.id);
-    } catch {
+    if (isOwnProfile) {
+      try {
+        preferences = await getMyProfilePreferences(state.user.id);
+      } catch {
+      }
     }
 
     state.profile = profile;
 
+    toggleEditSections(elements, isOwnProfile);
+    updateProfileHeadings(elements, isOwnProfile);
+
     renderProfileSummary(profile, stats, elements);
-    renderProfileForm(profile, elements);
+    if (isOwnProfile) {
+      renderProfileForm(profile, elements);
+      renderPreferences(preferences, elements);
+      bindEvents(elements);
+    }
+
     renderPosts(posts, elements);
     renderComments(comments, elements);
-    renderPreferences(preferences, elements);
-    bindEvents(elements);
   } catch (error) {
     showFeedback(elements, error.message || 'Unable to load profile.', 'danger');
   } finally {

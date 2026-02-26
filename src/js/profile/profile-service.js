@@ -105,7 +105,7 @@ export async function getAuthenticatedUser() {
   return user;
 }
 
-export async function getMyProfile(userId) {
+export async function getProfileById(userId) {
   let data = null;
   let error = null;
 
@@ -145,6 +145,10 @@ export async function getMyProfile(userId) {
   }
 
   return mapProfile(data);
+}
+
+export async function getMyProfile(userId) {
+  return getProfileById(userId);
 }
 
 export async function updateMyProfile(userId, payload) {
@@ -192,7 +196,7 @@ export async function updateMyProfile(userId, payload) {
   return mapProfile(data);
 }
 
-export async function getMyProfileStats(userId) {
+export async function getProfileStatsByUserId(userId) {
   const [{ count: postCount, error: postsError }, { count: commentCount, error: commentsError }] = await Promise.all([
     supabase
       .from('posts')
@@ -218,7 +222,11 @@ export async function getMyProfileStats(userId) {
   };
 }
 
-export async function getMyPosts(userId, limit = 20) {
+export async function getMyProfileStats(userId) {
+  return getProfileStatsByUserId(userId);
+}
+
+export async function getPostsByUserId(userId, limit = 20) {
   const { data, error } = await supabase
     .from('posts')
     .select('id, title, body, created_at')
@@ -233,7 +241,11 @@ export async function getMyPosts(userId, limit = 20) {
   return (data ?? []).map(mapPost);
 }
 
-export async function getMyComments(userId, limit = 20) {
+export async function getMyPosts(userId, limit = 20) {
+  return getPostsByUserId(userId, limit);
+}
+
+export async function getCommentsByUserId(userId, limit = 20) {
   const { data, error } = await supabase
     .from('comments')
     .select('id, post_id, body, created_at')
@@ -262,6 +274,10 @@ export async function getMyComments(userId, limit = 20) {
   }
 
   return (data ?? []).map((item) => mapComment(item, postTitleById));
+}
+
+export async function getMyComments(userId, limit = 20) {
+  return getCommentsByUserId(userId, limit);
 }
 
 export async function getMyProfilePreferences(userId) {
