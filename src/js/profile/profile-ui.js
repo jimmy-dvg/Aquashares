@@ -222,7 +222,7 @@ function renderPosts(posts, elements) {
   posts.forEach((post) => {
     const item = document.createElement('a');
     item.className = 'list-group-item list-group-item-action';
-    item.href = '/index.html';
+    item.href = `/post-detail.html?id=${encodeURIComponent(post.id)}`;
 
     const title = document.createElement('div');
     title.className = 'fw-semibold';
@@ -263,7 +263,7 @@ function renderComments(comments, elements) {
   comments.forEach((comment) => {
     const item = document.createElement('a');
     item.className = 'list-group-item list-group-item-action';
-    item.href = `/index.html?comment=${encodeURIComponent(comment.id)}#post-${encodeURIComponent(comment.postId)}`;
+    item.href = `/post-detail.html?id=${encodeURIComponent(comment.postId)}&comment=${encodeURIComponent(comment.id)}`;
 
     const title = document.createElement('div');
     title.className = 'fw-semibold';

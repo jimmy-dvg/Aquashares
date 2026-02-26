@@ -59,6 +59,10 @@ function getCategoryLabel(post) {
   return post.categoryName || 'Uncategorized';
 }
 
+function getPostDetailHref(postId) {
+  return `/post-detail.html?id=${encodeURIComponent(postId)}`;
+}
+
 function createAvatar(author) {
   const avatar = document.createElement('img');
   avatar.className = 'rounded-circle flex-shrink-0 aqua-post-avatar';
@@ -292,6 +296,10 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false)
   }
 
   const media = createPostImage(post);
+  const mediaLink = document.createElement('a');
+  mediaLink.href = getPostDetailHref(post.id);
+  mediaLink.className = 'text-decoration-none';
+  mediaLink.append(media);
 
   const content = document.createElement('div');
 
@@ -301,7 +309,13 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false)
 
   const title = document.createElement('h2');
   title.className = 'h6 mb-1 aqua-truncate-2';
-  title.textContent = post.title;
+
+  const titleLink = document.createElement('a');
+  titleLink.href = getPostDetailHref(post.id);
+  titleLink.className = 'text-decoration-none text-body';
+  titleLink.textContent = post.title;
+
+  title.append(titleLink);
 
   const body = document.createElement('p');
   body.className = 'text-secondary mb-0 aqua-truncate-3';
@@ -339,7 +353,7 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false)
 
   interactionBar.append(commentsInfo, likeButton);
 
-  cardBody.append(header, media, content, interactionBar, createCommentsBlock(post.id, isAuthenticated));
+  cardBody.append(header, mediaLink, content, interactionBar, createCommentsBlock(post.id, isAuthenticated));
   article.append(cardBody);
   column.append(article);
 
