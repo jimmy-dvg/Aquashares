@@ -46,6 +46,17 @@ function getElements() {
   };
 }
 
+function getRequestedConversationId() {
+  const params = new URLSearchParams(window.location.search);
+  const value = params.get('conversation');
+
+  if (!value) {
+    return '';
+  }
+
+  return value.trim();
+}
+
 function getConversationById(conversationId) {
   return state.conversations.find((conversation) => conversation.id === conversationId) || null;
 }
@@ -322,6 +333,7 @@ export async function initializeChatPage() {
 
   try {
     state.user = await getAuthenticatedChatUser();
+    const requestedConversationId = getRequestedConversationId();
 
     bindUserSearch(elements);
     bindConversationList(elements);
@@ -331,7 +343,17 @@ export async function initializeChatPage() {
     await handleUserSearch('', elements);
 
     if (state.conversations.length) {
-      await activateConversation(state.conversations[0].id, elements);
+      const requestedConversationExists = requestedConversationId
+        && state.conversations.some((conversation) => conversation.id === requestedConversationId);
+      const initialConversationId = requestedConversationExists
+        ? requestedConversationId
+        : state.conversations[0].id;
+
+      await activateConversation(initialConversationId, elements);
+
+      if (requestedConversationExists && window.history?.replaceState) {
+        window.history.replaceState({}, '', '/chat.html');
+      }
     } else {
       renderChatHeader(null, elements);
       renderMessages([], state.user.id, elements);

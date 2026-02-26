@@ -8,6 +8,7 @@ import {
   updateMyProfile,
   updateMyProfilePreferences
 } from './profile-service.js';
+import { openDirectConversation } from '../chat/chat-service.js';
 import { deleteProfileAvatar, uploadProfileAvatar } from '../services/storage-service.js';
 import {
   renderComments,
@@ -47,6 +48,8 @@ function getElements() {
     profileName: document.querySelector('[data-profile-name]'),
     profileUsername: document.querySelector('[data-profile-username-display]'),
     profileJoined: document.querySelector('[data-profile-joined]'),
+    chatCtaWrap: document.querySelector('[data-profile-chat-cta-wrap]'),
+    chatCtaButton: document.querySelector('[data-profile-chat-cta]'),
     statPosts: document.querySelector('[data-profile-stat-posts]'),
     statComments: document.querySelector('[data-profile-stat-comments]'),
     postsList: document.querySelector('[data-profile-posts-list]'),
@@ -109,6 +112,58 @@ function updateProfileHeadings(elements, isOwnProfile) {
   if (commentsHeading) {
     commentsHeading.textContent = isOwnProfile ? 'My Comments' : 'Comments';
   }
+}
+
+function getChatCtaLabel(profile) {
+  if (profile.username) {
+    return `Chat with @${profile.username}`;
+  }
+
+  return `Chat with ${profile.displayName || 'user'}`;
+}
+
+function configureProfileChatCta(elements, isOwnProfile, profile) {
+  if (!elements.chatCtaWrap || !elements.chatCtaButton) {
+    return;
+  }
+
+  if (isOwnProfile) {
+    elements.chatCtaWrap.classList.add('d-none');
+    return;
+  }
+
+  elements.chatCtaWrap.classList.remove('d-none');
+  elements.chatCtaButton.textContent = getChatCtaLabel(profile);
+
+  if (elements.chatCtaButton.dataset.bound === 'true') {
+    elements.chatCtaButton.dataset.targetUserId = profile.id;
+    return;
+  }
+
+  elements.chatCtaButton.dataset.bound = 'true';
+  elements.chatCtaButton.dataset.targetUserId = profile.id;
+
+  elements.chatCtaButton.addEventListener('click', async () => {
+    const targetUserId = elements.chatCtaButton?.dataset.targetUserId;
+    if (!targetUserId) {
+      return;
+    }
+
+    clearFeedback(elements);
+    elements.chatCtaButton.disabled = true;
+
+    const defaultLabel = elements.chatCtaButton.textContent;
+    elements.chatCtaButton.textContent = 'Opening chat...';
+
+    try {
+      const conversationId = await openDirectConversation(targetUserId);
+      window.location.assign(`/chat.html?conversation=${encodeURIComponent(conversationId)}`);
+    } catch (error) {
+      showFeedback(elements, error.message || 'Unable to open chat.', 'danger');
+      elements.chatCtaButton.disabled = false;
+      elements.chatCtaButton.textContent = defaultLabel || 'Chat';
+    }
+  });
 }
 
 
@@ -336,6 +391,7 @@ export async function initializeProfilePage() {
 
     toggleEditSections(elements, isOwnProfile);
     updateProfileHeadings(elements, isOwnProfile);
+    configureProfileChatCta(elements, isOwnProfile, profile);
 
     renderProfileSummary(profile, stats, elements);
     if (isOwnProfile) {
