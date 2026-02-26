@@ -2,6 +2,7 @@ import { getCurrentUserRole } from '../auth/auth-guard.js';
 import { cleanupCommentsUi, createCommentsBlock, initializeCommentsUi } from '../comments/comments-ui.js';
 import { supabase } from '../services/supabase-client.js';
 import { deletePost, getPostById } from './posts-service.js';
+import { showConfirmModal } from '../utils/confirm-modal.js';
 
 const DEFAULT_AVATAR = '/assets/avatars/default-avatar.svg';
 
@@ -416,12 +417,29 @@ function bindPostActions(elements, postId) {
     return;
   }
 
-  elements.editButton.addEventListener('click', () => {
+  elements.editButton.addEventListener('click', async () => {
+    const confirmed = await showConfirmModal({
+      title: 'Edit post',
+      message: 'Open this post in edit mode?',
+      confirmLabel: 'Edit',
+      confirmButtonClass: 'btn-primary'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
     window.location.assign(`/post-create.html?id=${encodeURIComponent(postId)}`);
   });
 
   elements.deleteButton.addEventListener('click', async () => {
-    const confirmed = window.confirm('Delete this post?');
+    const confirmed = await showConfirmModal({
+      title: 'Delete post',
+      message: 'Delete this post? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      confirmButtonClass: 'btn-danger'
+    });
+
     if (!confirmed) {
       return;
     }

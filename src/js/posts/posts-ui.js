@@ -1,6 +1,7 @@
 import { supabase } from '../services/supabase-client.js';
 import { cleanupCommentsUi, createCommentsBlock, initializeCommentsUi } from '../comments/comments-ui.js';
 import { deletePost, getAllPosts, getCategories } from './posts-service.js';
+import { showConfirmModal } from '../utils/confirm-modal.js';
 
 const feedState = {
   categoriesBound: false,
@@ -759,7 +760,7 @@ export function attachEditHandler(container) {
   }
 
   container.dataset.editBound = 'true';
-  container.addEventListener('click', (event) => {
+  container.addEventListener('click', async (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) {
       return;
@@ -772,6 +773,17 @@ export function attachEditHandler(container) {
 
     const postId = editButton.dataset.postId;
     if (!postId) {
+      return;
+    }
+
+    const confirmed = await showConfirmModal({
+      title: 'Edit post',
+      message: 'Open this post in edit mode?',
+      confirmLabel: 'Edit',
+      confirmButtonClass: 'btn-primary'
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -801,7 +813,13 @@ export function attachDeleteHandler(container, afterDelete) {
       return;
     }
 
-    const isConfirmed = window.confirm('Delete this post?');
+    const isConfirmed = await showConfirmModal({
+      title: 'Delete post',
+      message: 'Delete this post? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      confirmButtonClass: 'btn-danger'
+    });
+
     if (!isConfirmed) {
       return;
     }

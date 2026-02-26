@@ -5,6 +5,7 @@ import {
   subscribeToPostComments,
   updateComment
 } from './comments-service.js';
+import { showConfirmModal } from '../utils/confirm-modal.js';
 
 const realtimeSubscriptions = new Map();
 const pollingIntervals = new Map();
@@ -103,21 +104,39 @@ async function showCommentActionModal(config) {
 
   if (!modal) {
     if (config.mode === 'confirm') {
+      const confirmed = await showConfirmModal({
+        title: config.title || 'Confirm',
+        message: config.message || 'Confirm action?',
+        confirmLabel: config.confirmLabel || 'Confirm',
+        cancelLabel: config.cancelLabel || 'Cancel',
+        confirmButtonClass: config.confirmClass || 'btn-primary'
+      });
+
       return {
-        confirmed: window.confirm(config.message || 'Confirm action?')
+        confirmed
       };
     }
 
     if (config.mode === 'input') {
-      const value = window.prompt(config.message || '', config.initialValue || '');
-      if (value === null) {
-        return { confirmed: false, value: null };
-      }
+      await showConfirmModal({
+        title: config.title || 'Comment',
+        message: 'Comment editor is unavailable right now. Please refresh the page and try again.',
+        confirmLabel: 'Close',
+        confirmButtonClass: 'btn-secondary',
+        hideCancel: true
+      });
 
-      return { confirmed: true, value };
+      return { confirmed: false, value: null };
     }
 
-    window.alert(config.message || 'Operation failed.');
+    await showConfirmModal({
+      title: config.title || 'Comment Action',
+      message: config.message || 'Operation failed.',
+      confirmLabel: 'Close',
+      confirmButtonClass: 'btn-secondary',
+      hideCancel: true
+    });
+
     return { confirmed: true };
   }
 
