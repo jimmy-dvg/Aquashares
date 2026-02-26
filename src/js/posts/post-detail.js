@@ -3,7 +3,7 @@ import { cleanupCommentsUi, createCommentsBlock, initializeCommentsUi } from '..
 import { supabase } from '../services/supabase-client.js';
 import { deletePost, getPostById } from './posts-service.js';
 
-const DEFAULT_AVATAR = 'https://placehold.co/80x80?text=User';
+const DEFAULT_AVATAR = '/assets/avatars/default-avatar.svg';
 
 function getElements() {
   return {

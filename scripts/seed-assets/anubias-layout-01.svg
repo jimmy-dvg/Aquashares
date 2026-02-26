@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f4c5c"/>
+      <stop offset="100%" stop-color="#073b4c"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <ellipse cx="300" cy="620" rx="250" ry="70" fill="#2d6a4f" opacity="0.9"/>
+  <ellipse cx="620" cy="610" rx="320" ry="80" fill="#40916c" opacity="0.85"/>
+  <ellipse cx="980" cy="625" rx="260" ry="75" fill="#2d6a4f" opacity="0.9"/>
+  <circle cx="980" cy="180" r="90" fill="#52b788" opacity="0.35"/>
+  <text x="640" y="360" font-family="Arial, sans-serif" font-size="56" fill="#d8f3dc" text-anchor="middle">Anubias Low-Tech Layout</text>
+</svg>

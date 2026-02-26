@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#023047"/>
+  <g fill="#fb8500" opacity="0.95">
+    <ellipse cx="220" cy="260" rx="36" ry="16"/>
+    <ellipse cx="320" cy="300" rx="36" ry="16"/>
+    <ellipse cx="430" cy="260" rx="36" ry="16"/>
+    <ellipse cx="540" cy="300" rx="36" ry="16"/>
+    <ellipse cx="650" cy="260" rx="36" ry="16"/>
+    <ellipse cx="760" cy="300" rx="36" ry="16"/>
+    <ellipse cx="870" cy="260" rx="36" ry="16"/>
+    <ellipse cx="980" cy="300" rx="36" ry="16"/>
+  </g>
+  <text x="640" y="510" font-family="Arial, sans-serif" font-size="56" fill="#ffddd2" text-anchor="middle">Ember Tetra School</text>
+</svg>

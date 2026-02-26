@@ -10,7 +10,7 @@ import {
 } from './profile-service.js';
 import { deleteProfileAvatar, uploadProfileAvatar } from '../services/storage-service.js';
 
-const DEFAULT_AVATAR = 'https://placehold.co/160x160?text=Avatar';
+const DEFAULT_AVATAR = '/assets/avatars/default-avatar.svg';
 
 const state = {
   user: null,

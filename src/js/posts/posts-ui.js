@@ -93,10 +93,10 @@ function createAvatar(author) {
   avatar.height = 40;
   avatar.loading = 'lazy';
   avatar.alt = `${author.displayName} avatar`;
-  avatar.src = author.avatarUrl || 'https://placehold.co/80x80?text=User';
+  avatar.src = author.avatarUrl || '/assets/avatars/default-avatar.svg';
 
   avatar.addEventListener('error', () => {
-    avatar.src = 'https://placehold.co/80x80?text=User';
+    avatar.src = '/assets/avatars/default-avatar.svg';
   }, { once: true });
 
   return avatar;

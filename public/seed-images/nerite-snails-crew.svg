@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#0b132b"/>
+  <rect y="520" width="1280" height="200" fill="#1c2541"/>
+  <g>
+    <circle cx="290" cy="560" r="46" fill="#f4d35e"/>
+    <circle cx="430" cy="580" r="46" fill="#ee964b"/>
+    <circle cx="570" cy="555" r="46" fill="#f4d35e"/>
+    <circle cx="710" cy="585" r="46" fill="#ee964b"/>
+    <circle cx="850" cy="560" r="46" fill="#f4d35e"/>
+    <circle cx="990" cy="580" r="46" fill="#ee964b"/>
+  </g>
+  <text x="640" y="300" font-family="Arial, sans-serif" font-size="56" fill="#e0fbfc" text-anchor="middle">Nerite Snails Cleanup Crew</text>
+</svg>

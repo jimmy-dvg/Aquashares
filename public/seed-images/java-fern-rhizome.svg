@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#1b4332"/>
+  <rect y="520" width="1280" height="200" fill="#081c15"/>
+  <g fill="#95d5b2">
+    <ellipse cx="220" cy="500" rx="70" ry="170"/>
+    <ellipse cx="360" cy="490" rx="65" ry="180"/>
+    <ellipse cx="500" cy="505" rx="60" ry="165"/>
+    <ellipse cx="760" cy="500" rx="70" ry="170"/>
+    <ellipse cx="910" cy="490" rx="65" ry="180"/>
+    <ellipse cx="1060" cy="505" rx="60" ry="165"/>
+  </g>
+  <text x="640" y="360" font-family="Arial, sans-serif" font-size="56" fill="#d8f3dc" text-anchor="middle">Java Fern Rhizome Placement</text>
+</svg>

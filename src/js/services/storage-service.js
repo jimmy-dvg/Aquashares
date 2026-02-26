@@ -11,6 +11,13 @@ function isMissingBucketError(error) {
     || message.includes('not found');
 }
 
+function isMissingObjectError(error) {
+  const message = (error?.message || '').toLowerCase();
+  return message.includes('not found')
+    || message.includes('no such object')
+    || message.includes('does not exist');
+}
+
 function getFileExtension(filename) {
   const parts = filename.split('.');
   if (parts.length < 2) {
@@ -80,6 +87,10 @@ export async function deletePostImage(path) {
     .storage
     .from(POST_IMAGES_BUCKET)
     .remove([path]);
+
+  if (error && isMissingObjectError(error)) {
+    return;
+  }
 
   if (error) {
     throw new Error(error.message || 'Failed to delete image.');
