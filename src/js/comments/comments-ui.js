@@ -282,6 +282,7 @@ async function handleEditCommentAction(comment, listElement) {
 function renderCommentItem(comment, listElement) {
   const wrapper = document.createElement('article');
   wrapper.className = 'border rounded p-2';
+  wrapper.id = `comment-${comment.id}`;
   wrapper.dataset.commentId = comment.id;
   wrapper.dataset.commentPostId = comment.postId;
   wrapper.dataset.commentBody = comment.body;

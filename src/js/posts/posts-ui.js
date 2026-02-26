@@ -62,6 +62,7 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false)
   const column = document.createElement('div');
   column.className = 'col-12 col-md-6 col-lg-4';
   column.dataset.postId = post.id;
+  column.id = `post-${post.id}`;
 
   const article = document.createElement('article');
   article.className = 'card h-100';
@@ -112,6 +113,57 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false)
   column.append(article);
 
   return column;
+}
+
+function focusPostFromHash() {
+  const hash = window.location.hash || '';
+  if (!hash.startsWith('#post-')) {
+    return;
+  }
+
+  const targetId = decodeURIComponent(hash.slice(1));
+  const target = document.getElementById(targetId);
+
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  const card = target.querySelector('.card');
+  if (!(card instanceof HTMLElement)) {
+    return;
+  }
+
+  card.classList.add('border-primary', 'border-2');
+  window.setTimeout(() => {
+    card.classList.remove('border-primary', 'border-2');
+  }, 2200);
+}
+
+function getCommentIdFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const value = params.get('comment');
+  return value && value.trim() ? value.trim() : null;
+}
+
+function focusCommentFromQuery() {
+  const commentId = getCommentIdFromQuery();
+  if (!commentId) {
+    return;
+  }
+
+  const target = document.getElementById(`comment-${commentId}`);
+  if (!(target instanceof HTMLElement)) {
+    return;
+  }
+
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  target.classList.add('border-primary', 'border-2');
+
+  window.setTimeout(() => {
+    target.classList.remove('border-primary', 'border-2');
+  }, 2200);
 }
 
 function renderEmptyState(container) {
@@ -323,6 +375,8 @@ export async function loadFeed() {
       });
       feedContainer.append(fragment);
       await initializeCommentsUi(feedContainer, viewer.userId);
+      focusPostFromHash();
+      focusCommentFromQuery();
     }
 
     attachEditHandler(feedContainer);

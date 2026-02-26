@@ -8,8 +8,23 @@ import {
 const state = {
   notifications: [],
   unsubscribe: null,
+  pollingId: null,
   initialized: false
 };
+
+function getNotificationHref(notification) {
+  const referenceType = notification.referenceType || 'post';
+
+  if (referenceType === 'comment' && notification.referenceId) {
+    return `/index.html?comment=${encodeURIComponent(notification.referenceId)}`;
+  }
+
+  if (notification.referenceId) {
+    return `/index.html#post-${encodeURIComponent(notification.referenceId)}`;
+  }
+
+  return '/index.html';
+}
 
 function getElements() {
   return {
@@ -49,10 +64,10 @@ function formatRelativeDate(value) {
 }
 
 export function renderNotificationItem(notification) {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = `dropdown-item text-wrap py-2 ${notification.isRead ? '' : 'fw-semibold'}`.trim();
-  button.dataset.notificationId = notification.id;
+  const item = document.createElement('a');
+  item.href = getNotificationHref(notification);
+  item.className = `dropdown-item text-wrap py-2 ${notification.isRead ? '' : 'fw-semibold'}`.trim();
+  item.dataset.notificationId = notification.id;
 
   const message = document.createElement('div');
   message.className = 'small';
@@ -62,8 +77,8 @@ export function renderNotificationItem(notification) {
   meta.className = 'text-secondary small';
   meta.textContent = formatRelativeDate(notification.createdAt);
 
-  button.append(message, meta);
-  return button;
+  item.append(message, meta);
+  return item;
 }
 
 export function updateUnreadBadge() {
@@ -127,6 +142,29 @@ function mergeNewNotification(notification) {
   state.notifications = [notification, ...state.notifications.filter((item) => item.id !== notification.id)].slice(0, 20);
 }
 
+function replaceNotifications(nextNotifications) {
+  state.notifications = [...nextNotifications].slice(0, 20);
+}
+
+function getNotificationsFingerprint(items) {
+  return items
+    .map((item) => `${item.id}:${item.isRead ? 1 : 0}`)
+    .join('|');
+}
+
+async function refreshNotificationsFromServer() {
+  const nextNotifications = await getUserNotifications();
+  const currentFingerprint = getNotificationsFingerprint(state.notifications);
+  const nextFingerprint = getNotificationsFingerprint(nextNotifications);
+
+  if (currentFingerprint === nextFingerprint) {
+    return;
+  }
+
+  replaceNotifications(nextNotifications);
+  renderNotificationDropdown();
+}
+
 export async function handleMarkAsRead(notificationId) {
   const updated = await markAsRead(notificationId);
 
@@ -176,21 +214,28 @@ function bindEvents() {
         return;
       }
 
-      const button = target.closest('[data-notification-id]');
-      if (!(button instanceof HTMLButtonElement)) {
+      const item = target.closest('[data-notification-id]');
+      if (!(item instanceof HTMLElement)) {
         return;
       }
 
-      const notificationId = button.dataset.notificationId;
+      event.preventDefault();
+
+      const notificationId = item.dataset.notificationId;
       if (!notificationId) {
         return;
       }
 
-      button.disabled = true;
+      const href = item.getAttribute('href') || '/index.html';
+
+      item.classList.add('disabled');
+      item.setAttribute('aria-disabled', 'true');
       try {
         await handleMarkAsRead(notificationId);
+        window.location.assign(href);
       } finally {
-        button.disabled = false;
+        item.classList.remove('disabled');
+        item.removeAttribute('aria-disabled');
       }
     });
   }
@@ -230,9 +275,23 @@ export async function initializeNotifications(userId) {
       mergeNewNotification(notification);
       renderNotificationDropdown();
     });
+
+    state.pollingId = window.setInterval(async () => {
+      try {
+        await refreshNotificationsFromServer();
+      } catch {
+      }
+    }, 5000);
   } catch {
     state.notifications = [];
     renderNotificationDropdown();
+
+    state.pollingId = window.setInterval(async () => {
+      try {
+        await refreshNotificationsFromServer();
+      } catch {
+      }
+    }, 5000);
   }
 }
 
@@ -241,7 +300,12 @@ export function cleanupNotifications() {
     state.unsubscribe();
   }
 
+  if (state.pollingId) {
+    window.clearInterval(state.pollingId);
+  }
+
   state.unsubscribe = null;
+  state.pollingId = null;
   state.notifications = [];
   state.initialized = false;
 }

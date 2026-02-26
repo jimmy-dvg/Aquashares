@@ -261,8 +261,9 @@ function renderComments(comments, elements) {
   const fragment = document.createDocumentFragment();
 
   comments.forEach((comment) => {
-    const item = document.createElement('div');
-    item.className = 'list-group-item';
+    const item = document.createElement('a');
+    item.className = 'list-group-item list-group-item-action';
+    item.href = `/index.html?comment=${encodeURIComponent(comment.id)}#post-${encodeURIComponent(comment.postId)}`;
 
     const title = document.createElement('div');
     title.className = 'fw-semibold';

@@ -5,6 +5,7 @@ function mapNotification(row) {
     id: row.id,
     userId: row.user_id,
     type: row.type,
+    referenceType: row.reference_type || 'post',
     referenceId: row.reference_id,
     message: row.message,
     isRead: row.is_read,
@@ -27,12 +28,37 @@ function isMissingNotificationsRelation(error) {
     || message.includes('relation "notifications" does not exist');
 }
 
+function isMissingReferenceTypeColumn(error) {
+  if (!error) {
+    return false;
+  }
+
+  const message = (error.message || '').toLowerCase();
+  const code = (error.code || '').toUpperCase();
+
+  return code === '42703'
+    || message.includes('reference_type')
+    || message.includes('column notifications.reference_type does not exist')
+    || message.includes('column "reference_type" does not exist');
+}
+
 export async function getUserNotifications(limit = 20) {
-  const { data, error } = await supabase
+  let data = null;
+  let error = null;
+
+  ({ data, error } = await supabase
     .from('notifications')
-    .select('id, user_id, type, reference_id, message, is_read, created_at')
+    .select('id, user_id, type, reference_type, reference_id, message, is_read, created_at')
     .order('created_at', { ascending: false })
-    .limit(limit);
+    .limit(limit));
+
+  if (error && isMissingReferenceTypeColumn(error)) {
+    ({ data, error } = await supabase
+      .from('notifications')
+      .select('id, user_id, type, reference_id, message, is_read, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit));
+  }
 
   if (error) {
     if (isMissingNotificationsRelation(error)) {
@@ -45,13 +71,26 @@ export async function getUserNotifications(limit = 20) {
 }
 
 export async function markAsRead(notificationId) {
-  const { data, error } = await supabase
+  let data = null;
+  let error = null;
+
+  ({ data, error } = await supabase
     .from('notifications')
     .update({ is_read: true })
     .eq('id', notificationId)
     .eq('is_read', false)
-    .select('id, user_id, type, reference_id, message, is_read, created_at')
-    .maybeSingle();
+    .select('id, user_id, type, reference_type, reference_id, message, is_read, created_at')
+    .maybeSingle());
+
+  if (error && isMissingReferenceTypeColumn(error)) {
+    ({ data, error } = await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', notificationId)
+      .eq('is_read', false)
+      .select('id, user_id, type, reference_id, message, is_read, created_at')
+      .maybeSingle());
+  }
 
   if (error) {
     if (isMissingNotificationsRelation(error)) {
