@@ -15,6 +15,10 @@ const state = {
 function getNotificationHref(notification) {
   const referenceType = notification.referenceType || 'post';
 
+  if (referenceType === 'chat' && notification.referenceId) {
+    return `/chat.html?conversation=${encodeURIComponent(notification.referenceId)}`;
+  }
+
   if (referenceType === 'comment' && notification.referenceId) {
     return `/post-detail.html?comment=${encodeURIComponent(notification.referenceId)}`;
   }
@@ -63,21 +67,95 @@ function formatRelativeDate(value) {
   return `${Math.floor(deltaMs / day)}d ago`;
 }
 
+function getNotificationIconClass(notification) {
+  const type = (notification.type || '').toLowerCase();
+  const referenceType = (notification.referenceType || '').toLowerCase();
+
+  if (type === 'like' || referenceType === 'like') {
+    return 'bi bi-heart-fill';
+  }
+
+  if (type === 'chat_message' || referenceType === 'chat') {
+    return 'bi bi-chat-left-text-fill';
+  }
+
+  if (type === 'comment' || referenceType === 'comment') {
+    return 'bi bi-chat-dots-fill';
+  }
+
+  if (type === 'moderation') {
+    return 'bi bi-shield-exclamation';
+  }
+
+  return 'bi bi-bell-fill';
+}
+
+function getNotificationTypeLabel(notification) {
+  const type = (notification.type || '').toLowerCase();
+  const referenceType = (notification.referenceType || '').toLowerCase();
+
+  if (type === 'like' || referenceType === 'like') {
+    return 'New like';
+  }
+
+  if (type === 'chat_message' || referenceType === 'chat') {
+    return 'New message';
+  }
+
+  if (type === 'comment' || referenceType === 'comment') {
+    return 'New comment';
+  }
+
+  if (type === 'moderation') {
+    return 'Moderation';
+  }
+
+  if (type === 'system') {
+    return 'System';
+  }
+
+  return 'Notification';
+}
+
 export function renderNotificationItem(notification) {
   const item = document.createElement('a');
   item.href = getNotificationHref(notification);
-  item.className = `dropdown-item text-wrap py-2 ${notification.isRead ? '' : 'fw-semibold'}`.trim();
+  item.className = `dropdown-item text-wrap py-2 px-3 aqua-notification-item ${notification.isRead ? '' : 'is-unread'}`.trim();
   item.dataset.notificationId = notification.id;
 
-  const message = document.createElement('div');
-  message.className = 'small';
-  message.textContent = notification.message;
+  const topRow = document.createElement('div');
+  topRow.className = 'd-flex align-items-center gap-2 mb-1';
 
-  const meta = document.createElement('div');
-  meta.className = 'text-secondary small';
+  const iconWrap = document.createElement('span');
+  iconWrap.className = 'aqua-notification-icon';
+
+  const icon = document.createElement('i');
+  icon.className = getNotificationIconClass(notification);
+  icon.setAttribute('aria-hidden', 'true');
+  iconWrap.append(icon);
+
+  const typeLabel = document.createElement('span');
+  typeLabel.className = 'small fw-semibold text-body';
+  typeLabel.textContent = getNotificationTypeLabel(notification);
+
+  const meta = document.createElement('span');
+  meta.className = 'text-secondary small ms-auto';
   meta.textContent = formatRelativeDate(notification.createdAt);
 
-  item.append(message, meta);
+  topRow.append(iconWrap, typeLabel, meta);
+
+  const message = document.createElement('div');
+  message.className = 'small text-secondary-emphasis';
+  message.textContent = notification.message;
+
+  if (!notification.isRead) {
+    const unreadDot = document.createElement('span');
+    unreadDot.className = 'aqua-notification-unread-dot';
+    unreadDot.setAttribute('aria-hidden', 'true');
+    topRow.append(unreadDot);
+  }
+
+  item.append(topRow, message);
   return item;
 }
 
