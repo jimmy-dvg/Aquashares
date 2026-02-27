@@ -42,7 +42,7 @@
             <li class="nav-item dropdown d-none" data-nav-auth data-notifications-dropdown>
               <button
                 type="button"
-                class="btn btn-link nav-link p-0 position-relative"
+                class="btn btn-outline-secondary btn-sm position-relative aqua-nav-icon-btn"
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
                 aria-label="Notifications"
@@ -59,8 +59,25 @@
                 <div class="px-3 py-2 text-secondary small" data-notifications-empty>No notifications yet.</div>
               </div>
             </li>
-            <li class="nav-item d-none" data-nav-auth><span class="nav-link" data-nav-status></span></li>
-            <li class="nav-item d-none" data-nav-auth><button type="button" class="btn btn-link nav-link p-0" data-nav-logout>Logout</button></li>
+            <li class="nav-item dropdown d-none" data-nav-auth>
+              <button
+                type="button"
+                class="btn btn-outline-secondary btn-sm dropdown-toggle aqua-nav-user-trigger"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                data-nav-user-button
+              >
+                <i class="bi bi-person-circle" aria-hidden="true"></i>
+                <span data-nav-status>User</span>
+                <span class="badge text-bg-warning d-none" data-nav-user-role>Admin</span>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="/profile.html">Profile</a></li>
+                <li class="d-none" data-nav-admin><a class="dropdown-item" href="/admin.html">Admin Panel</a></li>
+                <li><hr class="dropdown-divider" /></li>
+                <li><button type="button" class="dropdown-item text-danger" data-nav-logout>Logout</button></li>
+              </ul>
+            </li>
           </ul>
         </div>
       </div>

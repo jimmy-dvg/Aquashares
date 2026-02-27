@@ -89,6 +89,22 @@ function initializeNavbarSearch() {
   });
 }
 
+function toggleTopLevelAccountLinks({ isAuthenticated, isAdmin }) {
+  const profileLink = document.querySelector('#mainNavbar a.nav-link[href="/profile.html"]');
+  const adminLink = document.querySelector('#mainNavbar a.nav-link[href="/admin.html"]');
+
+  const profileItem = profileLink?.closest('.nav-item');
+  const adminItem = adminLink?.closest('.nav-item');
+
+  if (isAuthenticated && profileItem instanceof HTMLElement) {
+    profileItem.classList.add('d-none');
+  }
+
+  if (isAdmin && adminItem instanceof HTMLElement) {
+    adminItem.classList.add('d-none');
+  }
+}
+
 async function initializeNavbar() {
   const guestElements = document.querySelectorAll('[data-nav-guest]');
   const authElements = document.querySelectorAll('[data-nav-auth]');
@@ -105,6 +121,7 @@ async function initializeNavbar() {
     toggleElements(guestElements, true);
     toggleElements(authElements, false);
     toggleElements(adminElements, false);
+    toggleTopLevelAccountLinks({ isAuthenticated: false, isAdmin: false });
 
     if (statusElement) {
       statusElement.textContent = 'Guest';
@@ -122,6 +139,7 @@ async function initializeNavbar() {
 
   const role = await getCurrentUserRole(user.id);
   toggleElements(adminElements, role === 'admin');
+  toggleTopLevelAccountLinks({ isAuthenticated: true, isAdmin: role === 'admin' });
 
   if (statusElement) {
     statusElement.textContent = user.email || 'User';
