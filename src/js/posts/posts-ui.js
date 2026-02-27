@@ -1,5 +1,7 @@
 import { supabase } from '../services/supabase-client.js';
 import { cleanupCommentsUi, initializeCommentsUi } from '../comments/comments-ui.js';
+import { getLikesSummaryByPostIds, subscribeToPostLikes, togglePostLike } from '../reactions/reactions-service.js';
+import { setLikeButtonState } from '../reactions/reactions-ui.js';
 import { deletePost, getAllPosts, getCategories } from './posts-service.js';
 import { showConfirmModal } from '../utils/confirm-modal.js';
 import {
@@ -29,8 +31,19 @@ const feedState = {
     viewer: null,
     categories: null,
     refreshPromise: null
-  }
+  },
+  toggleInFlightByPostId: new Set(),
+  unsubscribeLikesRealtime: null
 };
+
+function cleanupLikesRealtime() {
+  if (typeof feedState.unsubscribeLikesRealtime !== 'function') {
+    return;
+  }
+
+  feedState.unsubscribeLikesRealtime();
+  feedState.unsubscribeLikesRealtime = null;
+}
 
 function scheduleFeedLoad(options = {}) {
   if (feedState.loadDebounceTimer) {
@@ -44,7 +57,7 @@ function scheduleFeedLoad(options = {}) {
 }
 
 
-function mapPostWithUiData(post, authorById, commentCountByPostId) {
+function mapPostWithUiData(post, authorById, commentCountByPostId, likesSummaryByPostId) {
   const author = authorById.get(post.userId) || {
     id: post.userId,
     username: '',
@@ -53,10 +66,17 @@ function mapPostWithUiData(post, authorById, commentCountByPostId) {
     role: 'user'
   };
 
+  const likesSummary = likesSummaryByPostId.get(post.id) || {
+    likeCount: 0,
+    likedByViewer: false
+  };
+
   return {
     ...post,
     author,
-    commentCount: commentCountByPostId.get(post.id) || 0
+    commentCount: commentCountByPostId.get(post.id) || 0,
+    likeCount: likesSummary.likeCount,
+    likedByViewer: likesSummary.likedByViewer
   };
 }
 
@@ -150,7 +170,12 @@ async function getFeedData(forceRefresh = false) {
       buildCommentCountMap(posts)
     ]);
 
-    const postsWithUiData = posts.map((post) => mapPostWithUiData(post, authorMap, commentCountMap));
+    const likesSummaryByPostId = await getLikesSummaryByPostIds(
+      posts.map((post) => post.id),
+      viewer.userId
+    ).catch(() => new Map());
+
+    const postsWithUiData = posts.map((post) => mapPostWithUiData(post, authorMap, commentCountMap, likesSummaryByPostId));
 
     feedState.cache.postsWithUiData = postsWithUiData;
     feedState.cache.viewer = viewer;
@@ -170,6 +195,78 @@ async function getFeedData(forceRefresh = false) {
   } finally {
     feedState.cache.refreshPromise = null;
   }
+}
+
+function updateCachedPostLikeState(postId, likeState) {
+  const posts = feedState.cache.postsWithUiData;
+  if (!posts?.length) {
+    return;
+  }
+
+  const index = posts.findIndex((post) => post.id === postId);
+  if (index < 0) {
+    return;
+  }
+
+  posts[index] = {
+    ...posts[index],
+    likeCount: likeState.likeCount,
+    likedByViewer: likeState.likedByViewer
+  };
+}
+
+async function refreshPostLikeState(postId, viewerUserId) {
+  const likesSummaryByPostId = await getLikesSummaryByPostIds([postId], viewerUserId).catch(() => new Map());
+  const likesSummary = likesSummaryByPostId.get(postId) || {
+    likeCount: 0,
+    likedByViewer: false
+  };
+
+  return {
+    postId,
+    likeCount: likesSummary.likeCount,
+    likedByViewer: likesSummary.likedByViewer
+  };
+}
+
+function applyLikeStateToVisibleButtons(container, viewer, likeState) {
+  if (!container) {
+    return;
+  }
+
+  const buttons = container.querySelectorAll(`[data-action="toggle-like"][data-post-id="${likeState.postId}"]`);
+
+  buttons.forEach((button) => {
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    const isPending = button.dataset.pending === 'true';
+
+    setLikeButtonState(button, {
+      ...likeState,
+      isAuthenticated: Boolean(viewer?.userId),
+      isPending
+    });
+  });
+}
+
+function bindLikesRealtime(container, viewer, posts) {
+  cleanupLikesRealtime();
+
+  const postIds = (posts || []).map((post) => post.id).filter(Boolean);
+  if (!postIds.length) {
+    return;
+  }
+
+  feedState.unsubscribeLikesRealtime = subscribeToPostLikes(postIds, async (postId) => {
+    try {
+      const nextState = await refreshPostLikeState(postId, viewer?.userId || null);
+      updateCachedPostLikeState(postId, nextState);
+      applyLikeStateToVisibleButtons(container, viewer, nextState);
+    } catch {
+    }
+  });
 }
 
 
@@ -288,6 +385,75 @@ export function attachDeleteHandler(container, afterDelete) {
   });
 }
 
+export function attachLikeHandler(container, viewer, notificationRoot) {
+  if (!container || container.dataset.likeBound === 'true') {
+    return;
+  }
+
+  container.dataset.likeBound = 'true';
+  container.addEventListener('click', async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    const likeButton = target.closest('[data-action="toggle-like"]');
+    if (!(likeButton instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    const postId = likeButton.dataset.postId;
+    if (!postId || !viewer?.userId) {
+      return;
+    }
+
+    if (feedState.toggleInFlightByPostId.has(postId)) {
+      return;
+    }
+
+    const previousState = {
+      postId,
+      likeCount: Number(likeButton.dataset.likeCount || '0'),
+      likedByViewer: likeButton.dataset.liked === 'true'
+    };
+
+    const optimisticState = {
+      ...previousState,
+      likedByViewer: !previousState.likedByViewer,
+      likeCount: Math.max(0, previousState.likeCount + (previousState.likedByViewer ? -1 : 1))
+    };
+
+    feedState.toggleInFlightByPostId.add(postId);
+    setLikeButtonState(likeButton, {
+      ...optimisticState,
+      isAuthenticated: true,
+      isPending: true
+    });
+
+    try {
+      const nextState = await togglePostLike(postId, viewer.userId);
+      setLikeButtonState(likeButton, {
+        ...nextState,
+        isAuthenticated: true,
+        isPending: false
+      });
+      updateCachedPostLikeState(postId, nextState);
+    } catch (error) {
+      setLikeButtonState(likeButton, {
+        ...previousState,
+        isAuthenticated: true,
+        isPending: false
+      });
+
+      if (notificationRoot) {
+        notificationRoot.replaceChildren(createNotification(error.message || 'Unable to update like.'));
+      }
+    } finally {
+      feedState.toggleInFlightByPostId.delete(postId);
+    }
+  });
+}
+
 export async function loadFeed(options = {}) {
   const forceRefresh = options.forceRefresh === true;
   const { feedContainer, loadingElement, errorElement, notificationRoot, categoryFilter, clearFilterButton, filterStatus } = getUiElements();
@@ -314,6 +480,7 @@ export async function loadFeed(options = {}) {
 
   try {
     cleanupCommentsUi();
+    cleanupLikesRealtime();
 
     const selectedCategorySlugFromQuery = getCategoryFromQuery();
 
@@ -355,12 +522,14 @@ export async function loadFeed(options = {}) {
 
       feedContainer.append(fragment);
       await initializeCommentsUi(feedContainer, viewer.userId);
+      bindLikesRealtime(feedContainer, viewer, filteredPosts);
       focusPostFromHash();
       focusCommentFromQuery();
     }
 
     attachEditHandler(feedContainer);
     attachDeleteHandler(feedContainer, () => loadFeed({ forceRefresh: true }));
+    attachLikeHandler(feedContainer, viewer, notificationRoot);
   } catch (error) {
     showError(errorElement, error.message || 'Unable to load feed right now. Please try again.');
   } finally {

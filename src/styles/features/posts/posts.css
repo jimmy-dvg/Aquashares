@@ -169,6 +169,30 @@
   transform: translateY(-1px);
 }
 
+.aqua-like-button {
+  min-width: 98px;
+  justify-content: center;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.aqua-like-button:hover,
+.aqua-like-button:focus-visible {
+  transform: translateY(-1px);
+}
+
+.aqua-like-button.btn-primary {
+  box-shadow: 0 0.35rem 0.75rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+.aqua-like-button:disabled {
+  transform: none;
+  box-shadow: none;
+}
+
+.aqua-like-count {
+  min-width: 1.75rem;
+}
+
 @media (max-width: 575.98px) {
   .feed-toolbar {
     align-items: stretch !important;

@@ -1,4 +1,5 @@
 import { createCommentsBlock } from '../comments/comments-ui.js';
+import { createLikeButton } from '../reactions/reactions-ui.js';
 
 function formatDate(value) {
   const date = new Date(value);
@@ -317,19 +318,12 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false)
   commentsText.textContent = `${post.commentCount} comments`;
   commentsInfo.append(commentsIcon, commentsText);
 
-  const likeButton = document.createElement('button');
-  likeButton.type = 'button';
-  likeButton.className = 'btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1';
-  likeButton.disabled = true;
-  likeButton.setAttribute('aria-label', 'Like post (coming soon)');
-
-  const likeIcon = document.createElement('i');
-  likeIcon.className = 'bi bi-heart';
-  likeIcon.setAttribute('aria-hidden', 'true');
-
-  const likeText = document.createElement('span');
-  likeText.textContent = 'Like';
-  likeButton.append(likeIcon, likeText);
+  const likeButton = createLikeButton({
+    postId: post.id,
+    likeCount: post.likeCount || 0,
+    likedByViewer: post.likedByViewer === true,
+    isAuthenticated
+  });
 
   interactionBar.append(commentsInfo, likeButton);
 

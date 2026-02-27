@@ -1,11 +1,14 @@
 import { getCurrentUserRole } from '../auth/auth-guard.js';
 import { cleanupCommentsUi, createCommentsBlock, initializeCommentsUi } from '../comments/comments-ui.js';
+import { getLikesSummaryByPostIds, subscribeToPostLikes, togglePostLike } from '../reactions/reactions-service.js';
+import { createLikeButton, setLikeButtonState } from '../reactions/reactions-ui.js';
 import { supabase } from '../services/supabase-client.js';
 import { deletePost, getPostById } from './posts-service.js';
 import { showConfirmModal } from '../utils/confirm-modal.js';
 import { renderPost } from './post-detail-view.js';
 
 const DEFAULT_AVATAR = '/assets/avatars/default-avatar.svg';
+let unsubscribePostLikesRealtime = null;
 
 function getElements() {
   return {
@@ -20,6 +23,7 @@ function getElements() {
     category: document.querySelector('[data-post-category]'),
     title: document.querySelector('[data-post-title]'),
     body: document.querySelector('[data-post-body]'),
+    reactionsRoot: document.querySelector('[data-post-reactions]'),
     galleryMain: document.querySelector('[data-post-gallery-main]'),
     galleryThumbs: document.querySelector('[data-post-gallery-thumbs]'),
     commentsRoot: document.querySelector('[data-post-comments-root]'),
@@ -87,6 +91,15 @@ function clearError(elements) {
 
   elements.error.textContent = '';
   elements.error.classList.add('d-none');
+}
+
+function cleanupPostLikesRealtime() {
+  if (typeof unsubscribePostLikesRealtime !== 'function') {
+    return;
+  }
+
+  unsubscribePostLikesRealtime();
+  unsubscribePostLikesRealtime = null;
 }
 
 
@@ -210,6 +223,106 @@ function focusCommentFromQuery() {
   }, 2200);
 }
 
+function renderPostReactions(elements, post, viewer) {
+  if (!elements.reactionsRoot) {
+    return;
+  }
+
+  elements.reactionsRoot.replaceChildren();
+
+  const reactionsBar = document.createElement('div');
+  reactionsBar.className = 'd-flex align-items-center justify-content-between gap-2 border rounded-3 px-3 py-2';
+
+  const summary = document.createElement('div');
+  summary.className = 'small text-secondary';
+  summary.textContent = `${post.likeCount || 0} likes`;
+
+  const likeButton = createLikeButton({
+    postId: post.id,
+    likeCount: post.likeCount || 0,
+    likedByViewer: post.likedByViewer === true,
+    isAuthenticated: Boolean(viewer?.userId)
+  });
+
+  reactionsBar.append(summary, likeButton);
+  elements.reactionsRoot.append(reactionsBar);
+
+  let isPending = false;
+
+  likeButton.addEventListener('click', async () => {
+    if (!viewer?.userId || isPending) {
+      return;
+    }
+
+    const previousState = {
+      postId: post.id,
+      likeCount: Number(likeButton.dataset.likeCount || '0'),
+      likedByViewer: likeButton.dataset.liked === 'true'
+    };
+
+    const optimisticState = {
+      ...previousState,
+      likedByViewer: !previousState.likedByViewer,
+      likeCount: Math.max(0, previousState.likeCount + (previousState.likedByViewer ? -1 : 1))
+    };
+
+    isPending = true;
+    setLikeButtonState(likeButton, {
+      ...optimisticState,
+      isAuthenticated: true,
+      isPending: true
+    });
+    summary.textContent = `${optimisticState.likeCount} likes`;
+
+    try {
+      const nextState = await togglePostLike(post.id, viewer.userId);
+      post.likeCount = nextState.likeCount;
+      post.likedByViewer = nextState.likedByViewer;
+
+      setLikeButtonState(likeButton, {
+        ...nextState,
+        isAuthenticated: true,
+        isPending: false
+      });
+      summary.textContent = `${nextState.likeCount} likes`;
+    } catch (error) {
+      setLikeButtonState(likeButton, {
+        ...previousState,
+        isAuthenticated: true,
+        isPending: false
+      });
+      summary.textContent = `${previousState.likeCount} likes`;
+      showError(elements, error.message || 'Unable to update like.');
+    } finally {
+      isPending = false;
+    }
+  });
+
+  cleanupPostLikesRealtime();
+  unsubscribePostLikesRealtime = subscribeToPostLikes([post.id], async () => {
+    try {
+      const likesSummaryByPostId = await getLikesSummaryByPostIds([post.id], viewer?.userId || null).catch(() => new Map());
+      const nextState = likesSummaryByPostId.get(post.id) || {
+        likeCount: 0,
+        likedByViewer: false
+      };
+
+      post.likeCount = nextState.likeCount;
+      post.likedByViewer = nextState.likedByViewer;
+
+      setLikeButtonState(likeButton, {
+        postId: post.id,
+        likeCount: nextState.likeCount,
+        likedByViewer: nextState.likedByViewer,
+        isAuthenticated: Boolean(viewer?.userId),
+        isPending: likeButton.dataset.pending === 'true'
+      });
+      summary.textContent = `${nextState.likeCount} likes`;
+    } catch {
+    }
+  });
+}
+
 export async function initializePostDetailPage() {
   const elements = getElements();
 
@@ -223,6 +336,7 @@ export async function initializePostDetailPage() {
   setLoading(elements, true);
   clearError(elements);
   cleanupCommentsUi();
+  cleanupPostLikesRealtime();
 
   try {
     const postId = await resolvePostId(requestedPostId, commentId);
@@ -243,8 +357,21 @@ export async function initializePostDetailPage() {
       getViewerState()
     ]);
 
+    const likesSummaryByPostId = await getLikesSummaryByPostIds([post.id], viewer.userId).catch(() => new Map());
+    const likesSummary = likesSummaryByPostId.get(post.id) || {
+      likeCount: 0,
+      likedByViewer: false
+    };
+
+    const postWithLikes = {
+      ...post,
+      likeCount: likesSummary.likeCount,
+      likedByViewer: likesSummary.likedByViewer
+    };
+
     const author = await getAuthorData(post.userId);
-    renderPost(elements, post, author, DEFAULT_AVATAR);
+    renderPost(elements, postWithLikes, author, DEFAULT_AVATAR);
+    renderPostReactions(elements, postWithLikes, viewer);
 
     const canManagePost = Boolean(viewer.userId) && (viewer.isAdmin || viewer.userId === post.userId);
     if (elements.actions) {
