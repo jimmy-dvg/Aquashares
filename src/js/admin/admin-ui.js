@@ -2,7 +2,8 @@ import {
   getAdminNotifications,
   getAllComments,
   getAllPosts,
-  getAllUsers
+  getAllUsers,
+  subscribeToAdminNotifications
 } from './admin-service.js';
 import { requireAdmin } from '../auth/auth-guard.js';
 import {
@@ -22,7 +23,13 @@ import {
 
 const adminState = {
   posts: [],
+  users: [],
+  comments: [],
+  adminNotifications: [],
   postsFilterBound: false,
+  usersFilterBound: false,
+  commentsFilterBound: false,
+  adminNotificationsFilterBound: false,
   popstateBound: false,
   cache: {
     users: null,
@@ -31,8 +38,25 @@ const adminState = {
     adminNotifications: null,
     refreshPromise: null
   },
-  autoRefreshIntervalId: null
+  autoRefreshIntervalId: null,
+  unsubscribeAdminNotifications: null
 };
+
+function cleanupAutoRefresh() {
+  if (adminState.autoRefreshIntervalId) {
+    window.clearInterval(adminState.autoRefreshIntervalId);
+  }
+
+  adminState.autoRefreshIntervalId = null;
+}
+
+function cleanupAdminNotificationsSubscription() {
+  if (typeof adminState.unsubscribeAdminNotifications === 'function') {
+    adminState.unsubscribeAdminNotifications();
+  }
+
+  adminState.unsubscribeAdminNotifications = null;
+}
 
 async function getDashboardData(forceRefresh = false) {
   if (!forceRefresh && adminState.cache.users && adminState.cache.posts && adminState.cache.comments && adminState.cache.adminNotifications) {
@@ -116,6 +140,18 @@ function getElements() {
     postsClearFilter: document.querySelector('[data-admin-posts-clear-filter]'),
     postsFilterStatus: document.querySelector('[data-admin-posts-filter-status]'),
     commentsBody: document.querySelector('[data-comments-body]'),
+    usersSearchInput: document.querySelector('[data-admin-users-search]'),
+    usersRoleFilter: document.querySelector('[data-admin-users-role-filter]'),
+    usersClearFilter: document.querySelector('[data-admin-users-clear-filter]'),
+    usersFilterStatus: document.querySelector('[data-admin-users-filter-status]'),
+    commentsSearchInput: document.querySelector('[data-admin-comments-search]'),
+    commentsClearFilter: document.querySelector('[data-admin-comments-clear-filter]'),
+    commentsFilterStatus: document.querySelector('[data-admin-comments-filter-status]'),
+    adminNotificationsSearchInput: document.querySelector('[data-admin-notifications-search]'),
+    adminNotificationsStatusFilter: document.querySelector('[data-admin-notifications-status-filter]'),
+    adminNotificationsSeverityFilter: document.querySelector('[data-admin-notifications-severity-filter]'),
+    adminNotificationsClearFilter: document.querySelector('[data-admin-notifications-clear-filter]'),
+    adminNotificationsFilterStatus: document.querySelector('[data-admin-notifications-filter-status]'),
     adminNotificationsLoading: document.querySelector('[data-admin-notifications-loading]'),
     adminNotificationsList: document.querySelector('[data-admin-notifications-list]'),
     usersEmpty: document.querySelector('[data-users-empty]'),
@@ -134,6 +170,280 @@ function getElements() {
     previewMeta: document.querySelector('[data-preview-meta]'),
     previewBody: document.querySelector('[data-preview-body]')
   };
+}
+
+function normalizeText(value) {
+  return (value || '').toLowerCase().trim();
+}
+
+function updateUsersFilterUi(elements, filteredCount, totalCount) {
+  const query = elements.usersSearchInput instanceof HTMLInputElement
+    ? normalizeText(elements.usersSearchInput.value)
+    : '';
+  const role = elements.usersRoleFilter instanceof HTMLSelectElement
+    ? (elements.usersRoleFilter.value || '')
+    : '';
+
+  const hasFilter = Boolean(query || role);
+
+  if (elements.usersClearFilter) {
+    elements.usersClearFilter.classList.toggle('d-none', !hasFilter);
+  }
+
+  if (!elements.usersFilterStatus) {
+    return;
+  }
+
+  if (!hasFilter) {
+    elements.usersFilterStatus.textContent = '';
+    elements.usersFilterStatus.classList.add('d-none');
+    return;
+  }
+
+  const labels = [];
+  if (query) {
+    labels.push(`query: "${query}"`);
+  }
+  if (role) {
+    labels.push(`role: ${role}`);
+  }
+
+  elements.usersFilterStatus.textContent = `Showing ${filteredCount}/${totalCount} users (${labels.join(', ')})`;
+  elements.usersFilterStatus.classList.remove('d-none');
+}
+
+function renderFilteredUsers(elements) {
+  const query = elements.usersSearchInput instanceof HTMLInputElement
+    ? normalizeText(elements.usersSearchInput.value)
+    : '';
+  const role = elements.usersRoleFilter instanceof HTMLSelectElement
+    ? (elements.usersRoleFilter.value || '')
+    : '';
+
+  const filteredUsers = adminState.users.filter((user) => {
+    if (role && user.role !== role) {
+      return false;
+    }
+
+    if (!query) {
+      return true;
+    }
+
+    const haystack = normalizeText(`${user.username} ${user.displayName} ${user.email}`);
+    return haystack.includes(query);
+  });
+
+  renderUsersTable(filteredUsers, elements);
+  updateUsersFilterUi(elements, filteredUsers.length, adminState.users.length);
+}
+
+function attachUsersFilterHandler(elements) {
+  if (adminState.usersFilterBound) {
+    return;
+  }
+
+  const canBindSearch = elements.usersSearchInput instanceof HTMLInputElement;
+  const canBindRole = elements.usersRoleFilter instanceof HTMLSelectElement;
+
+  if (!canBindSearch || !canBindRole) {
+    return;
+  }
+
+  adminState.usersFilterBound = true;
+
+  elements.usersSearchInput.addEventListener('input', () => {
+    renderFilteredUsers(elements);
+  });
+
+  elements.usersRoleFilter.addEventListener('change', () => {
+    renderFilteredUsers(elements);
+  });
+
+  if (elements.usersClearFilter && elements.usersClearFilter.dataset.bound !== 'true') {
+    elements.usersClearFilter.dataset.bound = 'true';
+    elements.usersClearFilter.addEventListener('click', () => {
+      elements.usersSearchInput.value = '';
+      elements.usersRoleFilter.value = '';
+      renderFilteredUsers(elements);
+    });
+  }
+}
+
+function updateCommentsFilterUi(elements, filteredCount, totalCount) {
+  const query = elements.commentsSearchInput instanceof HTMLInputElement
+    ? normalizeText(elements.commentsSearchInput.value)
+    : '';
+
+  if (elements.commentsClearFilter) {
+    elements.commentsClearFilter.classList.toggle('d-none', !query);
+  }
+
+  if (!elements.commentsFilterStatus) {
+    return;
+  }
+
+  if (!query) {
+    elements.commentsFilterStatus.textContent = '';
+    elements.commentsFilterStatus.classList.add('d-none');
+    return;
+  }
+
+  elements.commentsFilterStatus.textContent = `Showing ${filteredCount}/${totalCount} comments for "${query}"`;
+  elements.commentsFilterStatus.classList.remove('d-none');
+}
+
+function renderFilteredComments(elements) {
+  const query = elements.commentsSearchInput instanceof HTMLInputElement
+    ? normalizeText(elements.commentsSearchInput.value)
+    : '';
+
+  const filteredComments = adminState.comments.filter((comment) => {
+    if (!query) {
+      return true;
+    }
+
+    const haystack = normalizeText(`${comment.postTitle} ${comment.authorUsername} ${comment.authorEmail} ${comment.body}`);
+    return haystack.includes(query);
+  });
+
+  renderCommentsTable(filteredComments, elements);
+  updateCommentsFilterUi(elements, filteredComments.length, adminState.comments.length);
+}
+
+function attachCommentsFilterHandler(elements) {
+  if (adminState.commentsFilterBound) {
+    return;
+  }
+
+  if (!(elements.commentsSearchInput instanceof HTMLInputElement)) {
+    return;
+  }
+
+  adminState.commentsFilterBound = true;
+
+  elements.commentsSearchInput.addEventListener('input', () => {
+    renderFilteredComments(elements);
+  });
+
+  if (elements.commentsClearFilter && elements.commentsClearFilter.dataset.bound !== 'true') {
+    elements.commentsClearFilter.dataset.bound = 'true';
+    elements.commentsClearFilter.addEventListener('click', () => {
+      elements.commentsSearchInput.value = '';
+      renderFilteredComments(elements);
+    });
+  }
+}
+
+function updateAdminNotificationsFilterUi(elements, filteredCount, totalCount) {
+  const query = elements.adminNotificationsSearchInput instanceof HTMLInputElement
+    ? normalizeText(elements.adminNotificationsSearchInput.value)
+    : '';
+  const status = elements.adminNotificationsStatusFilter instanceof HTMLSelectElement
+    ? (elements.adminNotificationsStatusFilter.value || '')
+    : '';
+  const severity = elements.adminNotificationsSeverityFilter instanceof HTMLSelectElement
+    ? (elements.adminNotificationsSeverityFilter.value || '')
+    : '';
+
+  const hasFilter = Boolean(query || status || severity);
+
+  if (elements.adminNotificationsClearFilter) {
+    elements.adminNotificationsClearFilter.classList.toggle('d-none', !hasFilter);
+  }
+
+  if (!elements.adminNotificationsFilterStatus) {
+    return;
+  }
+
+  if (!hasFilter) {
+    elements.adminNotificationsFilterStatus.textContent = '';
+    elements.adminNotificationsFilterStatus.classList.add('d-none');
+    return;
+  }
+
+  const labels = [];
+  if (query) {
+    labels.push(`query: "${query}"`);
+  }
+  if (status) {
+    labels.push(`status: ${status}`);
+  }
+  if (severity) {
+    labels.push(`severity: ${severity}`);
+  }
+
+  elements.adminNotificationsFilterStatus.textContent = `Showing ${filteredCount}/${totalCount} notifications (${labels.join(', ')})`;
+  elements.adminNotificationsFilterStatus.classList.remove('d-none');
+}
+
+function renderFilteredAdminNotifications(elements, currentAdminId) {
+  const query = elements.adminNotificationsSearchInput instanceof HTMLInputElement
+    ? normalizeText(elements.adminNotificationsSearchInput.value)
+    : '';
+  const status = elements.adminNotificationsStatusFilter instanceof HTMLSelectElement
+    ? (elements.adminNotificationsStatusFilter.value || '')
+    : '';
+  const severity = elements.adminNotificationsSeverityFilter instanceof HTMLSelectElement
+    ? (elements.adminNotificationsSeverityFilter.value || '')
+    : '';
+
+  const filteredNotifications = adminState.adminNotifications.filter((notification) => {
+    if (status && notification.status !== status) {
+      return false;
+    }
+
+    if (severity && notification.severity !== severity) {
+      return false;
+    }
+
+    if (!query) {
+      return true;
+    }
+
+    const haystack = normalizeText(`${notification.title} ${notification.message} ${notification.sourceType} ${notification.referenceType}`);
+    return haystack.includes(query);
+  });
+
+  renderAdminNotifications(filteredNotifications, elements, currentAdminId);
+  updateAdminNotificationsFilterUi(elements, filteredNotifications.length, adminState.adminNotifications.length);
+}
+
+function attachAdminNotificationsFilterHandler(elements, currentAdminId) {
+  if (adminState.adminNotificationsFilterBound) {
+    return;
+  }
+
+  const canBindSearch = elements.adminNotificationsSearchInput instanceof HTMLInputElement;
+  const canBindStatus = elements.adminNotificationsStatusFilter instanceof HTMLSelectElement;
+  const canBindSeverity = elements.adminNotificationsSeverityFilter instanceof HTMLSelectElement;
+
+  if (!canBindSearch || !canBindStatus || !canBindSeverity) {
+    return;
+  }
+
+  adminState.adminNotificationsFilterBound = true;
+
+  elements.adminNotificationsSearchInput.addEventListener('input', () => {
+    renderFilteredAdminNotifications(elements, currentAdminId);
+  });
+
+  elements.adminNotificationsStatusFilter.addEventListener('change', () => {
+    renderFilteredAdminNotifications(elements, currentAdminId);
+  });
+
+  elements.adminNotificationsSeverityFilter.addEventListener('change', () => {
+    renderFilteredAdminNotifications(elements, currentAdminId);
+  });
+
+  if (elements.adminNotificationsClearFilter && elements.adminNotificationsClearFilter.dataset.bound !== 'true') {
+    elements.adminNotificationsClearFilter.dataset.bound = 'true';
+    elements.adminNotificationsClearFilter.addEventListener('click', () => {
+      elements.adminNotificationsSearchInput.value = '';
+      elements.adminNotificationsStatusFilter.value = '';
+      elements.adminNotificationsSeverityFilter.value = '';
+      renderFilteredAdminNotifications(elements, currentAdminId);
+    });
+  }
 }
 
 
@@ -317,11 +627,38 @@ export async function loadDashboard() {
 
     clearFeedback(elements);
     setRefreshingState(elements, true);
+    if (elements.usersSearchInput instanceof HTMLInputElement) {
+      elements.usersSearchInput.disabled = true;
+    }
+    if (elements.usersRoleFilter instanceof HTMLSelectElement) {
+      elements.usersRoleFilter.disabled = true;
+    }
+    if (elements.usersClearFilter instanceof HTMLButtonElement) {
+      elements.usersClearFilter.disabled = true;
+    }
     if (elements.postsCategoryFilter instanceof HTMLSelectElement) {
       elements.postsCategoryFilter.disabled = true;
     }
     if (elements.postsClearFilter instanceof HTMLButtonElement) {
       elements.postsClearFilter.disabled = true;
+    }
+    if (elements.commentsSearchInput instanceof HTMLInputElement) {
+      elements.commentsSearchInput.disabled = true;
+    }
+    if (elements.commentsClearFilter instanceof HTMLButtonElement) {
+      elements.commentsClearFilter.disabled = true;
+    }
+    if (elements.adminNotificationsSearchInput instanceof HTMLInputElement) {
+      elements.adminNotificationsSearchInput.disabled = true;
+    }
+    if (elements.adminNotificationsStatusFilter instanceof HTMLSelectElement) {
+      elements.adminNotificationsStatusFilter.disabled = true;
+    }
+    if (elements.adminNotificationsSeverityFilter instanceof HTMLSelectElement) {
+      elements.adminNotificationsSeverityFilter.disabled = true;
+    }
+    if (elements.adminNotificationsClearFilter instanceof HTMLButtonElement) {
+      elements.adminNotificationsClearFilter.disabled = true;
     }
     setVisible(elements.usersLoading, true);
     setVisible(elements.postsLoading, true);
@@ -331,12 +668,16 @@ export async function loadDashboard() {
     try {
       const { users, posts, comments, adminNotifications } = await getDashboardData(forceRefresh);
 
+      adminState.users = users;
       adminState.posts = posts;
-      renderUsersTable(users, elements);
+      adminState.comments = comments;
+      adminState.adminNotifications = adminNotifications;
+
+      renderFilteredUsers(elements);
       setPostsFilterOptions(posts, elements);
       renderFilteredPosts(elements);
-      renderCommentsTable(comments, elements);
-      renderAdminNotifications(adminNotifications, elements, adminSession.user.id);
+      renderFilteredComments(elements);
+      renderFilteredAdminNotifications(elements, adminSession.user.id);
       setLastUpdated(elements);
     } catch (error) {
       showFeedback(elements, error.message || 'Unable to load admin dashboard.');
@@ -345,29 +686,69 @@ export async function loadDashboard() {
       setVisible(elements.postsLoading, false);
       setVisible(elements.commentsLoading, false);
       setVisible(elements.adminNotificationsLoading, false);
+      if (elements.usersSearchInput instanceof HTMLInputElement) {
+        elements.usersSearchInput.disabled = false;
+      }
+      if (elements.usersRoleFilter instanceof HTMLSelectElement) {
+        elements.usersRoleFilter.disabled = false;
+      }
+      if (elements.usersClearFilter instanceof HTMLButtonElement) {
+        elements.usersClearFilter.disabled = false;
+      }
       if (elements.postsCategoryFilter instanceof HTMLSelectElement) {
         elements.postsCategoryFilter.disabled = false;
       }
       if (elements.postsClearFilter instanceof HTMLButtonElement) {
         elements.postsClearFilter.disabled = false;
       }
+      if (elements.commentsSearchInput instanceof HTMLInputElement) {
+        elements.commentsSearchInput.disabled = false;
+      }
+      if (elements.commentsClearFilter instanceof HTMLButtonElement) {
+        elements.commentsClearFilter.disabled = false;
+      }
+      if (elements.adminNotificationsSearchInput instanceof HTMLInputElement) {
+        elements.adminNotificationsSearchInput.disabled = false;
+      }
+      if (elements.adminNotificationsStatusFilter instanceof HTMLSelectElement) {
+        elements.adminNotificationsStatusFilter.disabled = false;
+      }
+      if (elements.adminNotificationsSeverityFilter instanceof HTMLSelectElement) {
+        elements.adminNotificationsSeverityFilter.disabled = false;
+      }
+      if (elements.adminNotificationsClearFilter instanceof HTMLButtonElement) {
+        elements.adminNotificationsClearFilter.disabled = false;
+      }
       setRefreshingState(elements, false);
     }
   };
 
   attachRoleChangeHandlers(elements, refreshDashboard, showFeedback);
+  attachUsersFilterHandler(elements);
   attachPostsFilterHandler(elements);
+  attachCommentsFilterHandler(elements);
+  attachAdminNotificationsFilterHandler(elements, adminSession.user.id);
   attachPopstateHandler(elements);
   attachDeleteHandlers(elements, confirmController, refreshDashboard, showFeedback);
   attachAdminNotificationHandlers(elements, adminSession.user.id, refreshDashboard, showFeedback);
 
-  if (adminState.autoRefreshIntervalId) {
-    window.clearInterval(adminState.autoRefreshIntervalId);
-  }
+  cleanupAutoRefresh();
+  cleanupAdminNotificationsSubscription();
+
+  adminState.unsubscribeAdminNotifications = subscribeToAdminNotifications(async () => {
+    await refreshDashboard({ forceRefresh: true });
+  });
 
   adminState.autoRefreshIntervalId = window.setInterval(async () => {
     await refreshDashboard({ forceRefresh: true });
-  }, 9000);
+  }, 45000);
+
+  if (window && window.addEventListener) {
+    window.addEventListener('beforeunload', () => {
+      cleanupAutoRefresh();
+      cleanupAdminNotificationsSubscription();
+    }, { once: true });
+  }
 
   await refreshDashboard({ forceRefresh: true });
 }

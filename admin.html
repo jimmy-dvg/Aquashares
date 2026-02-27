@@ -98,12 +98,51 @@
 
         <div class="tab-content">
           <section class="tab-pane fade show active" id="admin-notifications-tab" role="tabpanel">
+            <div class="d-flex flex-column flex-md-row gap-2 align-items-stretch align-items-md-center mb-2">
+              <input
+                type="search"
+                class="form-control form-control-sm"
+                placeholder="Search notifications..."
+                aria-label="Search admin notifications"
+                data-admin-notifications-search
+              />
+              <select class="form-select form-select-sm" data-admin-notifications-status-filter aria-label="Filter notifications by status">
+                <option value="">All Statuses</option>
+                <option value="open">Open</option>
+                <option value="resolved">Resolved</option>
+              </select>
+              <select class="form-select form-select-sm" data-admin-notifications-severity-filter aria-label="Filter notifications by severity">
+                <option value="">All Severities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+              <button type="button" class="btn btn-outline-secondary btn-sm d-none" data-admin-notifications-clear-filter>Clear</button>
+            </div>
+            <div class="small text-secondary mb-2 d-none" data-admin-notifications-filter-status></div>
             <div class="text-secondary mb-2" data-admin-notifications-loading>Loading admin notifications...</div>
             <div data-admin-notifications-list></div>
             <div class="text-secondary d-none" data-admin-notifications-empty>No admin notifications yet.</div>
           </section>
 
           <section class="tab-pane fade" id="users-tab" role="tabpanel">
+            <div class="d-flex flex-column flex-md-row gap-2 align-items-stretch align-items-md-center mb-2">
+              <input
+                type="search"
+                class="form-control form-control-sm"
+                placeholder="Search by username, display name or email..."
+                aria-label="Search users"
+                data-admin-users-search
+              />
+              <select class="form-select form-select-sm" data-admin-users-role-filter aria-label="Filter users by role">
+                <option value="">All Roles</option>
+                <option value="admin">Admin</option>
+                <option value="user">User</option>
+              </select>
+              <button type="button" class="btn btn-outline-secondary btn-sm d-none" data-admin-users-clear-filter>Clear</button>
+            </div>
+            <div class="small text-secondary mb-2 d-none" data-admin-users-filter-status></div>
             <div class="text-secondary mb-2" data-users-loading>Loading users...</div>
             <div class="table-responsive">
               <table class="table table-striped align-middle">
@@ -153,6 +192,17 @@
           </section>
 
           <section class="tab-pane fade" id="comments-tab" role="tabpanel">
+            <div class="d-flex flex-column flex-md-row gap-2 align-items-stretch align-items-md-center mb-2">
+              <input
+                type="search"
+                class="form-control form-control-sm"
+                placeholder="Search by post, user or comment text..."
+                aria-label="Search comments"
+                data-admin-comments-search
+              />
+              <button type="button" class="btn btn-outline-secondary btn-sm d-none" data-admin-comments-clear-filter>Clear</button>
+            </div>
+            <div class="small text-secondary mb-2 d-none" data-admin-comments-filter-status></div>
             <div class="text-secondary mb-2" data-comments-loading>Loading comments...</div>
             <div class="table-responsive">
               <table class="table table-striped align-middle">

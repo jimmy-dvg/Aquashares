@@ -333,7 +333,8 @@ export function renderAdminNotifications(notifications, elements, currentAdminId
     assignButton.dataset.action = 'assign-admin-notification';
     assignButton.dataset.id = notification.id;
     assignButton.textContent = 'Assign to me';
-    assignButton.disabled = notification.assigneeId === currentAdminId && notification.status === 'open';
+    assignButton.disabled = notification.status === 'resolved'
+      || (notification.assigneeId === currentAdminId && notification.status === 'open');
 
     const resolveButton = document.createElement('button');
     resolveButton.type = 'button';

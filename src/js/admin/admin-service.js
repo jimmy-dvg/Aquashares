@@ -241,3 +241,24 @@ export async function resolveAdminNotification(notificationId, resolverId) {
     throwServiceError(error, 'Failed to resolve admin notification.');
   }
 }
+
+export function subscribeToAdminNotifications(onChange) {
+  const channel = supabase
+    .channel(`admin-notifications:${Date.now()}`)
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'admin_notifications'
+    }, (payload) => {
+      if (typeof onChange !== 'function') {
+        return;
+      }
+
+      onChange(payload);
+    })
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}

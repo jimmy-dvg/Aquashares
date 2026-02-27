@@ -2,6 +2,12 @@
   min-width: 220px;
 }
 
+[data-admin-users-role-filter],
+[data-admin-notifications-status-filter],
+[data-admin-notifications-severity-filter] {
+  min-width: 160px;
+}
+
 .aqua-spin {
   animation: aquaSpin 0.9s linear infinite;
 }
@@ -37,6 +43,12 @@
 
 @media (max-width: 575.98px) {
   [data-admin-posts-category-filter] {
+    min-width: 0;
+  }
+
+  [data-admin-users-role-filter],
+  [data-admin-notifications-status-filter],
+  [data-admin-notifications-severity-filter] {
     min-width: 0;
   }
 }
