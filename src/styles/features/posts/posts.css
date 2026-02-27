@@ -158,6 +158,60 @@
   min-width: 220px;
 }
 
+.aqua-feed-filter-bar {
+  border: 1px solid var(--bs-border-color-translucent);
+  border-radius: 0.9rem;
+  background: linear-gradient(180deg, rgba(var(--bs-secondary-rgb), 0.08), rgba(var(--bs-secondary-rgb), 0.02));
+  padding: 0.85rem;
+}
+
+.aqua-feed-filter-grid {
+  display: grid;
+  grid-template-columns: auto minmax(260px, 2fr) minmax(170px, 1fr) auto;
+  gap: 0.7rem;
+  align-items: end;
+}
+
+.aqua-feed-filter-field {
+  min-width: 0;
+}
+
+.aqua-feed-filter-grid .form-label {
+  color: var(--bs-secondary-color);
+  font-weight: 600;
+}
+
+.aqua-feed-filter-grid .input-group-text {
+  background-color: var(--bs-tertiary-bg);
+  color: var(--bs-secondary-color);
+}
+
+.aqua-feed-filter-grid .form-control,
+.aqua-feed-filter-grid .form-select {
+  border-color: var(--bs-border-color);
+}
+
+.aqua-feed-filter-grid .form-control:focus,
+.aqua-feed-filter-grid .form-select:focus {
+  border-color: rgba(var(--bs-primary-rgb), 0.45);
+  box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.12);
+}
+
+.aqua-feed-filter-actions {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: end;
+}
+
+.aqua-feed-filter-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background-color: rgba(var(--bs-primary-rgb), 0.1);
+}
+
 .aqua-category-link {
   transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
 }
@@ -194,6 +248,18 @@
 }
 
 @media (max-width: 575.98px) {
+  .aqua-feed-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .aqua-feed-filter-actions {
+    width: 100%;
+  }
+
+  .aqua-feed-filter-actions .btn {
+    flex: 1 1 auto;
+  }
+
   .feed-toolbar {
     align-items: stretch !important;
     gap: 0.75rem;

@@ -93,6 +93,12 @@ export function getCategoryFromQuery() {
   return value && value.trim() ? value.trim() : '';
 }
 
+export function getSearchFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const value = params.get('q');
+  return value && value.trim() ? value.trim() : '';
+}
+
 export function setCategoryInQuery(categorySlug) {
   const params = new URLSearchParams(window.location.search);
 
@@ -106,6 +112,25 @@ export function setCategoryInQuery(categorySlug) {
   const nextUrl = query ? `${window.location.pathname}?${query}${window.location.hash}` : `${window.location.pathname}${window.location.hash}`;
 
   const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (currentUrl !== nextUrl) {
+    window.history.pushState(null, '', nextUrl);
+  }
+}
+
+export function setSearchInQuery(searchText) {
+  const params = new URLSearchParams(window.location.search);
+  const normalized = (searchText || '').trim();
+
+  if (normalized) {
+    params.set('q', normalized);
+  } else {
+    params.delete('q');
+  }
+
+  const query = params.toString();
+  const nextUrl = query ? `${window.location.pathname}?${query}${window.location.hash}` : `${window.location.pathname}${window.location.hash}`;
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
   if (currentUrl !== nextUrl) {
     window.history.pushState(null, '', nextUrl);
   }

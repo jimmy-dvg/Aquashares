@@ -7,31 +7,48 @@ export function getUiElements() {
     loadingElement: document.querySelector('[data-feed-loading]'),
     errorElement: document.querySelector('[data-feed-error]'),
     notificationRoot: document.querySelector('[data-feed-notifications]'),
+    searchInput: document.querySelector('[data-feed-search]'),
     categoryFilter: document.querySelector('[data-feed-category-filter]'),
     clearFilterButton: document.querySelector('[data-feed-clear-filter]'),
     filterStatus: document.querySelector('[data-feed-filter-status]')
   };
 }
 
-export function updateFeedFilterUi(filterElement, clearFilterButton, filterStatus, categories) {
+export function updateFeedFilterUi(filterElement, searchInput, clearFilterButton, filterStatus, categories, filteredCount, totalCount) {
+  const query = searchInput instanceof HTMLInputElement ? (searchInput.value || '').trim() : '';
   const selectedSlug = filterElement instanceof HTMLSelectElement ? filterElement.value || '' : '';
+  const hasFilter = Boolean(selectedSlug || query);
 
   if (clearFilterButton) {
-    clearFilterButton.classList.toggle('d-none', !selectedSlug);
+    clearFilterButton.classList.toggle('d-none', !hasFilter);
   }
 
   if (!filterStatus) {
     return;
   }
 
-  if (!selectedSlug) {
+  if (!hasFilter) {
     filterStatus.textContent = '';
     filterStatus.classList.add('d-none');
     return;
   }
 
-  const categoryName = (categories || []).find((category) => category.slug === selectedSlug)?.name || 'Selected category';
-  filterStatus.textContent = `Filtering by: ${categoryName}`;
+  const labels = [];
+
+  if (selectedSlug) {
+    const categoryName = (categories || []).find((category) => category.slug === selectedSlug)?.name || 'Selected category';
+    labels.push(`category: ${categoryName}`);
+  }
+
+  if (query) {
+    labels.push(`search: "${query}"`);
+  }
+
+  if (typeof filteredCount === 'number' && typeof totalCount === 'number') {
+    labels.push(`${filteredCount}/${totalCount} posts`);
+  }
+
+  filterStatus.textContent = `Filtering by ${labels.join(' • ')}`;
   filterStatus.classList.remove('d-none');
 }
 
@@ -68,14 +85,6 @@ export function bindCategoryFilter(filterElement, clearFilterButton, onChange) {
   filterElement.addEventListener('change', () => {
     onChange(filterElement.value || '');
   });
-
-  if (clearFilterButton && clearFilterButton.dataset.bound !== 'true') {
-    clearFilterButton.dataset.bound = 'true';
-    clearFilterButton.addEventListener('click', () => {
-      filterElement.value = '';
-      onChange('');
-    });
-  }
 }
 
 export function bindFeedPopstate(onChange) {

@@ -12,6 +12,26 @@ body {
   color: var(--bs-primary-text-emphasis);
 }
 
+.aqua-nav-search {
+  width: 100%;
+  max-width: 360px;
+}
+
+.aqua-nav-search .input-group-text {
+  background-color: var(--bs-tertiary-bg);
+  color: var(--bs-secondary-color);
+  border-color: var(--bs-border-color);
+}
+
+.aqua-nav-search .form-control {
+  border-color: var(--bs-border-color);
+}
+
+.aqua-nav-search .form-control:focus {
+  border-color: rgba(var(--bs-primary-rgb), 0.45);
+  box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.12);
+}
+
 a:focus-visible,
 button:focus-visible,
 select:focus-visible,
@@ -68,5 +88,11 @@ input:focus-visible,
 
   .aqua-post-card:hover .aqua-post-media-img {
     transform: none;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .aqua-nav-search {
+    max-width: 100%;
   }
 }

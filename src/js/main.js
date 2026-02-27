@@ -41,6 +41,54 @@ function setActiveNavbarLink() {
   });
 }
 
+function initializeNavbarSearch() {
+  const form = document.querySelector('[data-nav-search-form]');
+  const input = document.querySelector('[data-nav-search-input]');
+
+  if (!(form instanceof HTMLFormElement) || !(input instanceof HTMLInputElement)) {
+    return;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const currentQuery = params.get('q') || '';
+  input.value = currentQuery;
+
+  if (form.dataset.bound === 'true') {
+    return;
+  }
+
+  form.dataset.bound = 'true';
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    const query = (input.value || '').trim();
+    const targetParams = new URLSearchParams();
+
+    if (query) {
+      targetParams.set('q', query);
+    }
+
+    const isFeedPage = window.location.pathname.endsWith('/index.html') || window.location.pathname === '/';
+
+    if (isFeedPage) {
+      const category = new URLSearchParams(window.location.search).get('category') || '';
+      if (category) {
+        targetParams.set('category', category);
+      }
+
+      const queryString = targetParams.toString();
+      const nextUrl = queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname;
+      window.history.pushState(null, '', nextUrl);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      return;
+    }
+
+    const queryString = targetParams.toString();
+    const targetUrl = queryString ? `/index.html?${queryString}` : '/index.html';
+    window.location.assign(targetUrl);
+  });
+}
+
 async function initializeNavbar() {
   const guestElements = document.querySelectorAll('[data-nav-guest]');
   const authElements = document.querySelectorAll('[data-nav-auth]');
@@ -49,6 +97,7 @@ async function initializeNavbar() {
 
   const user = await getCurrentUser();
   setActiveNavbarLink();
+  initializeNavbarSearch();
 
   if (!user) {
     toggleElements(guestElements, true);

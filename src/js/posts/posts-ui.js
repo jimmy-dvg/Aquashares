@@ -19,13 +19,16 @@ import {
   focusCommentFromQuery,
   focusPostFromHash,
   getCategoryFromQuery,
+  getSearchFromQuery,
   renderEmptyState,
   renderPostCard,
-  setCategoryInQuery
+  setCategoryInQuery,
+  setSearchInQuery
 } from './posts-ui-view.js';
 
 const feedState = {
   loadDebounceTimer: null,
+  searchDebounceTimer: null,
   cache: {
     postsWithUiData: null,
     viewer: null,
@@ -54,6 +57,38 @@ function scheduleFeedLoad(options = {}) {
     feedState.loadDebounceTimer = null;
     loadFeed(options);
   }, 100);
+}
+
+function scheduleSearchLoad(nextQuery) {
+  if (feedState.searchDebounceTimer) {
+    window.clearTimeout(feedState.searchDebounceTimer);
+  }
+
+  feedState.searchDebounceTimer = window.setTimeout(() => {
+    feedState.searchDebounceTimer = null;
+    setSearchInQuery(nextQuery);
+    scheduleFeedLoad();
+  }, 220);
+}
+
+function normalizeText(value) {
+  return (value || '').toLowerCase().trim();
+}
+
+function matchesFeedSearch(post, searchQuery) {
+  if (!searchQuery) {
+    return true;
+  }
+
+  const haystack = normalizeText([
+    post.title,
+    post.body,
+    post.categoryName,
+    post.author?.username,
+    post.author?.displayName
+  ].join(' '));
+
+  return haystack.includes(searchQuery);
 }
 
 
@@ -456,7 +491,16 @@ export function attachLikeHandler(container, viewer, notificationRoot) {
 
 export async function loadFeed(options = {}) {
   const forceRefresh = options.forceRefresh === true;
-  const { feedContainer, loadingElement, errorElement, notificationRoot, categoryFilter, clearFilterButton, filterStatus } = getUiElements();
+  const {
+    feedContainer,
+    loadingElement,
+    errorElement,
+    notificationRoot,
+    searchInput,
+    categoryFilter,
+    clearFilterButton,
+    filterStatus
+  } = getUiElements();
 
   if (!feedContainer) {
     return;
@@ -467,6 +511,9 @@ export async function loadFeed(options = {}) {
   });
 
   setLoadingState(true, loadingElement);
+  if (searchInput instanceof HTMLInputElement) {
+    searchInput.disabled = true;
+  }
   if (categoryFilter instanceof HTMLSelectElement) {
     categoryFilter.disabled = true;
   }
@@ -483,8 +530,21 @@ export async function loadFeed(options = {}) {
     cleanupLikesRealtime();
 
     const selectedCategorySlugFromQuery = getCategoryFromQuery();
+    const searchFromQuery = getSearchFromQuery();
+    const normalizedSearchQuery = normalizeText(searchFromQuery);
+
+    if (searchInput instanceof HTMLInputElement && searchInput.value !== searchFromQuery) {
+      searchInput.value = searchFromQuery;
+    }
 
     const { postsWithUiData, viewer, categories } = await getFeedData(forceRefresh);
+
+    if (searchInput instanceof HTMLInputElement && searchInput.dataset.bound !== 'true') {
+      searchInput.dataset.bound = 'true';
+      searchInput.addEventListener('input', () => {
+        scheduleSearchLoad(searchInput.value || '');
+      });
+    }
 
     if (categoryFilter) {
       setCategoryFilterOptions(categoryFilter, categories, selectedCategorySlugFromQuery);
@@ -492,7 +552,23 @@ export async function loadFeed(options = {}) {
         setCategoryInQuery(selectedSlug);
         scheduleFeedLoad();
       });
-      updateFeedFilterUi(categoryFilter, clearFilterButton, filterStatus, categories);
+    }
+
+    if (clearFilterButton && clearFilterButton.dataset.bound !== 'true') {
+      clearFilterButton.dataset.bound = 'true';
+      clearFilterButton.addEventListener('click', () => {
+        if (searchInput instanceof HTMLInputElement) {
+          searchInput.value = '';
+        }
+
+        if (categoryFilter instanceof HTMLSelectElement) {
+          categoryFilter.value = '';
+        }
+
+        setCategoryInQuery('');
+        setSearchInQuery('');
+        scheduleFeedLoad();
+      });
     }
 
     const categorySlugs = new Set(categories.map((category) => category.slug));
@@ -502,9 +578,20 @@ export async function loadFeed(options = {}) {
       setCategoryInQuery('');
     }
 
-    const filteredPosts = selectedCategorySlug
+    const categoryFilteredPosts = selectedCategorySlug
       ? postsWithUiData.filter((post) => post.categorySlug === selectedCategorySlug)
       : postsWithUiData;
+    const filteredPosts = categoryFilteredPosts.filter((post) => matchesFeedSearch(post, normalizedSearchQuery));
+
+    updateFeedFilterUi(
+      categoryFilter,
+      searchInput,
+      clearFilterButton,
+      filterStatus,
+      categories,
+      filteredPosts.length,
+      postsWithUiData.length
+    );
     const canManagePost = (post) => Boolean(viewer.userId) && (viewer.isAdmin || viewer.userId === post.userId);
 
     feedContainer.replaceChildren();
@@ -512,7 +599,9 @@ export async function loadFeed(options = {}) {
     if (!filteredPosts.length) {
       renderEmptyState(
         feedContainer,
-        selectedCategorySlug ? 'No posts found in this category yet.' : 'Be the first to create a post.'
+        (selectedCategorySlug || normalizedSearchQuery)
+          ? 'No posts match your current filters.'
+          : 'Be the first to create a post.'
       );
     } else {
       const fragment = document.createDocumentFragment();
@@ -533,6 +622,9 @@ export async function loadFeed(options = {}) {
   } catch (error) {
     showError(errorElement, error.message || 'Unable to load feed right now. Please try again.');
   } finally {
+    if (searchInput instanceof HTMLInputElement) {
+      searchInput.disabled = false;
+    }
     if (categoryFilter instanceof HTMLSelectElement) {
       categoryFilter.disabled = false;
     }
