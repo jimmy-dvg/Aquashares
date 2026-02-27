@@ -1,17 +1,19 @@
 import {
-  changeUserRole,
+  getAdminNotifications,
   getAllComments,
   getAllPosts,
   getAllUsers
 } from './admin-service.js';
 import { requireAdmin } from '../auth/auth-guard.js';
 import {
+  attachAdminNotificationHandlers,
   attachDeleteHandlers,
   attachRoleChangeHandlers,
   createConfirmationController
 } from './admin-ui-handlers.js';
 import {
   formatDate,
+  renderAdminNotifications,
   renderCommentsTable,
   renderPostsTable,
   renderUsersTable,
@@ -26,16 +28,19 @@ const adminState = {
     users: null,
     posts: null,
     comments: null,
+    adminNotifications: null,
     refreshPromise: null
-  }
+  },
+  autoRefreshIntervalId: null
 };
 
 async function getDashboardData(forceRefresh = false) {
-  if (!forceRefresh && adminState.cache.users && adminState.cache.posts && adminState.cache.comments) {
+  if (!forceRefresh && adminState.cache.users && adminState.cache.posts && adminState.cache.comments && adminState.cache.adminNotifications) {
     return {
       users: adminState.cache.users,
       posts: adminState.cache.posts,
-      comments: adminState.cache.comments
+      comments: adminState.cache.comments,
+      adminNotifications: adminState.cache.adminNotifications
     };
   }
 
@@ -44,17 +49,24 @@ async function getDashboardData(forceRefresh = false) {
   }
 
   const refreshPromise = (async () => {
-    const [users, posts, comments] = await Promise.all([
+    const [users, posts, comments, adminNotifications] = await Promise.all([
       getAllUsers(),
       getAllPosts(),
-      getAllComments()
+      getAllComments(),
+      getAdminNotifications()
     ]);
 
     adminState.cache.users = users;
     adminState.cache.posts = posts;
     adminState.cache.comments = comments;
+    adminState.cache.adminNotifications = adminNotifications;
 
-    return { users, posts, comments };
+    return {
+      users,
+      posts,
+      comments,
+      adminNotifications
+    };
   })();
 
   adminState.cache.refreshPromise = refreshPromise;
@@ -104,9 +116,12 @@ function getElements() {
     postsClearFilter: document.querySelector('[data-admin-posts-clear-filter]'),
     postsFilterStatus: document.querySelector('[data-admin-posts-filter-status]'),
     commentsBody: document.querySelector('[data-comments-body]'),
+    adminNotificationsLoading: document.querySelector('[data-admin-notifications-loading]'),
+    adminNotificationsList: document.querySelector('[data-admin-notifications-list]'),
     usersEmpty: document.querySelector('[data-users-empty]'),
     postsEmpty: document.querySelector('[data-posts-empty]'),
     commentsEmpty: document.querySelector('[data-comments-empty]'),
+    adminNotificationsEmpty: document.querySelector('[data-admin-notifications-empty]'),
     lastUpdated: document.querySelector('[data-admin-last-updated]'),
     lastUpdatedText: document.querySelector('[data-admin-last-updated-text]'),
     lastUpdatedIcon: document.querySelector('[data-admin-last-updated-icon]'),
@@ -311,15 +326,17 @@ export async function loadDashboard() {
     setVisible(elements.usersLoading, true);
     setVisible(elements.postsLoading, true);
     setVisible(elements.commentsLoading, true);
+    setVisible(elements.adminNotificationsLoading, true);
 
     try {
-      const { users, posts, comments } = await getDashboardData(forceRefresh);
+      const { users, posts, comments, adminNotifications } = await getDashboardData(forceRefresh);
 
       adminState.posts = posts;
       renderUsersTable(users, elements);
       setPostsFilterOptions(posts, elements);
       renderFilteredPosts(elements);
       renderCommentsTable(comments, elements);
+      renderAdminNotifications(adminNotifications, elements, adminSession.user.id);
       setLastUpdated(elements);
     } catch (error) {
       showFeedback(elements, error.message || 'Unable to load admin dashboard.');
@@ -327,6 +344,7 @@ export async function loadDashboard() {
       setVisible(elements.usersLoading, false);
       setVisible(elements.postsLoading, false);
       setVisible(elements.commentsLoading, false);
+      setVisible(elements.adminNotificationsLoading, false);
       if (elements.postsCategoryFilter instanceof HTMLSelectElement) {
         elements.postsCategoryFilter.disabled = false;
       }
@@ -341,6 +359,16 @@ export async function loadDashboard() {
   attachPostsFilterHandler(elements);
   attachPopstateHandler(elements);
   attachDeleteHandlers(elements, confirmController, refreshDashboard, showFeedback);
+  attachAdminNotificationHandlers(elements, adminSession.user.id, refreshDashboard, showFeedback);
+
+  if (adminState.autoRefreshIntervalId) {
+    window.clearInterval(adminState.autoRefreshIntervalId);
+  }
+
+  adminState.autoRefreshIntervalId = window.setInterval(async () => {
+    await refreshDashboard({ forceRefresh: true });
+  }, 9000);
+
   await refreshDashboard({ forceRefresh: true });
 }
 

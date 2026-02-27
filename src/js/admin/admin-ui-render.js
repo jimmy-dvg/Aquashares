@@ -218,3 +218,135 @@ export function renderCommentsTable(comments, elements) {
 
   elements.commentsBody.append(fragment);
 }
+
+function getSeverityBadgeClass(severity) {
+  if (severity === 'critical') {
+    return 'text-bg-danger';
+  }
+
+  if (severity === 'high') {
+    return 'text-bg-warning';
+  }
+
+  if (severity === 'medium') {
+    return 'text-bg-primary';
+  }
+
+  return 'text-bg-secondary';
+}
+
+function getReferenceHref(notification) {
+  if (notification.referenceType === 'post' && notification.referenceId) {
+    return `/post-detail.html?id=${encodeURIComponent(notification.referenceId)}`;
+  }
+
+  if (notification.referenceType === 'comment' && notification.referenceId) {
+    return `/post-detail.html?comment=${encodeURIComponent(notification.referenceId)}`;
+  }
+
+  if (notification.referenceType === 'chat' && notification.referenceId) {
+    return `/chat.html?conversation=${encodeURIComponent(notification.referenceId)}`;
+  }
+
+  if (notification.referenceType === 'user' && notification.referenceId) {
+    return `/profile.html?user=${encodeURIComponent(notification.referenceId)}`;
+  }
+
+  return '/admin.html';
+}
+
+function getAssigneeLabel(notification, currentAdminId) {
+  if (!notification.assigneeId) {
+    return 'Unassigned';
+  }
+
+  if (notification.assigneeId === currentAdminId) {
+    return 'Assigned to you';
+  }
+
+  return 'Assigned';
+}
+
+export function renderAdminNotifications(notifications, elements, currentAdminId) {
+  if (!elements.adminNotificationsList) {
+    return;
+  }
+
+  elements.adminNotificationsList.replaceChildren();
+
+  if (!notifications.length) {
+    setVisible(elements.adminNotificationsEmpty, true);
+    return;
+  }
+
+  setVisible(elements.adminNotificationsEmpty, false);
+
+  const fragment = document.createDocumentFragment();
+  notifications.forEach((notification) => {
+    const item = document.createElement('article');
+    item.className = `border rounded-3 p-3 mb-2 aqua-admin-notification ${notification.status === 'resolved' ? 'is-resolved' : 'is-open'}`;
+
+    const top = document.createElement('div');
+    top.className = 'd-flex align-items-center flex-wrap gap-2 mb-2';
+
+    const severityBadge = document.createElement('span');
+    severityBadge.className = `badge ${getSeverityBadgeClass(notification.severity)}`;
+    severityBadge.textContent = (notification.severity || 'low').toUpperCase();
+
+    const statusBadge = document.createElement('span');
+    statusBadge.className = `badge ${notification.status === 'resolved' ? 'text-bg-success' : 'text-bg-dark'}`;
+    statusBadge.textContent = notification.status === 'resolved' ? 'Resolved' : 'Open';
+
+    const occurrences = document.createElement('span');
+    occurrences.className = 'badge text-bg-light border';
+    occurrences.textContent = `${notification.occurrenceCount || 1} events`;
+
+    const seenAt = document.createElement('span');
+    seenAt.className = 'small text-secondary ms-auto';
+    seenAt.textContent = `Last: ${formatDate(notification.lastSeenAt || notification.createdAt)}`;
+
+    top.append(severityBadge, statusBadge, occurrences, seenAt);
+
+    const title = document.createElement('h3');
+    title.className = 'h6 mb-1';
+    title.textContent = notification.title;
+
+    const message = document.createElement('p');
+    message.className = 'mb-2 text-secondary';
+    message.textContent = notification.message;
+
+    const meta = document.createElement('div');
+    meta.className = 'small text-secondary mb-2';
+    meta.textContent = `${getAssigneeLabel(notification, currentAdminId)} • Created: ${formatDate(notification.createdAt)}`;
+
+    const actions = document.createElement('div');
+    actions.className = 'd-flex flex-wrap gap-2';
+
+    const openButton = document.createElement('a');
+    openButton.className = 'btn btn-sm btn-outline-primary';
+    openButton.href = getReferenceHref(notification);
+    openButton.textContent = 'Open target';
+
+    const assignButton = document.createElement('button');
+    assignButton.type = 'button';
+    assignButton.className = 'btn btn-sm btn-outline-secondary';
+    assignButton.dataset.action = 'assign-admin-notification';
+    assignButton.dataset.id = notification.id;
+    assignButton.textContent = 'Assign to me';
+    assignButton.disabled = notification.assigneeId === currentAdminId && notification.status === 'open';
+
+    const resolveButton = document.createElement('button');
+    resolveButton.type = 'button';
+    resolveButton.className = 'btn btn-sm btn-success';
+    resolveButton.dataset.action = 'resolve-admin-notification';
+    resolveButton.dataset.id = notification.id;
+    resolveButton.textContent = 'Resolve';
+    resolveButton.disabled = notification.status === 'resolved';
+
+    actions.append(openButton, assignButton, resolveButton);
+    item.append(top, title, message, meta, actions);
+    fragment.append(item);
+  });
+
+  elements.adminNotificationsList.append(fragment);
+}

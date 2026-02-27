@@ -4,6 +4,29 @@ function throwServiceError(error, fallbackMessage) {
   throw new Error(error?.message || fallbackMessage);
 }
 
+function mapAdminNotification(row) {
+  return {
+    id: row.id,
+    sourceType: row.source_type,
+    sourceId: row.source_id,
+    referenceType: row.reference_type,
+    referenceId: row.reference_id,
+    severity: row.severity,
+    status: row.status,
+    title: row.title,
+    message: row.message,
+    dedupKey: row.dedup_key,
+    occurrenceCount: row.occurrence_count || 1,
+    assigneeId: row.assignee_id,
+    resolvedBy: row.resolved_by,
+    resolvedAt: row.resolved_at,
+    payload: row.payload || {},
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    lastSeenAt: row.last_seen_at
+  };
+}
+
 export async function getAllUsers() {
   const { data: authors, error: authorsError } = await supabase
     .rpc('get_admin_user_directory');
@@ -170,5 +193,51 @@ export async function changeUserRole(userId, role) {
 
   if (error) {
     throwServiceError(error, 'Failed to update role.');
+  }
+}
+
+export async function getAdminNotifications(limit = 100) {
+  const { data, error } = await supabase
+    .from('admin_notifications')
+    .select('id, source_type, source_id, reference_type, reference_id, severity, status, title, message, dedup_key, occurrence_count, assignee_id, resolved_by, resolved_at, payload, created_at, updated_at, last_seen_at')
+    .order('status', { ascending: true })
+    .order('last_seen_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throwServiceError(error, 'Failed to load admin notifications.');
+  }
+
+  return (data ?? []).map(mapAdminNotification);
+}
+
+export async function assignAdminNotification(notificationId, assigneeId) {
+  const { error } = await supabase
+    .from('admin_notifications')
+    .update({
+      assignee_id: assigneeId,
+      status: 'open',
+      resolved_by: null,
+      resolved_at: null
+    })
+    .eq('id', notificationId);
+
+  if (error) {
+    throwServiceError(error, 'Failed to assign admin notification.');
+  }
+}
+
+export async function resolveAdminNotification(notificationId, resolverId) {
+  const { error } = await supabase
+    .from('admin_notifications')
+    .update({
+      status: 'resolved',
+      resolved_by: resolverId,
+      resolved_at: new Date().toISOString()
+    })
+    .eq('id', notificationId);
+
+  if (error) {
+    throwServiceError(error, 'Failed to resolve admin notification.');
   }
 }

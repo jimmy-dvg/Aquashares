@@ -1,4 +1,10 @@
-import { changeUserRole, deleteComment, deletePost } from './admin-service.js';
+import {
+  assignAdminNotification,
+  changeUserRole,
+  deleteComment,
+  deletePost,
+  resolveAdminNotification
+} from './admin-service.js';
 import { formatDate } from './admin-ui-render.js';
 
 export function createConfirmationController(elements) {
@@ -179,4 +185,60 @@ export function attachDeleteHandlers(elements, confirmController, refreshDashboa
       );
     });
   }
+}
+
+export function attachAdminNotificationHandlers(elements, currentAdminId, refreshDashboard, showFeedback) {
+  if (!elements.adminNotificationsList || elements.adminNotificationsList.dataset.notificationBound === 'true') {
+    return;
+  }
+
+  elements.adminNotificationsList.dataset.notificationBound = 'true';
+  elements.adminNotificationsList.addEventListener('click', async (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    const assignButton = target.closest('[data-action="assign-admin-notification"]');
+    if (assignButton instanceof HTMLButtonElement) {
+      const notificationId = assignButton.dataset.id;
+      if (!notificationId || !currentAdminId) {
+        return;
+      }
+
+      assignButton.disabled = true;
+      try {
+        await assignAdminNotification(notificationId, currentAdminId);
+        showFeedback(elements, 'Notification assigned to you.', 'success');
+        await refreshDashboard({ forceRefresh: true });
+      } catch (error) {
+        showFeedback(elements, error.message || 'Unable to assign notification.');
+      } finally {
+        assignButton.disabled = false;
+      }
+
+      return;
+    }
+
+    const resolveButton = target.closest('[data-action="resolve-admin-notification"]');
+    if (!(resolveButton instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    const notificationId = resolveButton.dataset.id;
+    if (!notificationId || !currentAdminId) {
+      return;
+    }
+
+    resolveButton.disabled = true;
+    try {
+      await resolveAdminNotification(notificationId, currentAdminId);
+      showFeedback(elements, 'Notification resolved.', 'success');
+      await refreshDashboard({ forceRefresh: true });
+    } catch (error) {
+      showFeedback(elements, error.message || 'Unable to resolve notification.');
+    } finally {
+      resolveButton.disabled = false;
+    }
+  });
 }
