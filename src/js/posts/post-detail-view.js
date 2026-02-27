@@ -18,7 +18,7 @@ function getRoleLabel(role) {
   return role === 'admin' ? 'Admin' : 'User';
 }
 
-function renderGallery(mainElement, thumbsElement, photos, title) {
+export function renderGallery(mainElement, thumbsElement, photos, title) {
   if (!mainElement || !thumbsElement) {
     return;
   }

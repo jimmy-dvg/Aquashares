@@ -94,6 +94,19 @@ function createPostImage(post) {
     return wrapper;
   }
 
+  if (photos.length > 1) {
+    const galleryBadge = document.createElement('span');
+    galleryBadge.className = 'badge rounded-pill text-bg-dark aqua-post-gallery-badge';
+    galleryBadge.innerHTML = '<i class="bi bi-images" aria-hidden="true"></i><span class="aqua-post-gallery-badge-count">' + photos.length + '</span>';
+    galleryBadge.setAttribute('aria-label', `${photos.length} images available`);
+
+    const galleryHint = document.createElement('span');
+    galleryHint.className = 'aqua-post-gallery-hint';
+    galleryHint.textContent = 'View gallery';
+
+    wrapper.append(galleryBadge, galleryHint);
+  }
+
   const image = document.createElement('img');
   image.className = 'aqua-post-media-img aqua-media-fade';
   image.src = primaryPhoto.publicUrl;
@@ -189,7 +202,12 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false)
   column.id = `post-${post.id}`;
 
   const article = document.createElement('article');
-  article.className = 'card h-100 aqua-post-card';
+  article.className = 'card h-100 aqua-post-card aqua-post-card-clickable';
+  article.dataset.action = 'open-post-quick-view';
+  article.dataset.postId = post.id;
+  article.tabIndex = 0;
+  article.setAttribute('role', 'button');
+  article.setAttribute('aria-label', `Open post: ${post.title}`);
 
   const cardBody = document.createElement('div');
   cardBody.className = 'card-body d-flex flex-column gap-3';
@@ -274,6 +292,8 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false)
   const mediaLink = document.createElement('a');
   mediaLink.href = getPostDetailHref(post.id);
   mediaLink.className = 'text-decoration-none';
+  mediaLink.dataset.action = 'open-post-quick-view';
+  mediaLink.dataset.postId = post.id;
   mediaLink.append(media);
 
   const content = document.createElement('div');
@@ -294,6 +314,8 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false)
   const titleLink = document.createElement('a');
   titleLink.href = getPostDetailHref(post.id);
   titleLink.className = 'text-decoration-none text-body';
+  titleLink.dataset.action = 'open-post-quick-view';
+  titleLink.dataset.postId = post.id;
   titleLink.textContent = post.title;
 
   title.append(titleLink);

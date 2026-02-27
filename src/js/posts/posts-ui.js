@@ -1,9 +1,10 @@
 import { supabase } from '../services/supabase-client.js';
-import { cleanupCommentsUi, initializeCommentsUi } from '../comments/comments-ui.js';
+import { cleanupCommentsUi, createCommentsBlock, initializeCommentsUi } from '../comments/comments-ui.js';
 import { getLikesSummaryByPostIds, subscribeToPostLikes, togglePostLike } from '../reactions/reactions-service.js';
-import { setLikeButtonState } from '../reactions/reactions-ui.js';
-import { deletePost, getAllPosts, getCategories } from './posts-service.js';
+import { createLikeButton, setLikeButtonState } from '../reactions/reactions-ui.js';
+import { deletePost, getAllPosts, getCategories, updatePost } from './posts-service.js';
 import { showConfirmModal } from '../utils/confirm-modal.js';
+import { renderGallery } from './post-detail-view.js';
 import {
   bindCategoryFilter,
   bindFeedPopstate,
@@ -36,8 +37,454 @@ const feedState = {
     refreshPromise: null
   },
   toggleInFlightByPostId: new Set(),
-  unsubscribeLikesRealtime: null
+  unsubscribeLikesRealtime: null,
+  quickViewBound: false,
+  quickViewKeyBound: false,
+  modalState: null
 };
+
+function formatPostTimestamp(value) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return new Intl.DateTimeFormat('en', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+}
+
+function getPostFromCache(postId) {
+  return (feedState.cache.postsWithUiData || []).find((post) => post.id === postId) || null;
+}
+
+function getPostManageState(post) {
+  const viewer = feedState.cache.viewer;
+  if (!post || !viewer?.userId) {
+    return false;
+  }
+
+  return viewer.isAdmin || viewer.userId === post.userId;
+}
+
+function validatePostEditInput(title, body, categoryId, categories) {
+  if (!title || title.length < 3) {
+    return 'Title must be at least 3 characters long.';
+  }
+
+  if (title.length > 120) {
+    return 'Title must be 120 characters or less.';
+  }
+
+  if (!body || body.length < 10) {
+    return 'Post content must be at least 10 characters long.';
+  }
+
+  if (body.length > 5000) {
+    return 'Post content must be 5000 characters or less.';
+  }
+
+  if ((categories || []).length > 0 && !categoryId) {
+    return 'Please select a category.';
+  }
+
+  return null;
+}
+
+function forceCloseModal(modalElement) {
+  if (!(modalElement instanceof HTMLElement)) {
+    return;
+  }
+
+  modalElement.classList.remove('show');
+  modalElement.style.display = 'none';
+  modalElement.setAttribute('aria-hidden', 'true');
+  modalElement.removeAttribute('aria-modal');
+  modalElement.removeAttribute('role');
+
+  document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
+  document.body.classList.remove('modal-open');
+  document.body.style.removeProperty('padding-right');
+}
+
+async function renderQuickViewBody(container, post, viewer) {
+  if (!container) {
+    return;
+  }
+
+  container.replaceChildren();
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'row g-3';
+
+  const mediaCol = document.createElement('div');
+  mediaCol.className = 'col-12 col-lg-7';
+
+  const mediaFrame = document.createElement('div');
+  mediaFrame.className = 'ratio ratio-16x9 rounded overflow-hidden border aqua-post-detail-media';
+  mediaFrame.dataset.postQuickCarousel = 'true';
+  mediaCol.append(mediaFrame);
+
+  const galleryThumbs = document.createElement('div');
+  galleryThumbs.className = 'd-flex flex-wrap gap-2 mt-2';
+  mediaCol.append(galleryThumbs);
+  renderGallery(mediaFrame, galleryThumbs, post.photos || [], post.title);
+
+  const detailsCol = document.createElement('div');
+  detailsCol.className = 'col-12 col-lg-5 d-flex flex-column gap-2';
+
+  const category = document.createElement('span');
+  category.className = 'badge text-bg-secondary-subtle text-secondary-emphasis align-self-start';
+  category.textContent = post.categoryName || 'Uncategorized';
+
+  const title = document.createElement('h5');
+  title.className = 'mb-0';
+  title.textContent = post.title;
+
+  const author = document.createElement('div');
+  author.className = 'small text-secondary';
+  author.textContent = `By ${post.author?.displayName || post.author?.username || 'Aquashares User'} • ${formatPostTimestamp(post.createdAt)}`;
+
+  const body = document.createElement('p');
+  body.className = 'mb-0 text-secondary';
+  body.textContent = post.body;
+
+  const stats = document.createElement('div');
+  stats.className = 'd-flex flex-wrap gap-2 pt-2';
+
+  const likesBadge = document.createElement('span');
+  likesBadge.className = 'badge rounded-pill text-bg-light border';
+  likesBadge.textContent = `${post.likeCount || 0} likes`;
+
+  const commentsBadge = document.createElement('span');
+  commentsBadge.className = 'badge rounded-pill text-bg-light border';
+  commentsBadge.textContent = `${post.commentCount || 0} comments`;
+
+  stats.append(likesBadge, commentsBadge);
+  detailsCol.append(category, title, author, body, stats);
+
+  const reactionsBar = document.createElement('div');
+  reactionsBar.className = 'd-flex align-items-center justify-content-between gap-2 border rounded-3 px-3 py-2';
+  reactionsBar.dataset.postQuickLike = 'true';
+
+  const likesSummary = document.createElement('div');
+  likesSummary.className = 'small text-secondary';
+  likesSummary.dataset.postQuickLikeCount = 'true';
+  likesSummary.textContent = `${post.likeCount || 0} likes`;
+
+  const likeButton = createLikeButton({
+    postId: post.id,
+    likeCount: post.likeCount || 0,
+    likedByViewer: post.likedByViewer === true,
+    isAuthenticated: Boolean(viewer?.userId)
+  });
+
+  let likePending = false;
+  likeButton.addEventListener('click', async () => {
+    if (!viewer?.userId || likePending) {
+      return;
+    }
+
+    const previousState = {
+      postId: post.id,
+      likeCount: Number(likeButton.dataset.likeCount || '0'),
+      likedByViewer: likeButton.dataset.liked === 'true'
+    };
+
+    const optimisticState = {
+      ...previousState,
+      likedByViewer: !previousState.likedByViewer,
+      likeCount: Math.max(0, previousState.likeCount + (previousState.likedByViewer ? -1 : 1))
+    };
+
+    likePending = true;
+    setLikeButtonState(likeButton, {
+      ...optimisticState,
+      isAuthenticated: true,
+      isPending: true
+    });
+    likesSummary.textContent = `${optimisticState.likeCount} likes`;
+
+    try {
+      const nextState = await togglePostLike(post.id, viewer.userId);
+      updateCachedPostLikeState(post.id, nextState);
+      applyLikeStateToVisibleButtons(document.querySelector('[data-feed-list]'), viewer, nextState);
+      applyLikeStateToQuickView(nextState, viewer);
+    } catch (error) {
+      setLikeButtonState(likeButton, {
+        ...previousState,
+        isAuthenticated: true,
+        isPending: false
+      });
+      likesSummary.textContent = `${previousState.likeCount} likes`;
+
+      const notificationRoot = document.querySelector('[data-feed-notifications]');
+      if (notificationRoot) {
+        notificationRoot.replaceChildren(createNotification(error.message || 'Unable to update like.'));
+      }
+    } finally {
+      likePending = false;
+    }
+  });
+
+  reactionsBar.append(likesSummary, likeButton);
+  detailsCol.append(reactionsBar);
+
+  wrapper.append(mediaCol, detailsCol);
+  container.append(wrapper);
+
+  const commentsSection = createCommentsBlock(post.id, Boolean(viewer?.userId));
+  commentsSection.classList.add('aqua-post-modal-comments');
+  container.append(commentsSection);
+
+  await initializeCommentsUi(commentsSection, viewer?.userId || null);
+}
+
+function ensureModalState() {
+  if (feedState.modalState) {
+    return feedState.modalState;
+  }
+
+  const quickViewModal = document.createElement('div');
+  quickViewModal.className = 'modal fade';
+  quickViewModal.tabIndex = -1;
+  quickViewModal.setAttribute('aria-hidden', 'true');
+  quickViewModal.innerHTML = `
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content aqua-post-modal">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5" data-post-quick-title>Post preview</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" data-post-quick-body></div>
+        <div class="modal-footer">
+          <a class="btn btn-outline-secondary" href="/index.html" data-post-open-detail>Open detail page</a>
+          <button type="button" class="btn btn-primary d-none" data-post-open-edit>Edit post</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const editModal = document.createElement('div');
+  editModal.className = 'modal fade';
+  editModal.tabIndex = -1;
+  editModal.setAttribute('aria-hidden', 'true');
+  editModal.innerHTML = `
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content aqua-post-modal">
+        <div class="modal-header">
+          <h2 class="modal-title fs-5">Edit post</h2>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form data-post-edit-form>
+          <div class="modal-body d-flex flex-column gap-3">
+            <div class="alert alert-danger d-none mb-0" role="alert" data-post-edit-error></div>
+            <div>
+              <label class="form-label" for="post-edit-title">Title</label>
+              <input id="post-edit-title" type="text" class="form-control" maxlength="120" required data-post-edit-title />
+            </div>
+            <div>
+              <label class="form-label" for="post-edit-category">Category</label>
+              <select id="post-edit-category" class="form-select" data-post-edit-category></select>
+            </div>
+            <div>
+              <label class="form-label" for="post-edit-body">Content</label>
+              <textarea id="post-edit-body" class="form-control" rows="6" maxlength="5000" required data-post-edit-body></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" data-post-edit-submit>Save changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+
+  document.body.append(quickViewModal, editModal);
+
+  const modalApi = globalThis.bootstrap?.Modal;
+  const quickModalApi = modalApi ? modalApi.getOrCreateInstance(quickViewModal) : null;
+  const editModalApi = modalApi ? modalApi.getOrCreateInstance(editModal) : null;
+
+  const modalState = {
+    quickViewModal,
+    editModal,
+    quickModalApi,
+    editModalApi,
+    quickTitle: quickViewModal.querySelector('[data-post-quick-title]'),
+    quickBody: quickViewModal.querySelector('[data-post-quick-body]'),
+    quickDetailLink: quickViewModal.querySelector('[data-post-open-detail]'),
+    quickEditButton: quickViewModal.querySelector('[data-post-open-edit]'),
+    editForm: editModal.querySelector('[data-post-edit-form]'),
+    editError: editModal.querySelector('[data-post-edit-error]'),
+    editTitle: editModal.querySelector('[data-post-edit-title]'),
+    editCategory: editModal.querySelector('[data-post-edit-category]'),
+    editBody: editModal.querySelector('[data-post-edit-body]'),
+    editSubmit: editModal.querySelector('[data-post-edit-submit]'),
+    currentPostId: null,
+    saveInProgress: false
+  };
+
+  modalState.quickEditButton?.addEventListener('click', () => {
+    const post = getPostFromCache(modalState.currentPostId);
+    if (!post) {
+      return;
+    }
+
+    openEditModal(post);
+  });
+
+  modalState.editForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    if (modalState.saveInProgress) {
+      return;
+    }
+
+    const postId = modalState.currentPostId;
+    const sourcePost = getPostFromCache(postId);
+    if (!postId || !sourcePost) {
+      return;
+    }
+
+    const title = modalState.editTitle instanceof HTMLInputElement ? modalState.editTitle.value.trim() : '';
+    const body = modalState.editBody instanceof HTMLTextAreaElement ? modalState.editBody.value.trim() : '';
+    const categoryId = modalState.editCategory instanceof HTMLSelectElement ? modalState.editCategory.value || null : null;
+    const validationError = validatePostEditInput(title, body, categoryId, feedState.cache.categories || []);
+
+    if (validationError) {
+      if (modalState.editError) {
+        modalState.editError.textContent = validationError;
+        modalState.editError.classList.remove('d-none');
+      }
+      return;
+    }
+
+    if (modalState.editError) {
+      modalState.editError.textContent = '';
+      modalState.editError.classList.add('d-none');
+    }
+
+    modalState.saveInProgress = true;
+    if (modalState.editSubmit instanceof HTMLButtonElement) {
+      modalState.editSubmit.disabled = true;
+      modalState.editSubmit.textContent = 'Saving...';
+    }
+
+    try {
+      const updated = await updatePost(postId, { title, body, categoryId });
+      const previousPosts = feedState.cache.postsWithUiData || [];
+      feedState.cache.postsWithUiData = previousPosts.map((post) => {
+        if (post.id !== postId) {
+          return post;
+        }
+
+        return {
+          ...post,
+          ...updated
+        };
+      });
+
+      modalState.editModalApi?.hide();
+      window.setTimeout(() => {
+        forceCloseModal(modalState.editModal);
+        forceCloseModal(modalState.quickViewModal);
+      }, 220);
+
+      const notificationRoot = document.querySelector('[data-feed-notifications]');
+      if (notificationRoot) {
+        notificationRoot.replaceChildren(createNotification('Post updated successfully.', 'success'));
+      }
+
+      scheduleFeedLoad({ forceRefresh: true });
+    } catch (error) {
+      if (modalState.editError) {
+        modalState.editError.textContent = error.message || 'Unable to save post changes.';
+        modalState.editError.classList.remove('d-none');
+      }
+    } finally {
+      modalState.saveInProgress = false;
+
+      if (modalState.editSubmit instanceof HTMLButtonElement) {
+        modalState.editSubmit.disabled = false;
+        modalState.editSubmit.textContent = 'Save changes';
+      }
+    }
+  });
+
+  feedState.modalState = modalState;
+  return modalState;
+}
+
+async function openQuickViewModal(post) {
+  const modalState = ensureModalState();
+  const viewer = feedState.cache.viewer;
+
+  modalState.currentPostId = post.id;
+  if (modalState.quickTitle) {
+    modalState.quickTitle.textContent = post.title;
+  }
+
+  if (modalState.quickDetailLink instanceof HTMLAnchorElement) {
+    modalState.quickDetailLink.href = `/post-detail.html?id=${encodeURIComponent(post.id)}`;
+  }
+
+  const canManage = getPostManageState(post);
+  modalState.quickEditButton?.classList.toggle('d-none', !canManage);
+
+  await renderQuickViewBody(modalState.quickBody, post, viewer);
+  modalState.quickModalApi?.show();
+}
+
+function openEditModal(post) {
+  const modalState = ensureModalState();
+  modalState.currentPostId = post.id;
+
+  if (modalState.quickModalApi) {
+    modalState.quickModalApi.hide();
+  }
+  forceCloseModal(modalState.quickViewModal);
+
+  if (modalState.editError) {
+    modalState.editError.textContent = '';
+    modalState.editError.classList.add('d-none');
+  }
+
+  if (modalState.editTitle instanceof HTMLInputElement) {
+    modalState.editTitle.value = post.title || '';
+  }
+
+  if (modalState.editBody instanceof HTMLTextAreaElement) {
+    modalState.editBody.value = post.body || '';
+  }
+
+  if (modalState.editCategory instanceof HTMLSelectElement) {
+    const categories = feedState.cache.categories || [];
+    modalState.editCategory.replaceChildren();
+
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = categories.length ? 'Select category' : 'Uncategorized';
+    modalState.editCategory.append(placeholder);
+
+    categories.forEach((category) => {
+      const option = document.createElement('option');
+      option.value = category.id;
+      option.textContent = category.name;
+      modalState.editCategory.append(option);
+    });
+
+    modalState.editCategory.value = post.categoryId || '';
+  }
+
+  modalState.editModalApi?.show();
+}
 
 function cleanupLikesRealtime() {
   if (typeof feedState.unsubscribeLikesRealtime !== 'function') {
@@ -286,6 +733,30 @@ function applyLikeStateToVisibleButtons(container, viewer, likeState) {
   });
 }
 
+function applyLikeStateToQuickView(likeState, viewer) {
+  const modalState = feedState.modalState;
+  if (!modalState || modalState.currentPostId !== likeState.postId) {
+    return;
+  }
+
+  const likeButton = modalState.quickBody?.querySelector('[data-post-quick-like] [data-action="toggle-like"]');
+  if (!(likeButton instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  const isPending = likeButton.dataset.pending === 'true';
+  setLikeButtonState(likeButton, {
+    ...likeState,
+    isAuthenticated: Boolean(viewer?.userId),
+    isPending
+  });
+
+  const summary = modalState.quickBody?.querySelector('[data-post-quick-like-count]');
+  if (summary instanceof HTMLElement) {
+    summary.textContent = `${likeState.likeCount} likes`;
+  }
+}
+
 function bindLikesRealtime(container, viewer, posts) {
   cleanupLikesRealtime();
 
@@ -299,6 +770,7 @@ function bindLikesRealtime(container, viewer, posts) {
       const nextState = await refreshPostLikeState(postId, viewer?.userId || null);
       updateCachedPostLikeState(postId, nextState);
       applyLikeStateToVisibleButtons(container, viewer, nextState);
+      applyLikeStateToQuickView(nextState, viewer);
     } catch {
     }
   });
@@ -356,18 +828,85 @@ export function attachEditHandler(container) {
       return;
     }
 
-    const confirmed = await showConfirmModal({
-      title: 'Edit post',
-      message: 'Open this post in edit mode?',
-      confirmLabel: 'Edit',
-      confirmButtonClass: 'btn-primary'
-    });
-
-    if (!confirmed) {
+    const post = getPostFromCache(postId);
+    if (!post || !getPostManageState(post)) {
       return;
     }
 
-    window.location.assign(`/post-create.html?id=${encodeURIComponent(postId)}`);
+    openEditModal(post);
+  });
+}
+
+export function attachQuickViewHandler(container) {
+  if (!container || container.dataset.quickViewBound === 'true') {
+    return;
+  }
+
+  container.dataset.quickViewBound = 'true';
+
+  container.addEventListener('click', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    const quickViewTrigger = target.closest('[data-action="open-post-quick-view"]');
+    if (!(quickViewTrigger instanceof HTMLElement)) {
+      return;
+    }
+
+    if (target.closest('[data-action="toggle-like"], [data-action="delete-post"], [data-action="edit-post"], [data-comments-list], .dropdown-menu, .dropdown-toggle, a:not([data-action="open-post-quick-view"]), button:not([data-action="open-post-quick-view"]), input, textarea, select, label')) {
+      return;
+    }
+
+    if (quickViewTrigger instanceof HTMLAnchorElement) {
+      event.preventDefault();
+    }
+
+    const postId = quickViewTrigger.dataset.postId || quickViewTrigger.closest('[data-post-id]')?.dataset.postId;
+    if (!postId) {
+      return;
+    }
+
+    const post = getPostFromCache(postId);
+    if (!post) {
+      return;
+    }
+
+    void openQuickViewModal(post);
+  });
+
+  if (feedState.quickViewKeyBound) {
+    return;
+  }
+
+  feedState.quickViewKeyBound = true;
+  container.addEventListener('keydown', (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    if (target.dataset.action !== 'open-post-quick-view') {
+      return;
+    }
+
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+
+    event.preventDefault();
+    const postId = target.dataset.postId;
+    if (!postId) {
+      return;
+    }
+
+    const post = getPostFromCache(postId);
+    if (!post) {
+      return;
+    }
+
+    void openQuickViewModal(post);
   });
 }
 
@@ -617,6 +1156,7 @@ export async function loadFeed(options = {}) {
     }
 
     attachEditHandler(feedContainer);
+    attachQuickViewHandler(feedContainer);
     attachDeleteHandler(feedContainer, () => loadFeed({ forceRefresh: true }));
     attachLikeHandler(feedContainer, viewer, notificationRoot);
   } catch (error) {
