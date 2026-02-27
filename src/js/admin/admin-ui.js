@@ -136,6 +136,7 @@ function getElements() {
     commentsLoading: document.querySelector('[data-comments-loading]'),
     usersBody: document.querySelector('[data-users-body]'),
     postsBody: document.querySelector('[data-posts-body]'),
+    postsSearchInput: document.querySelector('[data-admin-posts-search]'),
     postsCategoryFilter: document.querySelector('[data-admin-posts-category-filter]'),
     postsClearFilter: document.querySelector('[data-admin-posts-clear-filter]'),
     postsFilterStatus: document.querySelector('[data-admin-posts-filter-status]'),
@@ -530,12 +531,15 @@ function setPostsFilterOptions(posts, elements) {
 }
 
 function updateAdminPostsFilterUi(elements) {
+  const query = elements.postsSearchInput instanceof HTMLInputElement
+    ? normalizeText(elements.postsSearchInput.value)
+    : '';
   const selectedCategory = elements.postsCategoryFilter instanceof HTMLSelectElement
     ? elements.postsCategoryFilter.value
     : '';
 
   if (elements.postsClearFilter) {
-    elements.postsClearFilter.classList.toggle('d-none', !selectedCategory);
+    elements.postsClearFilter.classList.toggle('d-none', !(selectedCategory || query));
   }
 
   if (!elements.postsFilterStatus) {
@@ -543,36 +547,74 @@ function updateAdminPostsFilterUi(elements) {
   }
 
   if (!selectedCategory) {
-    elements.postsFilterStatus.textContent = '';
-    elements.postsFilterStatus.classList.add('d-none');
-    return;
+    if (!query) {
+      elements.postsFilterStatus.textContent = '';
+      elements.postsFilterStatus.classList.add('d-none');
+      return;
+    }
   }
 
-  const selectedOption = elements.postsCategoryFilter?.selectedOptions?.[0];
-  const label = selectedOption?.textContent?.trim() || 'Selected category';
-  elements.postsFilterStatus.textContent = `Filtering by: ${label}`;
+  const labels = [];
+
+  if (selectedCategory) {
+    const selectedOption = elements.postsCategoryFilter?.selectedOptions?.[0];
+    const label = selectedOption?.textContent?.trim() || 'Selected category';
+    labels.push(`category: ${label}`);
+  }
+
+  if (query) {
+    labels.push(`query: "${query}"`);
+  }
+
+  elements.postsFilterStatus.textContent = `Filtering by ${labels.join(', ')}`;
   elements.postsFilterStatus.classList.remove('d-none');
 }
 
 function renderFilteredPosts(elements) {
+  const query = elements.postsSearchInput instanceof HTMLInputElement
+    ? normalizeText(elements.postsSearchInput.value)
+    : '';
   const selectedCategory = elements.postsCategoryFilter instanceof HTMLSelectElement
     ? elements.postsCategoryFilter.value
     : '';
 
-  const filteredPosts = selectedCategory
-    ? adminState.posts.filter((post) => (post.categorySlug || 'uncategorized') === selectedCategory)
-    : adminState.posts;
+  const filteredPosts = adminState.posts.filter((post) => {
+    if (selectedCategory && (post.categorySlug || 'uncategorized') !== selectedCategory) {
+      return false;
+    }
+
+    if (!query) {
+      return true;
+    }
+
+    const haystack = normalizeText(`${post.title} ${post.body} ${post.authorUsername} ${post.authorEmail} ${post.categoryName}`);
+    return haystack.includes(query);
+  });
 
   renderPostsTable(filteredPosts, elements);
   updateAdminPostsFilterUi(elements);
+
+  if (elements.postsFilterStatus) {
+    const baseText = elements.postsFilterStatus.textContent || '';
+    if (baseText) {
+      elements.postsFilterStatus.textContent = `${baseText} • ${filteredPosts.length}/${adminState.posts.length} posts`;
+    }
+  }
 }
 
 function attachPostsFilterHandler(elements) {
-  if (!(elements.postsCategoryFilter instanceof HTMLSelectElement) || adminState.postsFilterBound) {
+  const canBindCategory = elements.postsCategoryFilter instanceof HTMLSelectElement;
+  const canBindSearch = elements.postsSearchInput instanceof HTMLInputElement;
+
+  if (adminState.postsFilterBound || !canBindCategory || !canBindSearch) {
     return;
   }
 
   adminState.postsFilterBound = true;
+  elements.postsSearchInput.addEventListener('input', () => {
+    renderFilteredPosts(elements);
+  });
+
   elements.postsCategoryFilter.addEventListener('change', () => {
     setCategoryFilterInQuery(elements.postsCategoryFilter.value || '');
     renderFilteredPosts(elements);
@@ -581,6 +623,9 @@ function attachPostsFilterHandler(elements) {
   if (elements.postsClearFilter && elements.postsClearFilter.dataset.bound !== 'true') {
     elements.postsClearFilter.dataset.bound = 'true';
     elements.postsClearFilter.addEventListener('click', () => {
+      if (elements.postsSearchInput instanceof HTMLInputElement) {
+        elements.postsSearchInput.value = '';
+      }
       elements.postsCategoryFilter.value = '';
       setCategoryFilterInQuery('');
       renderFilteredPosts(elements);
@@ -635,6 +680,9 @@ export async function loadDashboard() {
     }
     if (elements.usersClearFilter instanceof HTMLButtonElement) {
       elements.usersClearFilter.disabled = true;
+    }
+    if (elements.postsSearchInput instanceof HTMLInputElement) {
+      elements.postsSearchInput.disabled = true;
     }
     if (elements.postsCategoryFilter instanceof HTMLSelectElement) {
       elements.postsCategoryFilter.disabled = true;
@@ -697,6 +745,9 @@ export async function loadDashboard() {
       }
       if (elements.postsCategoryFilter instanceof HTMLSelectElement) {
         elements.postsCategoryFilter.disabled = false;
+      }
+      if (elements.postsSearchInput instanceof HTMLInputElement) {
+        elements.postsSearchInput.disabled = false;
       }
       if (elements.postsClearFilter instanceof HTMLButtonElement) {
         elements.postsClearFilter.disabled = false;
