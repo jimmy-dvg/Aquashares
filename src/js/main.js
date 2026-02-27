@@ -94,6 +94,8 @@ async function initializeNavbar() {
   const authElements = document.querySelectorAll('[data-nav-auth]');
   const adminElements = document.querySelectorAll('[data-nav-admin]');
   const statusElement = document.querySelector('[data-nav-status]');
+  const userRoleBadge = document.querySelector('[data-nav-user-role]');
+  const userButton = document.querySelector('[data-nav-user-button]');
 
   const user = await getCurrentUser();
   setActiveNavbarLink();
@@ -108,6 +110,10 @@ async function initializeNavbar() {
       statusElement.textContent = 'Guest';
     }
 
+    if (userRoleBadge instanceof HTMLElement) {
+      userRoleBadge.classList.add('d-none');
+    }
+
     return null;
   }
 
@@ -119,6 +125,14 @@ async function initializeNavbar() {
 
   if (statusElement) {
     statusElement.textContent = user.email || 'User';
+  }
+
+  if (userRoleBadge instanceof HTMLElement) {
+    userRoleBadge.classList.toggle('d-none', role !== 'admin');
+  }
+
+  if (userButton instanceof HTMLElement) {
+    userButton.setAttribute('aria-label', `Account menu for ${user.email || 'User'}`);
   }
 
   return user;

@@ -34,7 +34,15 @@
         </button>
 
         <div class="collapse navbar-collapse" id="mainNavbar">
-          <form class="aqua-nav-search ms-lg-auto me-lg-3 my-2 my-lg-0" role="search" data-nav-search-form>
+          <ul class="navbar-nav align-items-lg-center gap-lg-1 mb-2 mb-lg-0 aqua-nav-pages">
+            <li class="nav-item"><a class="nav-link" href="/index.html">Feed</a></li>
+            <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/post-create.html">Create Post</a></li>
+            <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/chat.html">Chat</a></li>
+            <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/profile.html">Profile</a></li>
+            <li class="nav-item d-none" data-nav-admin><a class="nav-link" href="/admin.html">Admin</a></li>
+          </ul>
+
+          <form class="aqua-nav-search my-2 my-lg-0 mx-lg-3" role="search" data-nav-search-form>
             <div class="input-group input-group-sm">
               <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
               <input
@@ -47,36 +55,56 @@
               />
             </div>
           </form>
-          <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-            <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/post-create.html">Create Post</a></li>
-            <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/chat.html">Chat</a></li>
-            <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/profile.html">Profile</a></li>
-            <li class="nav-item d-none" data-nav-admin><a class="nav-link" href="/admin.html">Admin</a></li>
-            <li class="nav-item" data-nav-guest><a class="nav-link" href="/login.html">Login</a></li>
-            <li class="nav-item" data-nav-guest><a class="nav-link" href="/register.html">Register</a></li>
-            <li class="nav-item dropdown d-none" data-nav-auth data-notifications-dropdown>
-              <button
-                type="button"
-                class="btn btn-link nav-link p-0 position-relative"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-                aria-label="Notifications"
-              >
-                <i class="bi bi-bell-fill" aria-hidden="true"></i>
-                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" data-notifications-badge>0</span>
-              </button>
-              <div class="dropdown-menu dropdown-menu-end p-0 aqua-notifications-menu">
-                <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
-                  <strong class="small">Notifications</strong>
-                  <button type="button" class="btn btn-link btn-sm p-0" data-notifications-mark-all>Mark all read</button>
+
+          <div class="d-flex flex-column flex-lg-row align-items-lg-center gap-2 ms-lg-auto aqua-nav-account">
+            <div class="d-flex align-items-center gap-2 d-none" data-nav-auth>
+              <div class="dropdown" data-notifications-dropdown>
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm position-relative aqua-nav-icon-btn"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  aria-label="Notifications"
+                >
+                  <i class="bi bi-bell-fill" aria-hidden="true"></i>
+                  <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" data-notifications-badge>0</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end p-0 aqua-notifications-menu">
+                  <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                    <strong class="small">Notifications</strong>
+                    <button type="button" class="btn btn-link btn-sm p-0" data-notifications-mark-all>Mark all read</button>
+                  </div>
+                  <div class="list-group list-group-flush" data-notifications-list></div>
+                  <div class="px-3 py-2 text-secondary small" data-notifications-empty>No notifications yet.</div>
                 </div>
-                <div class="list-group list-group-flush" data-notifications-list></div>
-                <div class="px-3 py-2 text-secondary small" data-notifications-empty>No notifications yet.</div>
               </div>
-            </li>
-            <li class="nav-item d-none" data-nav-auth><span class="nav-link" data-nav-status></span></li>
-            <li class="nav-item d-none" data-nav-auth><button type="button" class="btn btn-link nav-link p-0" data-nav-logout>Logout</button></li>
-          </ul>
+
+              <div class="dropdown">
+                <button
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm dropdown-toggle aqua-nav-user-trigger"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                  data-nav-user-button
+                >
+                  <i class="bi bi-person-circle" aria-hidden="true"></i>
+                  <span data-nav-status>User</span>
+                  <span class="badge text-bg-warning d-none" data-nav-user-role>Admin</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li><a class="dropdown-item" href="/profile.html">Profile</a></li>
+                  <li class="d-none" data-nav-admin><a class="dropdown-item" href="/admin.html">Admin Panel</a></li>
+                  <li><hr class="dropdown-divider" /></li>
+                  <li><button type="button" class="dropdown-item text-danger" data-nav-logout>Logout</button></li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2" data-nav-guest>
+              <a class="btn btn-outline-secondary btn-sm" href="/login.html">Login</a>
+              <a class="btn btn-primary btn-sm" href="/register.html">Register</a>
+            </div>
+          </div>
         </div>
       </div>
     </nav>
