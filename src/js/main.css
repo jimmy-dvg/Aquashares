@@ -3,7 +3,8 @@ body {
 }
 
 .navbar {
-  backdrop-filter: blur(8px);
+  position: relative;
+  z-index: 1100;
   background-color: rgba(var(--bs-body-bg-rgb), 0.92) !important;
 }
 
@@ -28,6 +29,30 @@ body {
 
 .aqua-nav-account {
   min-width: fit-content;
+}
+
+.navbar,
+.navbar .container,
+.navbar .navbar-collapse {
+  overflow: visible;
+}
+
+.navbar .dropdown-menu {
+  z-index: 2000;
+}
+
+[data-notifications-dropdown] {
+  position: relative;
+  z-index: 2100;
+}
+
+.aqua-notifications-menu {
+  z-index: 2200 !important;
+  max-height: min(72vh, 430px);
+}
+
+[data-notifications-list] {
+  max-height: min(52vh, 320px);
 }
 
 .aqua-nav-icon-btn {
