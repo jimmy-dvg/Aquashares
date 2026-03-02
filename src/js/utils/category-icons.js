@@ -8,15 +8,30 @@ const CATEGORY_EMOJI_MAP = {
   other: '📦'
 };
 
+const CATEGORY_BG_NAME_MAP = {
+  fish: 'Риби',
+  plants: 'Растения',
+  inhabitants: 'Обитатели',
+  equipment: 'Оборудване',
+  giveaway: 'Подарявам',
+  exchange: 'Разменям',
+  other: 'Други'
+};
+
 export function getCategoryEmoji(categorySlug) {
   const slug = (categorySlug || '').trim().toLowerCase();
   return CATEGORY_EMOJI_MAP[slug] || '🏷️';
 }
 
+export function getCategoryDisplayName(categoryName, categorySlug) {
+  const slug = (categorySlug || '').trim().toLowerCase();
+  return CATEGORY_BG_NAME_MAP[slug] || categoryName || 'Без категория';
+}
+
 export function getCategoryLabelWithEmoji(categoryName, categorySlug) {
-  return `${getCategoryEmoji(categorySlug)} ${categoryName}`;
+  return `${getCategoryEmoji(categorySlug)} ${getCategoryDisplayName(categoryName, categorySlug)}`;
 }
 
 export function getAllCategoriesLabel() {
-  return '🗂️ All Categories';
+  return '🗂️ Всички категории';
 }

@@ -1,4 +1,4 @@
-import { getAllCategoriesLabel, getCategoryLabelWithEmoji } from '../utils/category-icons.js';
+import { getAllCategoriesLabel, getCategoryDisplayName, getCategoryLabelWithEmoji } from '../utils/category-icons.js';
 
 let categoriesBound = false;
 let popstateBound = false;
@@ -38,7 +38,10 @@ export function updateFeedFilterUi(filterElement, searchInput, clearFilterButton
   const labels = [];
 
   if (selectedSlug) {
-    const categoryName = (categories || []).find((category) => category.slug === selectedSlug)?.name || 'Selected category';
+    const selectedCategory = (categories || []).find((category) => category.slug === selectedSlug) || null;
+    const categoryName = selectedCategory
+      ? getCategoryDisplayName(selectedCategory.name, selectedCategory.slug)
+      : 'Избрана категория';
     labels.push(`category: ${categoryName}`);
   }
 

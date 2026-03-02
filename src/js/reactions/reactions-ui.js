@@ -14,7 +14,7 @@ function updateLikeButtonVisualState(button, state) {
   }
 
   if (text instanceof HTMLElement) {
-    text.textContent = state.likedByViewer ? 'Liked' : 'Like';
+    text.textContent = state.likedByViewer ? 'Харесано' : 'Харесай';
   }
 
   if (count instanceof HTMLElement) {
@@ -44,13 +44,13 @@ export function setLikeButtonState(button, state) {
   button.disabled = isPending || !isAuthenticated;
 
   if (!isAuthenticated) {
-    button.setAttribute('title', 'Log in to like posts');
-    button.setAttribute('aria-label', 'Log in to like posts');
+    button.setAttribute('title', 'Влез, за да харесваш публикации');
+    button.setAttribute('aria-label', 'Влез, за да харесваш публикации');
     return;
   }
 
   button.removeAttribute('title');
-  button.setAttribute('aria-label', state.likedByViewer ? 'Remove like' : 'Like post');
+  button.setAttribute('aria-label', state.likedByViewer ? 'Премахни харесване' : 'Харесай публикация');
 }
 
 export function createLikeButton(state) {

@@ -1,5 +1,6 @@
 import { createCommentsBlock } from '../comments/comments-ui.js';
 import { createLikeButton } from '../reactions/reactions-ui.js';
+import { getCategoryDisplayName } from '../utils/category-icons.js';
 
 function formatDate(value) {
   const date = new Date(value);
@@ -8,7 +9,7 @@ function formatDate(value) {
     return '';
   }
 
-  return new Intl.DateTimeFormat('en', {
+  return new Intl.DateTimeFormat('bg', {
     year: 'numeric',
     month: 'short',
     day: '2-digit'
@@ -25,7 +26,7 @@ function formatRelativeTime(value) {
   const minute = 60 * 1000;
   const hour = 60 * minute;
   const day = 24 * hour;
-  const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  const rtf = new Intl.RelativeTimeFormat('bg', { numeric: 'auto' });
 
   if (Math.abs(diff) < hour) {
     return rtf.format(Math.round(diff / minute), 'minute');
@@ -47,7 +48,7 @@ function getRoleLabel(author) {
 }
 
 function getCategoryLabel(post) {
-  return post.categoryName || 'Uncategorized';
+  return getCategoryDisplayName(post.categoryName, post.categorySlug);
 }
 
 function getPostDetailHref(postId) {
@@ -98,11 +99,11 @@ function createPostImage(post) {
     const galleryBadge = document.createElement('span');
     galleryBadge.className = 'badge rounded-pill text-bg-dark aqua-post-gallery-badge';
     galleryBadge.innerHTML = '<i class="bi bi-images" aria-hidden="true"></i><span class="aqua-post-gallery-badge-count">' + photos.length + '</span>';
-    galleryBadge.setAttribute('aria-label', `${photos.length} images available`);
+    galleryBadge.setAttribute('aria-label', `${photos.length} налични снимки`);
 
     const galleryHint = document.createElement('span');
     galleryHint.className = 'aqua-post-gallery-hint';
-    galleryHint.textContent = 'View gallery';
+    galleryHint.textContent = 'Преглед на галерията';
 
     wrapper.append(galleryBadge, galleryHint);
   }
@@ -305,7 +306,7 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false)
   if (post.categorySlug) {
     category.href = `/index.html?category=${encodeURIComponent(post.categorySlug)}`;
     category.classList.add('aqua-category-link');
-    category.setAttribute('aria-label', `Filter by ${getCategoryLabel(post)} category`);
+    category.setAttribute('aria-label', `Филтрирай по ${getCategoryLabel(post)}`);
   }
 
   const title = document.createElement('h2');

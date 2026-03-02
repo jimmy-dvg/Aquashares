@@ -206,6 +206,19 @@ Every page must:
 
 ---
 
+# 🇧🇬 Localization Rules (MANDATORY)
+
+- Primary UI language is Bulgarian.
+- All user-facing strings must be in Bulgarian:
+  - HTML labels, buttons, placeholders, titles, aria labels
+  - JS-rendered texts, notifications, errors, empty/loading states, modal texts
+- When adding new features, add Bulgarian strings from the start (do not leave English placeholders).
+- Do NOT translate backend/control values used in logic (e.g. role/status/slug identifiers).
+- Keep terminology consistent across pages (e.g. "Начало", "Профил", "Известия", "Категория").
+- After UI changes, run a quick pass for untranslated strings before task completion.
+
+---
+
 # 🧠 Code Quality Rules
 
 Copilot must:

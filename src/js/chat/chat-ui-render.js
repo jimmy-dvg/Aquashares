@@ -7,7 +7,7 @@ function formatTime(value) {
     return '';
   }
 
-  return new Intl.DateTimeFormat('en', {
+  return new Intl.DateTimeFormat('bg', {
     hour: '2-digit',
     minute: '2-digit'
   }).format(date);
@@ -20,7 +20,7 @@ function formatDateLabel(value) {
     return '';
   }
 
-  return new Intl.DateTimeFormat('en', {
+  return new Intl.DateTimeFormat('bg', {
     year: 'numeric',
     month: 'short',
     day: '2-digit'

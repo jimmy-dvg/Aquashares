@@ -5,6 +5,7 @@ import { createLikeButton, setLikeButtonState } from '../reactions/reactions-ui.
 import { deletePost, getAllPosts, getCategories, updatePost } from './posts-service.js';
 import { showConfirmModal } from '../utils/confirm-modal.js';
 import { renderGallery } from './post-detail-view.js';
+import { getCategoryDisplayName } from '../utils/category-icons.js';
 import {
   bindCategoryFilter,
   bindFeedPopstate,
@@ -50,7 +51,7 @@ function formatPostTimestamp(value) {
     return '';
   }
 
-  return new Intl.DateTimeFormat('en', {
+  return new Intl.DateTimeFormat('bg', {
     year: 'numeric',
     month: 'short',
     day: '2-digit',
@@ -140,7 +141,7 @@ async function renderQuickViewBody(container, post, viewer) {
 
   const category = document.createElement('span');
   category.className = 'badge text-bg-secondary-subtle text-secondary-emphasis align-self-start';
-  category.textContent = post.categoryName || 'Uncategorized';
+  category.textContent = getCategoryDisplayName(post.categoryName, post.categorySlug);
 
   const title = document.createElement('h5');
   title.className = 'mb-0';
@@ -476,7 +477,7 @@ function openEditModal(post) {
     categories.forEach((category) => {
       const option = document.createElement('option');
       option.value = category.id;
-      option.textContent = category.name;
+      option.textContent = getCategoryDisplayName(category.name, category.slug);
       modalState.editCategory.append(option);
     });
 

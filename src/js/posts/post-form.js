@@ -9,6 +9,7 @@ import {
   updatePost
 } from './posts-service.js';
 import { deletePostImage, getPublicUrl, uploadPostImage } from '../services/storage-service.js';
+import { getCategoryDisplayName } from '../utils/category-icons.js';
 
 function getElements() {
   return {
@@ -89,7 +90,7 @@ function populateCategorySelect(selectElement, categories, selectedCategoryId = 
   categories.forEach((category) => {
     const option = document.createElement('option');
     option.value = category.id;
-    option.textContent = category.name;
+    option.textContent = getCategoryDisplayName(category.name, category.slug);
     selectElement.append(option);
   });
 

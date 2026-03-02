@@ -1,3 +1,5 @@
+import { getCategoryDisplayName } from '../utils/category-icons.js';
+
 function formatDate(value) {
   const date = new Date(value);
 
@@ -5,7 +7,7 @@ function formatDate(value) {
     return '';
   }
 
-  return new Intl.DateTimeFormat('en', {
+  return new Intl.DateTimeFormat('bg', {
     year: 'numeric',
     month: 'short',
     day: '2-digit',
@@ -240,7 +242,8 @@ export function renderPost(elements, post, author, defaultAvatar) {
   }
 
   if (elements.category) {
-    elements.category.textContent = post.categoryName || 'Uncategorized';
+    const categoryLabel = getCategoryDisplayName(post.categoryName, post.categorySlug);
+    elements.category.textContent = categoryLabel;
 
     if (post.categorySlug) {
       if (elements.category.tagName !== 'A') {
@@ -253,7 +256,7 @@ export function renderPost(elements, post, author, defaultAvatar) {
 
       elements.category.href = `/index.html?category=${encodeURIComponent(post.categorySlug)}`;
       elements.category.classList.add('text-decoration-none', 'aqua-category-link');
-      elements.category.setAttribute('aria-label', `Filter by ${post.categoryName || 'category'}`);
+      elements.category.setAttribute('aria-label', `Филтрирай по ${categoryLabel}`);
     }
   }
 

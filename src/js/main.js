@@ -9,7 +9,8 @@ import { getCategories } from './posts/posts-service.js';
 import { loadFeed } from './posts/posts-ui.js';
 import { initializePostForm } from './posts/post-form.js';
 import { initializeProfilePage } from './profile/profile-ui.js';
-import { getCategoryEmoji } from './utils/category-icons.js';
+import { getCategoryDisplayName, getCategoryEmoji } from './utils/category-icons.js';
+import { initializeBulgarianLocalization } from './utils/localization-bg.js';
 
 function toggleElements(elements, isVisible) {
   elements.forEach((element) => {
@@ -114,7 +115,7 @@ function buildNavbarCategoryItem(category, selectedCategory, searchQuery) {
   const item = document.createElement('li');
   const link = createCategoryMenuLink({
     href: getNavbarCategoryHref(category.slug, searchQuery),
-    label: category.name,
+    label: getCategoryDisplayName(category.name, category.slug),
     iconEmoji: getCategoryEmoji(category.slug),
     isActive: category.slug === selectedCategory
   });
@@ -142,7 +143,7 @@ function renderNavbarCategories(categories) {
     const allCategoriesItem = document.createElement('li');
     const allCategoriesLink = createCategoryMenuLink({
       href: getNavbarCategoryHref('', searchQuery),
-      label: 'All Categories',
+      label: 'Всички категории',
       iconEmoji: '🗂️',
       isActive: !selectedCategory && pathname === '/index.html'
     });
@@ -316,6 +317,7 @@ async function enforcePageAccess() {
 }
 
 async function bootstrap() {
+  initializeBulgarianLocalization();
   await enforcePageAccess();
   const user = await initializeNavbar();
   initializeLogout();

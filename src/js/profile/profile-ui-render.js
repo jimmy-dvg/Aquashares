@@ -7,7 +7,7 @@ function formatDate(value) {
     return '';
   }
 
-  return new Intl.DateTimeFormat('en', {
+  return new Intl.DateTimeFormat('bg', {
     year: 'numeric',
     month: 'short',
     day: '2-digit'
