@@ -125,7 +125,7 @@ export function renderPosts(posts, elements) {
 
     const meta = document.createElement('div');
     meta.className = 'small text-secondary';
-    meta.textContent = `${formatDate(post.createdAt)} • ${truncate(post.body, 100)}`;
+    meta.textContent = `${formatDate(post.createdAt)} • ❤️ ${Number(post.likeCount || 0)} • 💬 ${Number(post.commentCount || 0)} • ${truncate(post.body, 100)}`;
 
     item.append(title, meta);
     fragment.append(item);

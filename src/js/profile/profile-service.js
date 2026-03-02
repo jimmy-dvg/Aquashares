@@ -70,17 +70,21 @@ function mapPost(row) {
     id: row.id,
     title: row.title,
     body: row.body,
-    createdAt: row.created_at
+    createdAt: row.created_at,
+    likeCount: Number(row.like_count || 0),
+    commentCount: Number(row.comment_count || 0)
   };
 }
 
-function mapComment(row, postTitleById) {
+function mapComment(row, postTitleById, postLikeCountById, postCommentCountById) {
   return {
     id: row.id,
     postId: row.post_id,
     postTitle: postTitleById.get(row.post_id) || 'Post',
     body: row.body,
-    createdAt: row.created_at
+    createdAt: row.created_at,
+    postLikeCount: Number(postLikeCountById.get(row.post_id) || 0),
+    postCommentCount: Number(postCommentCountById.get(row.post_id) || 0)
   };
 }
 
@@ -245,7 +249,49 @@ export async function getPostsByUserId(userId, limit = 20) {
     throwServiceError(error, 'Failed to load your posts.');
   }
 
-  return (data ?? []).map(mapPost);
+  const posts = data ?? [];
+  const postIds = posts.map((post) => post.id).filter(Boolean);
+
+  if (!postIds.length) {
+    return posts.map((post) => mapPost({ ...post, like_count: 0, comment_count: 0 }));
+  }
+
+  const commentCountByPostId = new Map();
+  const likeCountByPostId = new Map();
+
+  const { data: commentRows, error: commentsError } = await supabase
+    .from('comments')
+    .select('post_id')
+    .in('post_id', postIds);
+
+  if (commentsError) {
+    throwServiceError(commentsError, 'Failed to load post comment stats.');
+  }
+
+  (commentRows ?? []).forEach((row) => {
+    const current = commentCountByPostId.get(row.post_id) || 0;
+    commentCountByPostId.set(row.post_id, current + 1);
+  });
+
+  const { data: likeRows, error: likesError } = await supabase
+    .from('post_likes')
+    .select('post_id')
+    .in('post_id', postIds);
+
+  if (likesError && !isMissingRelation(likesError, 'post_likes')) {
+    throwServiceError(likesError, 'Failed to load post like stats.');
+  }
+
+  (likeRows ?? []).forEach((row) => {
+    const current = likeCountByPostId.get(row.post_id) || 0;
+    likeCountByPostId.set(row.post_id, current + 1);
+  });
+
+  return posts.map((post) => mapPost({
+    ...post,
+    like_count: likeCountByPostId.get(post.id) || 0,
+    comment_count: commentCountByPostId.get(post.id) || 0
+  }));
 }
 
 export async function getMyPosts(userId, limit = 20) {
@@ -266,6 +312,8 @@ export async function getCommentsByUserId(userId, limit = 20) {
 
   const postIds = [...new Set((data ?? []).map((item) => item.post_id).filter(Boolean))];
   let postTitleById = new Map();
+  let postLikeCountById = new Map();
+  let postCommentCountById = new Map();
 
   if (postIds.length) {
     const { data: posts, error: postsError } = await supabase
@@ -278,9 +326,37 @@ export async function getCommentsByUserId(userId, limit = 20) {
     }
 
     postTitleById = new Map((posts ?? []).map((post) => [post.id, post.title]));
+
+    const { data: postCommentsRows, error: postCommentsError } = await supabase
+      .from('comments')
+      .select('post_id')
+      .in('post_id', postIds);
+
+    if (postCommentsError) {
+      throwServiceError(postCommentsError, 'Failed to load comment stats for posts.');
+    }
+
+    (postCommentsRows ?? []).forEach((row) => {
+      const current = postCommentCountById.get(row.post_id) || 0;
+      postCommentCountById.set(row.post_id, current + 1);
+    });
+
+    const { data: postLikesRows, error: postLikesError } = await supabase
+      .from('post_likes')
+      .select('post_id')
+      .in('post_id', postIds);
+
+    if (postLikesError && !isMissingRelation(postLikesError, 'post_likes')) {
+      throwServiceError(postLikesError, 'Failed to load like stats for posts.');
+    }
+
+    (postLikesRows ?? []).forEach((row) => {
+      const current = postLikeCountById.get(row.post_id) || 0;
+      postLikeCountById.set(row.post_id, current + 1);
+    });
   }
 
-  return (data ?? []).map((item) => mapComment(item, postTitleById));
+  return (data ?? []).map((item) => mapComment(item, postTitleById, postLikeCountById, postCommentCountById));
 }
 
 export async function getMyComments(userId, limit = 20) {

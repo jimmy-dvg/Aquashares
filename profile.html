@@ -273,14 +273,40 @@
 
           <div class="card mb-3" id="my-posts">
             <div class="card-body">
-              <h2 class="h5 mb-3">My Posts</h2>
+              <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+                <h2 class="h5 mb-0">My Posts</h2>
+                <div class="profile-posts-sort-wrap">
+                  <label for="profile-posts-sort" class="form-label form-label-sm mb-1 mb-md-0">
+                    <i class="bi bi-funnel me-1" aria-hidden="true"></i>Подреди по
+                  </label>
+                  <select id="profile-posts-sort" class="form-select form-select-sm" data-profile-posts-sort>
+                    <option value="newest" selected>Най-нови</option>
+                    <option value="oldest">Най-стари</option>
+                    <option value="most_liked">Най-харесвани</option>
+                    <option value="most_commented">Най-коментирани</option>
+                  </select>
+                </div>
+              </div>
               <div class="list-group" data-profile-posts-list></div>
             </div>
           </div>
 
           <div class="card mb-3">
             <div class="card-body">
-              <h2 class="h5 mb-3">My Comments</h2>
+              <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+                <h2 class="h5 mb-0">My Comments</h2>
+                <div class="profile-posts-sort-wrap">
+                  <label for="profile-comments-sort" class="form-label form-label-sm mb-1 mb-md-0">
+                    <i class="bi bi-funnel me-1" aria-hidden="true"></i>Подреди по
+                  </label>
+                  <select id="profile-comments-sort" class="form-select form-select-sm" data-profile-comments-sort>
+                    <option value="newest" selected>Най-нови</option>
+                    <option value="oldest">Най-стари</option>
+                    <option value="most_liked">Най-харесвани</option>
+                    <option value="most_commented">Най-коментирани</option>
+                  </select>
+                </div>
+              </div>
               <div class="list-group" data-profile-comments-list></div>
             </div>
           </div>

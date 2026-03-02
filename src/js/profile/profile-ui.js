@@ -23,6 +23,10 @@ import { BULGARIAN_LOCATION_SUGGESTIONS, mergeLocationSuggestions, sanitizeLocat
 const state = {
   user: null,
   profile: null,
+  profilePosts: [],
+  profilePostsSort: 'newest',
+  profileComments: [],
+  profileCommentsSort: 'newest',
   locationMap: {
     map: null,
     marker: null,
@@ -72,9 +76,118 @@ function getElements() {
     chatCtaButton: document.querySelector('[data-profile-chat-cta]'),
     statPosts: document.querySelector('[data-profile-stat-posts]'),
     statComments: document.querySelector('[data-profile-stat-comments]'),
+    postsSort: document.querySelector('[data-profile-posts-sort]'),
+    commentsSort: document.querySelector('[data-profile-comments-sort]'),
     postsList: document.querySelector('[data-profile-posts-list]'),
     commentsList: document.querySelector('[data-profile-comments-list]')
   };
+}
+
+function getSortFromQueryParam(key, fallback = 'newest') {
+  const params = new URLSearchParams(window.location.search);
+  return normalizePostsSort(params.get(key) || fallback);
+}
+
+function setSortInQueryParam(key, value) {
+  const params = new URLSearchParams(window.location.search);
+  const normalized = normalizePostsSort(value);
+
+  if (normalized === 'newest') {
+    params.delete(key);
+  } else {
+    params.set(key, normalized);
+  }
+
+  const queryString = params.toString();
+  const nextUrl = queryString ? `${window.location.pathname}?${queryString}${window.location.hash}` : `${window.location.pathname}${window.location.hash}`;
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+  if (nextUrl !== currentUrl) {
+    window.history.replaceState(null, '', nextUrl);
+  }
+}
+
+function normalizePostsSort(value) {
+  const normalized = (value || '').trim().toLowerCase();
+  if (normalized === 'oldest' || normalized === 'most_liked' || normalized === 'most_commented' || normalized === 'newest') {
+    return normalized;
+  }
+
+  return 'newest';
+}
+
+function sortProfilePosts(posts, sortOption = 'newest') {
+  const normalized = normalizePostsSort(sortOption);
+  const items = [...(posts || [])];
+
+  if (normalized === 'oldest') {
+    return items.sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
+  }
+
+  if (normalized === 'most_liked') {
+    return items.sort((left, right) => {
+      const likeDelta = Number(right.likeCount || 0) - Number(left.likeCount || 0);
+      if (likeDelta !== 0) {
+        return likeDelta;
+      }
+
+      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+    });
+  }
+
+  if (normalized === 'most_commented') {
+    return items.sort((left, right) => {
+      const commentDelta = Number(right.commentCount || 0) - Number(left.commentCount || 0);
+      if (commentDelta !== 0) {
+        return commentDelta;
+      }
+
+      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+    });
+  }
+
+  return items.sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+}
+
+function renderSortedPosts(elements) {
+  renderPosts(sortProfilePosts(state.profilePosts, state.profilePostsSort), elements);
+}
+
+function sortProfileComments(comments, sortOption = 'newest') {
+  const normalized = normalizePostsSort(sortOption);
+  const items = [...(comments || [])];
+
+  if (normalized === 'oldest') {
+    return items.sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
+  }
+
+  if (normalized === 'most_liked') {
+    return items.sort((left, right) => {
+      const likeDelta = Number(right.postLikeCount || 0) - Number(left.postLikeCount || 0);
+      if (likeDelta !== 0) {
+        return likeDelta;
+      }
+
+      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+    });
+  }
+
+  if (normalized === 'most_commented') {
+    return items.sort((left, right) => {
+      const commentDelta = Number(right.postCommentCount || 0) - Number(left.postCommentCount || 0);
+      if (commentDelta !== 0) {
+        return commentDelta;
+      }
+
+      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+    });
+  }
+
+  return items.sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+}
+
+function renderSortedComments(elements) {
+  renderComments(sortProfileComments(state.profileComments, state.profileCommentsSort), elements);
 }
 
 function updateLocationCoordinatesPreview(elements) {
@@ -654,6 +767,24 @@ async function handlePreferencesSave(event, elements) {
 }
 
 function bindEvents(elements) {
+  if (elements.postsSort instanceof HTMLSelectElement && elements.postsSort.dataset.bound !== 'true') {
+    elements.postsSort.dataset.bound = 'true';
+    elements.postsSort.addEventListener('change', () => {
+      state.profilePostsSort = normalizePostsSort(elements.postsSort.value);
+      setSortInQueryParam('my_posts_sort', state.profilePostsSort);
+      renderSortedPosts(elements);
+    });
+  }
+
+  if (elements.commentsSort instanceof HTMLSelectElement && elements.commentsSort.dataset.bound !== 'true') {
+    elements.commentsSort.dataset.bound = 'true';
+    elements.commentsSort.addEventListener('change', () => {
+      state.profileCommentsSort = normalizePostsSort(elements.commentsSort.value);
+      setSortInQueryParam('my_comments_sort', state.profileCommentsSort);
+      renderSortedComments(elements);
+    });
+  }
+
   if (elements.profileForm && elements.profileForm.dataset.bound !== 'true') {
     elements.profileForm.dataset.bound = 'true';
     elements.profileForm.addEventListener('submit', (event) => {
@@ -709,6 +840,18 @@ export async function initializeProfilePage() {
     }
 
     state.profile = profile;
+    state.profilePosts = posts;
+    state.profileComments = comments;
+    state.profilePostsSort = getSortFromQueryParam('my_posts_sort', 'newest');
+    state.profileCommentsSort = getSortFromQueryParam('my_comments_sort', 'newest');
+
+    if (elements.postsSort instanceof HTMLSelectElement) {
+      elements.postsSort.value = state.profilePostsSort;
+    }
+
+    if (elements.commentsSort instanceof HTMLSelectElement) {
+      elements.commentsSort.value = state.profileCommentsSort;
+    }
 
     toggleEditSections(elements, isOwnProfile);
     updateProfileHeadings(elements, isOwnProfile);
@@ -721,11 +864,12 @@ export async function initializeProfilePage() {
       initializeLocationMapPicker(elements);
       updateLocationCoordinateInputs(elements, profile.locationLat, profile.locationLng);
       renderPreferences(preferences, elements);
-      bindEvents(elements);
     }
 
-    renderPosts(posts, elements);
-    renderComments(comments, elements);
+    renderSortedPosts(elements);
+    renderSortedComments(elements);
+
+    bindEvents(elements);
   } catch (error) {
     showFeedback(elements, error.message || 'Unable to load profile.', 'danger');
   } finally {
