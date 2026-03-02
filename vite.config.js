@@ -12,6 +12,7 @@ export default defineConfig({
         chat: resolve(__dirname, 'chat.html'),
         giveaway: resolve(__dirname, 'giveaway.html'),
         exchange: resolve(__dirname, 'exchange.html'),
+        wanted: resolve(__dirname, 'wanted.html'),
         postDetail: resolve(__dirname, 'post-detail.html'),
         profile: resolve(__dirname, 'profile.html'),
         admin: resolve(__dirname, 'admin.html')

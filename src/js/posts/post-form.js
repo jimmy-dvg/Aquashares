@@ -29,12 +29,13 @@ function getElements() {
   };
 }
 
-const VALID_SECTIONS = new Set(['forum', 'giveaway', 'exchange']);
+const VALID_SECTIONS = new Set(['forum', 'giveaway', 'exchange', 'wanted']);
 
 const SECTION_OPTIONS = [
   { value: 'forum', label: 'Форум' },
   { value: 'giveaway', label: 'Подарявам' },
-  { value: 'exchange', label: 'Разменям' }
+  { value: 'exchange', label: 'Разменям' },
+  { value: 'wanted', label: 'Търся' }
 ];
 
 function normalizeSection(section) {
@@ -54,6 +55,10 @@ function getFeedPathBySection(section) {
 
   if (section === 'exchange') {
     return '/exchange.html';
+  }
+
+  if (section === 'wanted') {
+    return '/wanted.html';
   }
 
   return '/index.html';

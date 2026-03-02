@@ -39,14 +39,18 @@ function getPreferredCategoryOrder(section) {
   }
 
   if (section === 'exchange') {
-    return ['fish', 'plants', 'inhabitants', 'equipment', 'foods', 'exchange', 'other'];
+    return ['fish', 'plants', 'inhabitants', 'equipment', 'foods', 'other'];
   }
 
   if (section === 'forum') {
     return ['fish', 'plants', 'inhabitants', 'equipment', 'other'];
   }
 
-  return ['fish', 'plants', 'inhabitants', 'equipment', 'foods', 'exchange', 'other'];
+  if (section === 'wanted') {
+    return ['fish', 'plants', 'inhabitants', 'equipment', 'foods', 'other'];
+  }
+
+  return ['fish', 'plants', 'inhabitants', 'equipment', 'foods', 'other'];
 }
 
 function sortCategories(categories, section = '') {

@@ -30,7 +30,7 @@ function normalizeNavPathname(pathname) {
 
 function isFeedPagePath(pathname) {
   const normalized = normalizeNavPathname(pathname);
-  return normalized === '/index.html' || normalized === '/giveaway.html' || normalized === '/exchange.html';
+  return normalized === '/index.html' || normalized === '/giveaway.html' || normalized === '/exchange.html' || normalized === '/wanted.html';
 }
 
 function getNavSectionIcon(sectionKey) {
@@ -44,6 +44,10 @@ function getNavSectionIcon(sectionKey) {
 
   if (sectionKey === 'navExchange') {
     return '🔄';
+  }
+
+  if (sectionKey === 'navWanted') {
+    return '🔎';
   }
 
   return '📂';
@@ -88,6 +92,10 @@ function createNavSectionDropdown(sectionKey, label) {
     toggle.dataset.navExchangeToggle = 'true';
   }
 
+  if (sectionKey === 'navWanted') {
+    toggle.dataset.navWantedToggle = 'true';
+  }
+
   applyNavSectionToggleContent(toggle, sectionKey, label);
 
   const menu = document.createElement('ul');
@@ -103,6 +111,10 @@ function createNavSectionDropdown(sectionKey, label) {
 
   if (sectionKey === 'navExchange') {
     menu.dataset.navExchangeMenu = 'true';
+  }
+
+  if (sectionKey === 'navWanted') {
+    menu.dataset.navWantedMenu = 'true';
   }
 
   item.append(toggle, menu);
@@ -136,10 +148,17 @@ function ensureRequiredNavbarStructure() {
       giveawayItem.insertAdjacentElement('afterend', exchangeItem);
     }
 
-    if (forumItem.parentElement === navList && giveawayItem.parentElement === navList && exchangeItem.parentElement === navList) {
+    let wantedItem = navList.querySelector('[data-nav-wanted]');
+    if (!(wantedItem instanceof HTMLLIElement)) {
+      wantedItem = createNavSectionDropdown('navWanted', 'Търся');
+      exchangeItem.insertAdjacentElement('afterend', wantedItem);
+    }
+
+    if (forumItem.parentElement === navList && giveawayItem.parentElement === navList && exchangeItem.parentElement === navList && wantedItem.parentElement === navList) {
       navList.prepend(forumItem);
       forumItem.insertAdjacentElement('afterend', giveawayItem);
       giveawayItem.insertAdjacentElement('afterend', exchangeItem);
+      exchangeItem.insertAdjacentElement('afterend', wantedItem);
     }
 
     const forumToggle = forumItem.querySelector('[data-nav-forum-toggle]');
@@ -155,6 +174,11 @@ function ensureRequiredNavbarStructure() {
     const exchangeToggle = exchangeItem.querySelector('[data-nav-exchange-toggle]');
     if (exchangeToggle instanceof HTMLElement) {
       applyNavSectionToggleContent(exchangeToggle, 'navExchange', 'Разменям');
+    }
+
+    const wantedToggle = wantedItem.querySelector('[data-nav-wanted-toggle]');
+    if (wantedToggle instanceof HTMLElement) {
+      applyNavSectionToggleContent(wantedToggle, 'navWanted', 'Търся');
     }
   });
 }
@@ -195,6 +219,7 @@ function setActiveNavbarLink() {
   const forumToggle = document.querySelector('[data-nav-forum-toggle]');
   const giveawayToggle = document.querySelector('[data-nav-giveaway-toggle]');
   const exchangeToggle = document.querySelector('[data-nav-exchange-toggle]');
+  const wantedToggle = document.querySelector('[data-nav-wanted-toggle]');
 
   const setToggleActive = (toggle, isActive) => {
     if (!(toggle instanceof HTMLElement)) {
@@ -212,6 +237,7 @@ function setActiveNavbarLink() {
   setToggleActive(forumToggle, pathname === '/index.html');
   setToggleActive(giveawayToggle, pathname === '/giveaway.html');
   setToggleActive(exchangeToggle, pathname === '/exchange.html');
+  setToggleActive(wantedToggle, pathname === '/wanted.html');
 }
 
 function getNavbarCategoryHref(basePath, categorySlug, searchQuery = '') {
@@ -270,8 +296,9 @@ function renderNavbarCategories(categories) {
   const forumMenus = document.querySelectorAll('[data-nav-forum-menu]');
   const giveawayMenus = document.querySelectorAll('[data-nav-giveaway-menu]');
   const exchangeMenus = document.querySelectorAll('[data-nav-exchange-menu]');
+  const wantedMenus = document.querySelectorAll('[data-nav-wanted-menu]');
 
-  if (!forumMenus.length && !giveawayMenus.length && !exchangeMenus.length) {
+  if (!forumMenus.length && !giveawayMenus.length && !exchangeMenus.length && !wantedMenus.length) {
     return;
   }
 
@@ -283,6 +310,7 @@ function renderNavbarCategories(categories) {
   const forumCategories = (categories || []).filter((category) => category.section === 'forum');
   const giveawayCategories = (categories || []).filter((category) => category.section === 'giveaway');
   const exchangeCategories = (categories || []).filter((category) => category.section === 'exchange');
+  const wantedCategories = (categories || []).filter((category) => category.section === 'wanted');
 
   const renderSection = (menuElements, basePath, allLabel, sectionCategories) => {
     menuElements.forEach((menuElement) => {
@@ -330,10 +358,11 @@ function renderNavbarCategories(categories) {
   renderSection(forumMenus, '/index.html', 'Всички теми', forumCategories);
   renderSection(giveawayMenus, '/giveaway.html', 'Всичко в Подарявам', giveawayCategories);
   renderSection(exchangeMenus, '/exchange.html', 'Всичко в Разменям', exchangeCategories);
+  renderSection(wantedMenus, '/wanted.html', 'Всичко в Търся', wantedCategories);
 }
 
 async function initializeNavbarCategories() {
-  const categoryMenus = document.querySelectorAll('[data-nav-forum-menu], [data-nav-giveaway-menu], [data-nav-exchange-menu]');
+  const categoryMenus = document.querySelectorAll('[data-nav-forum-menu], [data-nav-giveaway-menu], [data-nav-exchange-menu], [data-nav-wanted-menu]');
 
   if (!categoryMenus.length) {
     return;
@@ -450,6 +479,10 @@ function getFeedSectionFromPathname(pathname = window.location.pathname) {
 
   if (normalized === '/exchange.html') {
     return 'exchange';
+  }
+
+  if (normalized === '/wanted.html') {
+    return 'wanted';
   }
 
   if (normalized === '/index.html') {

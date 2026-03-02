@@ -68,7 +68,7 @@ function getFeedPath(pathname = window.location.pathname) {
 
 function isFeedPagePath(pathname = window.location.pathname) {
   const normalized = getFeedPath(pathname);
-  return normalized === '/index.html' || normalized === '/giveaway.html' || normalized === '/exchange.html';
+  return normalized === '/index.html' || normalized === '/giveaway.html' || normalized === '/exchange.html' || normalized === '/wanted.html';
 }
 
 function formatPostTimestamp(value) {

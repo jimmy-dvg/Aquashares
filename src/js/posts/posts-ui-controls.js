@@ -173,7 +173,8 @@ export function bindFeedPopstate(onChange) {
     const isFeedPath = path === '/'
       || path.endsWith('/index.html')
       || path.endsWith('/giveaway.html')
-      || path.endsWith('/exchange.html');
+      || path.endsWith('/exchange.html')
+      || path.endsWith('/wanted.html');
 
     if (!isFeedPath) {
       return;

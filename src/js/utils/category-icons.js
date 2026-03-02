@@ -6,6 +6,7 @@ const CATEGORY_EMOJI_MAP = {
   foods: '🧪',
   giveaway: '🎁',
   exchange: '🔄',
+  wanted: '🔎',
   other: '📦'
 };
 
@@ -17,13 +18,15 @@ const CATEGORY_BG_NAME_MAP = {
   foods: 'Храни и препарати',
   giveaway: 'Подарявам',
   exchange: 'Разменям',
+  wanted: 'Търся',
   other: 'Други'
 };
 
 const CATEGORY_SECTION_BG_LABEL_MAP = {
   forum: 'Форум',
   giveaway: 'Подарявам',
-  exchange: 'Разменям'
+  exchange: 'Разменям',
+  wanted: 'Търся'
 };
 
 export function getCategoryEmoji(categorySlug) {
@@ -65,6 +68,10 @@ export function getAllCategoriesLabel(section = '') {
 
   if (normalizedSection === 'exchange') {
     return '🗂️ Всичко в Разменям';
+  }
+
+  if (normalizedSection === 'wanted') {
+    return '🗂️ Всичко в Търся';
   }
 
   return '🗂️ Всички категории';
