@@ -162,7 +162,7 @@ async function getAuthorData(authorId) {
 }
 
 
-function bindPostActions(elements, postId) {
+function bindPostActions(elements, postId, categorySection = '') {
   if (!elements.editButton || !elements.deleteButton) {
     return;
   }
@@ -179,7 +179,15 @@ function bindPostActions(elements, postId) {
       return;
     }
 
-    window.location.assign(`/post-create.html?id=${encodeURIComponent(postId)}`);
+    const params = new URLSearchParams();
+    params.set('id', postId);
+
+    const section = (categorySection || '').trim();
+    if (section) {
+      params.set('section', section);
+    }
+
+    window.location.assign(`/post-create.html?${params.toString()}`);
   });
 
   elements.deleteButton.addEventListener('click', async () => {
@@ -381,7 +389,7 @@ export async function initializePostDetailPage() {
     }
 
     if (canManagePost) {
-      bindPostActions(elements, post.id);
+      bindPostActions(elements, post.id, post.categorySection || '');
     }
 
     elements.commentsRoot.replaceChildren(createCommentsBlock(post.id, Boolean(viewer.userId)));

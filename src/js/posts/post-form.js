@@ -9,7 +9,7 @@ import {
   updatePost
 } from './posts-service.js';
 import { deletePostImage, getPublicUrl, uploadPostImage } from '../services/storage-service.js';
-import { getCategoryDisplayName } from '../utils/category-icons.js';
+import { getScopedCategoryDisplayName } from '../utils/category-icons.js';
 
 function getElements() {
   return {
@@ -22,9 +22,34 @@ function getElements() {
     currentImageList: document.querySelector('[data-current-image-list]'),
     errorBox: document.querySelector('[data-post-form-error]'),
     submitButton: document.querySelector('[data-post-submit]'),
+    cancelButton: document.querySelector('[data-post-cancel]'),
     heading: document.querySelector('[data-post-form-title]'),
     loadingBox: document.querySelector('[data-post-form-loading]')
   };
+}
+
+const VALID_SECTIONS = new Set(['forum', 'giveaway', 'exchange']);
+
+function normalizeSection(section) {
+  const normalized = (section || '').trim().toLowerCase();
+  return VALID_SECTIONS.has(normalized) ? normalized : '';
+}
+
+function getSectionFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  return normalizeSection(params.get('section'));
+}
+
+function getFeedPathBySection(section) {
+  if (section === 'giveaway') {
+    return '/giveaway.html';
+  }
+
+  if (section === 'exchange') {
+    return '/exchange.html';
+  }
+
+  return '/index.html';
 }
 
 function getPostIdFromQuery() {
@@ -90,7 +115,7 @@ function populateCategorySelect(selectElement, categories, selectedCategoryId = 
   categories.forEach((category) => {
     const option = document.createElement('option');
     option.value = category.id;
-    option.textContent = getCategoryDisplayName(category.name, category.slug);
+    option.textContent = getScopedCategoryDisplayName(category.name, category.slug, category.section);
     selectElement.append(option);
   });
 
@@ -298,11 +323,26 @@ export async function initializePostForm() {
 
   const postId = getPostIdFromQuery();
   const isEditMode = Boolean(postId);
+  const requestedSection = getSectionFromQuery();
+  let activeSection = requestedSection;
   let categoryRequired = false;
+  let editingPost = null;
+
+  if (isEditMode) {
+    try {
+      editingPost = await getPostById(postId);
+      if (!activeSection) {
+        activeSection = normalizeSection(editingPost.categorySection) || 'forum';
+      }
+    } catch (error) {
+      showError(elements.errorBox, error.message || 'Unable to load post for editing.');
+      return;
+    }
+  }
 
   let categories = [];
   try {
-    categories = await getCategories();
+    categories = await getCategories(activeSection);
   } catch (error) {
     categories = [];
   }
@@ -313,9 +353,24 @@ export async function initializePostForm() {
   setLoadingState(elements.loadingBox, false);
   populateCategorySelect(elements.categoryInput, categories, null, isEditMode);
 
+  if (elements.cancelButton instanceof HTMLAnchorElement) {
+    elements.cancelButton.href = getFeedPathBySection(activeSection);
+  }
+
   if (isEditMode) {
     try {
-      const post = await prefillFormForEdit(postId, elements);
+      const post = editingPost || await prefillFormForEdit(postId, elements);
+      elements.titleInput.value = post.title;
+      elements.bodyInput.value = post.body;
+
+      if (elements.heading) {
+        elements.heading.textContent = 'Edit Post';
+      }
+
+      if (elements.submitButton) {
+        elements.submitButton.textContent = 'Save Changes';
+      }
+
       populateCategorySelect(elements.categoryInput, categories, post.categoryId, true);
       renderExistingImages(elements, post.photos ?? []);
     } catch (error) {
@@ -390,7 +445,7 @@ export async function initializePostForm() {
         }
       }
 
-      window.location.assign('/index.html');
+      window.location.assign(getFeedPathBySection(activeSection));
     } catch (error) {
       showError(elements.errorBox, error.message || 'Unable to save post.');
       setSubmittingState(elements.submitButton, false, isEditMode);

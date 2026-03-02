@@ -5,7 +5,7 @@ import { createLikeButton, setLikeButtonState } from '../reactions/reactions-ui.
 import { deletePost, getAllPosts, getCategories, updatePost } from './posts-service.js';
 import { showConfirmModal } from '../utils/confirm-modal.js';
 import { renderGallery } from './post-detail-view.js';
-import { getCategoryDisplayName } from '../utils/category-icons.js';
+import { getCategoryDisplayName, getScopedCategoryDisplayName } from '../utils/category-icons.js';
 import {
   bindCategoryFilter,
   bindFeedPopstate,
@@ -502,7 +502,7 @@ function openEditModal(post) {
     categories.forEach((category) => {
       const option = document.createElement('option');
       option.value = category.id;
-      option.textContent = getCategoryDisplayName(category.name, category.slug);
+      option.textContent = getScopedCategoryDisplayName(category.name, category.slug, category.section);
       modalState.editCategory.append(option);
     });
 

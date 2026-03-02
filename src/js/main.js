@@ -437,7 +437,7 @@ function initializeTooltips() {
 }
 
 function toggleTopLevelAccountLinks({ isAuthenticated, isAdmin }) {
-  const createPostLink = document.querySelector('#mainNavbar a.nav-link[href="/post-create.html"]');
+  const createPostLink = document.querySelector('#mainNavbar a.nav-link[href^="/post-create.html"]');
   const chatLink = document.querySelector('#mainNavbar a.nav-link[href="/chat.html"]');
   const profileLink = document.querySelector('#mainNavbar a.nav-link[href="/profile.html"]');
   const adminLink = document.querySelector('#mainNavbar a.nav-link[href="/admin.html"]');
@@ -462,6 +462,32 @@ function toggleTopLevelAccountLinks({ isAuthenticated, isAdmin }) {
   if (isAdmin && adminItem instanceof HTMLElement) {
     adminItem.classList.add('d-none');
   }
+}
+
+function getFeedSectionFromPathname(pathname = window.location.pathname) {
+  const normalized = normalizeNavPathname(pathname);
+  if (normalized === '/giveaway.html') {
+    return 'giveaway';
+  }
+
+  if (normalized === '/exchange.html') {
+    return 'exchange';
+  }
+
+  if (normalized === '/index.html') {
+    return 'forum';
+  }
+
+  return '';
+}
+
+function getCreatePostHrefForSection(section) {
+  const normalizedSection = (section || '').trim().toLowerCase();
+  if (!normalizedSection) {
+    return '/post-create.html';
+  }
+
+  return `/post-create.html?section=${encodeURIComponent(normalizedSection)}`;
 }
 
 function ensureMyPostsDropdownLink(userId) {
@@ -557,6 +583,8 @@ function ensureChatDropdownLink() {
 
 function ensureCreatePostDropdownLink() {
   const dropdownMenus = document.querySelectorAll('.dropdown-menu.dropdown-menu-end');
+  const section = getFeedSectionFromPathname();
+  const createPostHref = getCreatePostHrefForSection(section);
 
   dropdownMenus.forEach((menu) => {
     if (!(menu instanceof HTMLUListElement)) {
@@ -570,14 +598,14 @@ function ensureCreatePostDropdownLink() {
 
     const existingCreatePost = menu.querySelector('[data-nav-create-post]');
     if (existingCreatePost instanceof HTMLAnchorElement) {
-      existingCreatePost.href = '/post-create.html';
+      existingCreatePost.href = createPostHref;
       return;
     }
 
     const createPostItem = document.createElement('li');
     const createPostLink = document.createElement('a');
     createPostLink.className = 'dropdown-item';
-    createPostLink.href = '/post-create.html';
+    createPostLink.href = createPostHref;
     createPostLink.dataset.navCreatePost = 'true';
     createPostLink.textContent = 'Нова публикация';
     createPostItem.append(createPostLink);

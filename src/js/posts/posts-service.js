@@ -34,18 +34,18 @@ function mapCategory(category) {
 
 function getPreferredCategoryOrder(section) {
   if (section === 'giveaway') {
-    return ['giveaway', 'plants', 'fish', 'inhabitants', 'equipment', 'other'];
+    return ['plants', 'fish', 'inhabitants', 'equipment', 'giveaway', 'other'];
   }
 
   if (section === 'exchange') {
-    return ['exchange', 'plants', 'fish', 'inhabitants', 'equipment', 'other'];
+    return ['plants', 'fish', 'inhabitants', 'equipment', 'foods', 'exchange', 'other'];
   }
 
   if (section === 'forum') {
     return ['fish', 'plants', 'inhabitants', 'equipment', 'other'];
   }
 
-  return ['fish', 'plants', 'inhabitants', 'equipment', 'giveaway', 'exchange', 'other'];
+  return ['fish', 'plants', 'inhabitants', 'equipment', 'foods', 'giveaway', 'exchange', 'other'];
 }
 
 function sortCategories(categories, section = '') {
