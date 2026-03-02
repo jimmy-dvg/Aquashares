@@ -302,9 +302,11 @@ function renderNavbarCategories(categories) {
   const selectedCategory = params.get('category') || '';
   const searchQuery = (params.get('q') || '').trim();
 
-  const visibleCategories = (categories || []).filter((category) => !['giveaway', 'exchange'].includes(category.slug));
+  const forumCategories = (categories || []).filter((category) => category.section === 'forum');
+  const giveawayCategories = (categories || []).filter((category) => category.section === 'giveaway');
+  const exchangeCategories = (categories || []).filter((category) => category.section === 'exchange');
 
-  const renderSection = (menuElements, basePath, allLabel) => {
+  const renderSection = (menuElements, basePath, allLabel, sectionCategories) => {
     menuElements.forEach((menuElement) => {
       if (!(menuElement instanceof HTMLElement)) {
         return;
@@ -325,7 +327,7 @@ function renderNavbarCategories(categories) {
       allCategoriesItem.append(allCategoriesLink);
       menuElement.replaceChildren(allCategoriesItem);
 
-      if (!visibleCategories.length) {
+      if (!sectionCategories.length) {
         const emptyItem = document.createElement('li');
         const emptyState = document.createElement('span');
         emptyState.className = 'dropdown-item-text text-secondary small';
@@ -341,15 +343,15 @@ function renderNavbarCategories(categories) {
       dividerItem.append(divider);
       menuElement.append(dividerItem);
 
-      visibleCategories.forEach((category) => {
+      sectionCategories.forEach((category) => {
         menuElement.append(buildNavbarCategoryItem(category, sectionSelectedCategory, sectionSearch, basePath));
       });
     });
   };
 
-  renderSection(forumMenus, '/index.html', 'Всички теми');
-  renderSection(giveawayMenus, '/giveaway.html', 'Всичко в Подарявам');
-  renderSection(exchangeMenus, '/exchange.html', 'Всичко в Разменям');
+  renderSection(forumMenus, '/index.html', 'Всички теми', forumCategories);
+  renderSection(giveawayMenus, '/giveaway.html', 'Всичко в Подарявам', giveawayCategories);
+  renderSection(exchangeMenus, '/exchange.html', 'Всичко в Разменям', exchangeCategories);
 }
 
 async function initializeNavbarCategories() {

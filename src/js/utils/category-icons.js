@@ -24,8 +24,13 @@ export function getCategoryEmoji(categorySlug) {
 }
 
 export function getCategoryDisplayName(categoryName, categorySlug) {
+  const normalizedName = (categoryName || '').trim();
+  if (normalizedName) {
+    return normalizedName;
+  }
+
   const slug = (categorySlug || '').trim().toLowerCase();
-  return CATEGORY_BG_NAME_MAP[slug] || categoryName || 'Без категория';
+  return CATEGORY_BG_NAME_MAP[slug] || 'Без категория';
 }
 
 export function getCategoryLabelWithEmoji(categoryName, categorySlug) {

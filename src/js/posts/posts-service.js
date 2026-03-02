@@ -7,6 +7,7 @@ function mapPost(post) {
     categoryId: post.category_id || null,
     categorySlug: post.categories?.slug || '',
     categoryName: post.categories?.name || '',
+    categorySection: post.categories?.section || 'forum',
     title: post.title,
     body: post.body,
     createdAt: post.created_at,
@@ -26,24 +27,33 @@ function mapCategory(category) {
   return {
     id: category.id,
     slug: category.slug,
-    name: category.name
+    name: category.name,
+    section: category.section || 'forum'
   };
 }
 
-function sortCategories(categories) {
-  const preferredOrder = ['fish', 'plants', 'inhabitants', 'equipment', 'giveaway', 'exchange'];
+function getPreferredCategoryOrder(section) {
+  if (section === 'giveaway') {
+    return ['giveaway', 'plants', 'fish', 'inhabitants', 'equipment', 'other'];
+  }
+
+  if (section === 'exchange') {
+    return ['exchange', 'plants', 'fish', 'inhabitants', 'equipment', 'other'];
+  }
+
+  if (section === 'forum') {
+    return ['fish', 'plants', 'inhabitants', 'equipment', 'other'];
+  }
+
+  return ['fish', 'plants', 'inhabitants', 'equipment', 'giveaway', 'exchange', 'other'];
+}
+
+function sortCategories(categories, section = '') {
+  const preferredOrder = getPreferredCategoryOrder(section);
 
   return [...categories].sort((left, right) => {
     const leftSlug = left.slug || '';
     const rightSlug = right.slug || '';
-
-    if (leftSlug === 'other' && rightSlug !== 'other') {
-      return 1;
-    }
-
-    if (rightSlug === 'other' && leftSlug !== 'other') {
-      return -1;
-    }
 
     const leftPreferredIndex = preferredOrder.indexOf(leftSlug);
     const rightPreferredIndex = preferredOrder.indexOf(rightSlug);
@@ -63,6 +73,13 @@ function sortCategories(categories) {
       return 1;
     }
 
+    const leftSection = left.section || '';
+    const rightSection = right.section || '';
+
+    if (leftSection !== rightSection) {
+      return leftSection.localeCompare(rightSection, undefined, { sensitivity: 'base' });
+    }
+
     return (left.name || '').localeCompare(right.name || '', undefined, { sensitivity: 'base' });
   });
 }
@@ -74,7 +91,7 @@ function throwServiceError(error, fallbackMessage) {
 export async function getAllPosts(limit = 50) {
   const { data, error } = await supabase
     .from('posts')
-    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name), photos(id, post_id, user_id, storage_path, public_url, created_at)')
+    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name, section), photos(id, post_id, user_id, storage_path, public_url, created_at)')
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -88,7 +105,7 @@ export async function getAllPosts(limit = 50) {
 export async function getPostById(id) {
   const { data, error } = await supabase
     .from('posts')
-    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name), photos(id, post_id, user_id, storage_path, public_url, created_at)')
+    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name, section), photos(id, post_id, user_id, storage_path, public_url, created_at)')
     .eq('id', id)
     .limit(1);
 
@@ -116,7 +133,7 @@ export async function createPost(data) {
   const { data: result, error } = await supabase
     .from('posts')
     .insert([payload])
-    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name)')
+    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name, section)')
     .limit(1);
 
   if (error) {
@@ -142,7 +159,7 @@ export async function updatePost(id, data) {
     .from('posts')
     .update(payload)
     .eq('id', id)
-    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name)')
+    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name, section)')
     .limit(1);
 
   if (error) {
@@ -210,15 +227,22 @@ export async function deletePhotoRecord(photoId) {
   }
 }
 
-export async function getCategories() {
-  const { data, error } = await supabase
+export async function getCategories(section = '') {
+  let query = supabase
     .from('categories')
-    .select('id, slug, name')
+    .select('id, slug, name, section')
     .order('name', { ascending: true });
+
+  const normalizedSection = (section || '').trim();
+  if (normalizedSection) {
+    query = query.eq('section', normalizedSection);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throwServiceError(error, 'Failed to load categories.');
   }
 
-  return sortCategories((data ?? []).map(mapCategory));
+  return sortCategories((data ?? []).map(mapCategory), normalizedSection);
 }

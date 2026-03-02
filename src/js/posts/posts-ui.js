@@ -860,7 +860,7 @@ async function buildCommentCountMap(posts) {
 
 
 
-async function getFeedData(forceRefresh = false) {
+async function getFeedData(forceRefresh = false, section = '') {
   if (!forceRefresh && feedState.cache.postsWithUiData && feedState.cache.viewer) {
     return {
       postsWithUiData: feedState.cache.postsWithUiData,
@@ -877,7 +877,7 @@ async function getFeedData(forceRefresh = false) {
     const [posts, viewer, categories] = await Promise.all([
       getAllPosts(),
       getViewerState(),
-      getCategories().catch(() => [])
+      getCategories(section).catch(() => [])
     ]);
 
     const [authorMap, commentCountMap] = await Promise.all([
@@ -1336,7 +1336,7 @@ export async function loadFeed(options = {}) {
     cleanupLikesRealtime();
 
     const selectedCategorySlugFromQuery = getCategoryFromQuery();
-    const defaultCategorySlug = (feedContainer.dataset.feedDefaultCategory || '').trim();
+    const feedSection = (feedContainer.dataset.feedSection || 'forum').trim();
     const searchFromQuery = getSearchFromQuery();
     const locationFromQuery = getLocationFromQuery();
     const authorFromQuery = getAuthorFromQuery();
@@ -1372,7 +1372,7 @@ export async function loadFeed(options = {}) {
       radiusFilter.value = String(radiusKmFromQuery);
     }
 
-    const { postsWithUiData, viewer, categories } = await getFeedData(forceRefresh);
+    const { postsWithUiData, viewer, categories } = await getFeedData(forceRefresh, feedSection);
 
     if (searchInput instanceof HTMLInputElement && searchInput.dataset.bound !== 'true') {
       searchInput.dataset.bound = 'true';
@@ -1608,8 +1608,7 @@ export async function loadFeed(options = {}) {
 
     const categorySlugs = new Set(categories.map((category) => category.slug));
     const categoryFromQuery = categorySlugs.has(selectedCategorySlugFromQuery) ? selectedCategorySlugFromQuery : '';
-    const categoryFromDefault = categorySlugs.has(defaultCategorySlug) ? defaultCategorySlug : '';
-    const effectiveCategorySlug = categoryFromQuery || categoryFromDefault;
+    const effectiveCategorySlug = categoryFromQuery;
 
     if (selectedCategorySlugFromQuery && !categoryFromQuery) {
       setFeedFiltersInQuery({ category: '' });
@@ -1623,6 +1622,7 @@ export async function loadFeed(options = {}) {
     }
 
     const filteredPosts = postsWithUiData
+      .filter((post) => (post.categorySection || 'forum') === feedSection)
       .filter((post) => (!effectiveCategorySlug || post.categorySlug === effectiveCategorySlug))
       .filter((post) => matchesFeedSearch(post, normalizedSearchQuery))
       .filter((post) => matchesFeedLocation(post, normalizedLocationQuery))
