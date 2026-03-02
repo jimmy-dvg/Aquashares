@@ -21,8 +21,7 @@ import {
   getAuthorFromQuery,
   getPhotoFromQuery,
   createNotification,
-  getDateFromQuery,
-  getDateToQuery,
+  getSortFromQuery,
   focusCommentFromQuery,
   focusPostFromHash,
   getCategoryFromQuery,
@@ -558,8 +557,7 @@ function scheduleFiltersLoadFromInputs(elements) {
       photo: photoFilterElement instanceof HTMLSelectElement ? photoFilterElement.value : '',
       location: elements.locationFilter instanceof HTMLInputElement ? elements.locationFilter.value : '',
       author: elements.authorFilter instanceof HTMLInputElement ? elements.authorFilter.value : '',
-      dateFrom: elements.dateFromFilter instanceof HTMLInputElement ? elements.dateFromFilter.value : '',
-      dateTo: elements.dateToFilter instanceof HTMLInputElement ? elements.dateToFilter.value : '',
+      sort: elements.sortFilter instanceof HTMLSelectElement ? elements.sortFilter.value : 'newest',
       nearMe: elements.nearbyToggle instanceof HTMLInputElement ? elements.nearbyToggle.checked : false,
       radiusKm: elements.radiusFilter instanceof HTMLSelectElement ? elements.radiusFilter.value : '25'
     });
@@ -664,22 +662,13 @@ async function reverseGeocodeLocationName(lat, lng) {
   return (locationName || '').replace(/\s+/g, ' ').trim();
 }
 
-function parseDateBoundary(value, boundary = 'start') {
-  const normalized = (value || '').trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
-    return null;
+function normalizeSortOption(value) {
+  const normalized = (value || '').trim().toLowerCase();
+  if (normalized === 'oldest' || normalized === 'most_liked' || normalized === 'most_commented' || normalized === 'newest') {
+    return normalized;
   }
 
-  const date = new Date(`${normalized}T00:00:00`);
-  if (Number.isNaN(date.getTime())) {
-    return null;
-  }
-
-  if (boundary === 'end') {
-    date.setHours(23, 59, 59, 999);
-  }
-
-  return date;
+  return 'newest';
 }
 
 function matchesFeedSearch(post, searchQuery) {
@@ -734,25 +723,37 @@ function matchesFeedPhoto(post, photoFilter) {
   return photoFilter === 'with' ? hasPhotos : !hasPhotos;
 }
 
-function matchesFeedDateRange(post, dateFrom, dateTo) {
-  if (!dateFrom && !dateTo) {
-    return true;
+function sortPosts(posts, sortOption = 'newest') {
+  const normalized = normalizeSortOption(sortOption);
+  const items = [...(posts || [])];
+
+  if (normalized === 'oldest') {
+    return items.sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
   }
 
-  const createdAt = new Date(post.createdAt);
-  if (Number.isNaN(createdAt.getTime())) {
-    return false;
+  if (normalized === 'most_liked') {
+    return items.sort((left, right) => {
+      const likeDelta = (right.likeCount || 0) - (left.likeCount || 0);
+      if (likeDelta !== 0) {
+        return likeDelta;
+      }
+
+      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+    });
   }
 
-  if (dateFrom && createdAt < dateFrom) {
-    return false;
+  if (normalized === 'most_commented') {
+    return items.sort((left, right) => {
+      const commentDelta = (right.commentCount || 0) - (left.commentCount || 0);
+      if (commentDelta !== 0) {
+        return commentDelta;
+      }
+
+      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+    });
   }
 
-  if (dateTo && createdAt > dateTo) {
-    return false;
-  }
-
-  return true;
+  return items.sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
 }
 
 function matchesNearby(post, centerCoords, radiusKm) {
@@ -1307,8 +1308,7 @@ export async function loadFeed(options = {}) {
     locationFilter,
     useMyLocationButton,
     authorFilter,
-    dateFromFilter,
-    dateToFilter,
+    sortFilter,
     nearbyToggle,
     radiusFilter,
     locationList,
@@ -1348,11 +1348,8 @@ export async function loadFeed(options = {}) {
   if (authorFilter instanceof HTMLInputElement) {
     authorFilter.disabled = true;
   }
-  if (dateFromFilter instanceof HTMLInputElement) {
-    dateFromFilter.disabled = true;
-  }
-  if (dateToFilter instanceof HTMLInputElement) {
-    dateToFilter.disabled = true;
+  if (sortFilter instanceof HTMLSelectElement) {
+    sortFilter.disabled = true;
   }
   if (nearbyToggle instanceof HTMLInputElement) {
     nearbyToggle.disabled = true;
@@ -1379,15 +1376,12 @@ export async function loadFeed(options = {}) {
     const photoFromQuery = normalizePhotoFilter(getPhotoFromQuery());
     const locationFromQuery = getLocationFromQuery();
     const authorFromQuery = getAuthorFromQuery();
-    const dateFromQuery = getDateFromQuery();
-    const dateToQuery = getDateToQuery();
+    const sortFromQuery = normalizeSortOption(getSortFromQuery());
     const nearMeFromQuery = getNearMeFromQuery();
     const radiusKmFromQuery = getRadiusKmFromQuery(25);
     const normalizedSearchQuery = normalizeText(searchFromQuery);
     const normalizedLocationQuery = normalizeText(locationFromQuery);
     const normalizedAuthorQuery = normalizeText(authorFromQuery);
-    const dateFrom = parseDateBoundary(dateFromQuery, 'start');
-    const dateTo = parseDateBoundary(dateToQuery, 'end');
 
     if (searchInput instanceof HTMLInputElement && searchInput.value !== searchFromQuery) {
       searchInput.value = searchFromQuery;
@@ -1401,11 +1395,8 @@ export async function loadFeed(options = {}) {
     if (authorFilter instanceof HTMLInputElement && authorFilter.value !== authorFromQuery) {
       authorFilter.value = authorFromQuery;
     }
-    if (dateFromFilter instanceof HTMLInputElement && dateFromFilter.value !== dateFromQuery) {
-      dateFromFilter.value = dateFromQuery;
-    }
-    if (dateToFilter instanceof HTMLInputElement && dateToFilter.value !== dateToQuery) {
-      dateToFilter.value = dateToQuery;
+    if (sortFilter instanceof HTMLSelectElement && sortFilter.value !== sortFromQuery) {
+      sortFilter.value = sortFromQuery;
     }
     if (nearbyToggle instanceof HTMLInputElement && nearbyToggle.checked !== nearMeFromQuery) {
       nearbyToggle.checked = nearMeFromQuery;
@@ -1424,8 +1415,7 @@ export async function loadFeed(options = {}) {
           categoryFilter,
           locationFilter,
           authorFilter,
-          dateFromFilter,
-          dateToFilter,
+          sortFilter,
           nearbyToggle,
           radiusFilter
         });
@@ -1440,8 +1430,7 @@ export async function loadFeed(options = {}) {
           categoryFilter,
           locationFilter,
           authorFilter,
-          dateFromFilter,
-          dateToFilter,
+          sortFilter,
           nearbyToggle,
           radiusFilter
         });
@@ -1486,8 +1475,7 @@ export async function loadFeed(options = {}) {
             categoryFilter,
             locationFilter,
             authorFilter,
-            dateFromFilter,
-            dateToFilter,
+            sortFilter,
             nearbyToggle,
             radiusFilter
           });
@@ -1512,40 +1500,22 @@ export async function loadFeed(options = {}) {
           categoryFilter,
           locationFilter,
           authorFilter,
-          dateFromFilter,
-          dateToFilter,
+          sortFilter,
           nearbyToggle,
           radiusFilter
         });
       });
     }
 
-    if (dateFromFilter instanceof HTMLInputElement && dateFromFilter.dataset.bound !== 'true') {
-      dateFromFilter.dataset.bound = 'true';
-      dateFromFilter.addEventListener('change', () => {
+    if (sortFilter instanceof HTMLSelectElement && sortFilter.dataset.bound !== 'true') {
+      sortFilter.dataset.bound = 'true';
+      sortFilter.addEventListener('change', () => {
         scheduleFiltersLoadFromInputs({
           searchInput,
           categoryFilter,
           locationFilter,
           authorFilter,
-          dateFromFilter,
-          dateToFilter,
-          nearbyToggle,
-          radiusFilter
-        });
-      });
-    }
-
-    if (dateToFilter instanceof HTMLInputElement && dateToFilter.dataset.bound !== 'true') {
-      dateToFilter.dataset.bound = 'true';
-      dateToFilter.addEventListener('change', () => {
-        scheduleFiltersLoadFromInputs({
-          searchInput,
-          categoryFilter,
-          locationFilter,
-          authorFilter,
-          dateFromFilter,
-          dateToFilter,
+          sortFilter,
           nearbyToggle,
           radiusFilter
         });
@@ -1560,8 +1530,7 @@ export async function loadFeed(options = {}) {
           categoryFilter,
           locationFilter,
           authorFilter,
-          dateFromFilter,
-          dateToFilter,
+          sortFilter,
           nearbyToggle,
           radiusFilter
         });
@@ -1576,8 +1545,7 @@ export async function loadFeed(options = {}) {
           categoryFilter,
           locationFilter,
           authorFilter,
-          dateFromFilter,
-          dateToFilter,
+          sortFilter,
           nearbyToggle,
           radiusFilter
         });
@@ -1593,8 +1561,7 @@ export async function loadFeed(options = {}) {
           query: searchInput instanceof HTMLInputElement ? searchInput.value : '',
           location: locationFilter instanceof HTMLInputElement ? locationFilter.value : '',
           author: authorFilter instanceof HTMLInputElement ? authorFilter.value : '',
-          dateFrom: dateFromFilter instanceof HTMLInputElement ? dateFromFilter.value : '',
-          dateTo: dateToFilter instanceof HTMLInputElement ? dateToFilter.value : '',
+          sort: sortFilter instanceof HTMLSelectElement ? sortFilter.value : 'newest',
           nearMe: nearbyToggle instanceof HTMLInputElement ? nearbyToggle.checked : false,
           radiusKm: radiusFilter instanceof HTMLSelectElement ? radiusFilter.value : '25'
         });
@@ -1611,8 +1578,7 @@ export async function loadFeed(options = {}) {
           photoFilter,
           locationFilter,
           authorFilter,
-          dateFromFilter,
-          dateToFilter,
+          sortFilter,
           nearbyToggle,
           radiusFilter
         });
@@ -1642,11 +1608,8 @@ export async function loadFeed(options = {}) {
         if (authorFilter instanceof HTMLInputElement) {
           authorFilter.value = '';
         }
-        if (dateFromFilter instanceof HTMLInputElement) {
-          dateFromFilter.value = '';
-        }
-        if (dateToFilter instanceof HTMLInputElement) {
-          dateToFilter.value = '';
+        if (sortFilter instanceof HTMLSelectElement) {
+          sortFilter.value = 'newest';
         }
         if (nearbyToggle instanceof HTMLInputElement) {
           nearbyToggle.checked = false;
@@ -1661,8 +1624,7 @@ export async function loadFeed(options = {}) {
           query: '',
           location: '',
           author: '',
-          dateFrom: '',
-          dateTo: '',
+          sort: 'newest',
           nearMe: false,
           radiusKm: '25'
         });
@@ -1674,6 +1636,7 @@ export async function loadFeed(options = {}) {
     const categoryFromQuery = categorySlugs.has(selectedCategorySlugFromQuery) ? selectedCategorySlugFromQuery : '';
     const effectiveCategorySlug = categoryFromQuery;
     const effectivePhotoFilter = photoFromQuery;
+    const effectiveSort = sortFromQuery;
 
     if (selectedCategorySlugFromQuery && !categoryFromQuery) {
       setFeedFiltersInQuery({ category: '' });
@@ -1686,15 +1649,14 @@ export async function loadFeed(options = {}) {
       notificationRoot.replaceChildren(createNotification('Филтърът „Близо до мен“ изисква разрешение за геолокация в браузъра.', 'warning'));
     }
 
-    const filteredPosts = postsWithUiData
+    const filteredPosts = sortPosts(postsWithUiData
       .filter((post) => (post.section || post.categorySection || 'forum') === feedSection)
       .filter((post) => (!effectiveCategorySlug || post.categorySlug === effectiveCategorySlug))
       .filter((post) => matchesFeedPhoto(post, effectivePhotoFilter))
       .filter((post) => matchesFeedSearch(post, normalizedSearchQuery))
       .filter((post) => matchesFeedLocation(post, normalizedLocationQuery))
       .filter((post) => matchesFeedAuthor(post, normalizedAuthorQuery))
-      .filter((post) => matchesFeedDateRange(post, dateFrom, dateTo))
-      .filter((post) => (!nearMeFromQuery || matchesNearby(post, viewerCoords, radiusKmFromQuery)));
+      .filter((post) => (!nearMeFromQuery || matchesNearby(post, viewerCoords, radiusKmFromQuery))), effectiveSort);
 
     const selectedCategorySlugForUi = categoryFromQuery;
 
@@ -1705,8 +1667,7 @@ export async function loadFeed(options = {}) {
         query: searchFromQuery,
         location: locationFromQuery,
         author: authorFromQuery,
-        dateFrom: dateFromQuery,
-        dateTo: dateToQuery,
+        sort: effectiveSort,
         nearMe: nearMeFromQuery,
         radiusKm: radiusKmFromQuery,
         nearMeUnavailable
@@ -1728,8 +1689,7 @@ export async function loadFeed(options = {}) {
           || effectivePhotoFilter
           || normalizedLocationQuery
           || normalizedAuthorQuery
-          || dateFrom
-          || dateTo
+          || (effectiveSort && effectiveSort !== 'newest')
           || nearMeFromQuery
           ? 'Няма публикации по зададените филтри.'
           : 'Бъди първият с нова публикация.'
@@ -1772,11 +1732,8 @@ export async function loadFeed(options = {}) {
     if (authorFilter instanceof HTMLInputElement) {
       authorFilter.disabled = false;
     }
-    if (dateFromFilter instanceof HTMLInputElement) {
-      dateFromFilter.disabled = false;
-    }
-    if (dateToFilter instanceof HTMLInputElement) {
-      dateToFilter.disabled = false;
+    if (sortFilter instanceof HTMLSelectElement) {
+      sortFilter.disabled = false;
     }
     if (nearbyToggle instanceof HTMLInputElement) {
       nearbyToggle.disabled = false;

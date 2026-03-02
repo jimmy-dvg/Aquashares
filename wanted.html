@@ -127,7 +127,7 @@
         <h1 class="h3 mb-3">Търся</h1>
         <div class="aqua-feed-filter-grid">
         <div class="aqua-feed-filter-field aqua-feed-filter-field-lg">
-          <label class="form-label form-label-sm mb-1">Търсене</label>
+          <label class="form-label form-label-sm mb-1"><i class="bi bi-search me-1" aria-hidden="true"></i>Търсене</label>
           <div class="input-group input-group-sm">
             <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
             <input
@@ -141,7 +141,13 @@
           </div>
         </div>
         <div class="aqua-feed-filter-field">
-          <label class="form-label form-label-sm mb-1">Снимки</label>
+          <label class="form-label form-label-sm mb-1"><i class="bi bi-tags me-1" aria-hidden="true"></i>Категория</label>
+          <select class="form-select form-select-sm" data-feed-category-filter aria-label="Филтър по категория">
+            <option value="">Всички категории</option>
+          </select>
+        </div>
+        <div class="aqua-feed-filter-field">
+          <label class="form-label form-label-sm mb-1"><i class="bi bi-images me-1" aria-hidden="true"></i>Снимки</label>
           <select class="form-select form-select-sm" data-feed-photo-filter aria-label="Филтър по снимки">
             <option value="">Всички</option>
             <option value="with">Със снимка</option>
@@ -149,7 +155,7 @@
           </select>
         </div>
         <div class="aqua-feed-filter-field">
-          <label class="form-label form-label-sm mb-1">Локация</label>
+          <label class="form-label form-label-sm mb-1"><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>Локация</label>
           <div class="input-group input-group-sm">
             <span class="input-group-text"><i class="bi bi-geo-alt" aria-hidden="true"></i></span>
             <input
@@ -175,7 +181,7 @@
           <datalist id="feed-location-suggestions" data-feed-location-list></datalist>
         </div>
         <div class="aqua-feed-filter-field">
-          <label class="form-label form-label-sm mb-1">Потребител</label>
+          <label class="form-label form-label-sm mb-1"><i class="bi bi-person me-1" aria-hidden="true"></i>Потребител</label>
           <div class="input-group input-group-sm">
             <span class="input-group-text"><i class="bi bi-person" aria-hidden="true"></i></span>
             <input
@@ -190,15 +196,16 @@
           <datalist id="feed-author-suggestions" data-feed-author-list></datalist>
         </div>
         <div class="aqua-feed-filter-field">
-          <label class="form-label form-label-sm mb-1">Дата от</label>
-          <input type="date" class="form-control form-control-sm" data-feed-date-from aria-label="Филтър от дата" />
+          <label class="form-label form-label-sm mb-1"><i class="bi bi-funnel me-1" aria-hidden="true"></i>Подреди по</label>
+          <select class="form-select form-select-sm" data-feed-sort-filter aria-label="Подреждане на публикациите">
+            <option value="newest" selected>Най-нови публикации</option>
+            <option value="oldest">Най-стари публикации</option>
+            <option value="most_liked">Най-харесвани</option>
+            <option value="most_commented">Най-коментирани</option>
+          </select>
         </div>
         <div class="aqua-feed-filter-field">
-          <label class="form-label form-label-sm mb-1">Дата до</label>
-          <input type="date" class="form-control form-control-sm" data-feed-date-to aria-label="Филтър до дата" />
-        </div>
-        <div class="aqua-feed-filter-field">
-          <label class="form-label form-label-sm mb-1">Близо до мен</label>
+          <label class="form-label form-label-sm mb-1"><i class="bi bi-crosshair me-1" aria-hidden="true"></i>Близо до мен</label>
           <div class="d-flex align-items-center gap-2">
             <div class="form-check form-switch mb-0">
               <input class="form-check-input" type="checkbox" role="switch" id="feed-nearby-switch" data-feed-nearby-toggle />

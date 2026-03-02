@@ -412,7 +412,7 @@ function initializeNavbarSearch() {
         targetParams.set('category', category);
       }
 
-      ['location', 'author', 'photo', 'date_from', 'date_to', 'near_me', 'radius_km'].forEach((key) => {
+      ['location', 'author', 'photo', 'sort', 'near_me', 'radius_km'].forEach((key) => {
         const value = currentParams.get(key) || '';
         if (value) {
           targetParams.set(key, value);

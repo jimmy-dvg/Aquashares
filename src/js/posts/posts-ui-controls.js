@@ -15,8 +15,7 @@ export function getUiElements() {
     locationFilter: document.querySelector('[data-feed-location-filter]'),
     useMyLocationButton: document.querySelector('[data-feed-use-my-location]'),
     authorFilter: document.querySelector('[data-feed-author-filter]'),
-    dateFromFilter: document.querySelector('[data-feed-date-from]'),
-    dateToFilter: document.querySelector('[data-feed-date-to]'),
+    sortFilter: document.querySelector('[data-feed-sort-filter]'),
     nearbyToggle: document.querySelector('[data-feed-nearby-toggle]'),
     radiusFilter: document.querySelector('[data-feed-radius-filter]'),
     locationList: document.querySelector('[data-feed-location-list]'),
@@ -32,12 +31,11 @@ export function updateFeedFilterUi(filters, clearFilterButton, filterStatus, cat
   const location = (filters?.location || '').trim();
   const author = (filters?.author || '').trim();
   const photo = (filters?.photo || '').trim();
-  const dateFrom = (filters?.dateFrom || '').trim();
-  const dateTo = (filters?.dateTo || '').trim();
+  const sort = (filters?.sort || '').trim();
   const nearMeEnabled = filters?.nearMe === true;
   const radiusKm = Number(filters?.radiusKm || 25);
   const nearMeUnavailable = filters?.nearMeUnavailable === true;
-  const hasFilter = Boolean(selectedSlug || photo || query || location || author || dateFrom || dateTo || nearMeEnabled);
+  const hasFilter = Boolean(selectedSlug || photo || query || location || author || nearMeEnabled || (sort && sort !== 'newest'));
 
   if (clearFilterButton) {
     clearFilterButton.classList.toggle('d-none', !hasFilter);
@@ -83,10 +81,13 @@ export function updateFeedFilterUi(filters, clearFilterButton, filterStatus, cat
     labels.push(`Потребител: ${author}`);
   }
 
-  if (dateFrom || dateTo) {
-    const fromLabel = dateFrom || '…';
-    const toLabel = dateTo || '…';
-    labels.push(`Период: ${fromLabel} → ${toLabel}`);
+  if (sort && sort !== 'newest') {
+    const sortMap = {
+      oldest: 'Най-стари',
+      most_liked: 'Най-харесвани',
+      most_commented: 'Най-коментирани'
+    };
+    labels.push(`Подреди: ${sortMap[sort] || 'Най-нови'}`);
   }
 
   if (nearMeEnabled) {

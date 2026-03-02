@@ -117,15 +117,9 @@ export function getPhotoFromQuery() {
   return value && value.trim() ? value.trim() : '';
 }
 
-export function getDateFromQuery() {
+export function getSortFromQuery() {
   const params = new URLSearchParams(window.location.search);
-  const value = params.get('date_from');
-  return value && value.trim() ? value.trim() : '';
-}
-
-export function getDateToQuery() {
-  const params = new URLSearchParams(window.location.search);
-  const value = params.get('date_to');
+  const value = params.get('sort');
   return value && value.trim() ? value.trim() : '';
 }
 
@@ -147,6 +141,8 @@ export function getRadiusKmFromQuery(defaultValue = 25) {
 
 export function setFeedFiltersInQuery(filters = {}) {
   const params = new URLSearchParams(window.location.search);
+  params.delete('date_from');
+  params.delete('date_to');
 
   const applyValue = (key, value) => {
     if (value === undefined) {
@@ -167,8 +163,7 @@ export function setFeedFiltersInQuery(filters = {}) {
   applyValue('q', filters.query);
   applyValue('location', filters.location);
   applyValue('author', filters.author);
-  applyValue('date_from', filters.dateFrom);
-  applyValue('date_to', filters.dateTo);
+  applyValue('sort', filters.sort);
 
   if (filters.nearMe !== undefined) {
     if (filters.nearMe) {

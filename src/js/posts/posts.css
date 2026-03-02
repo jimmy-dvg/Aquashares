@@ -233,18 +233,21 @@
 }
 
 .aqua-feed-filter-bar {
+  position: relative;
+  overflow: visible;
   border: 1px solid var(--bs-border-color-translucent);
   border-radius: 0.9rem;
   background: linear-gradient(180deg, rgba(var(--bs-secondary-rgb), 0.08), rgba(var(--bs-secondary-rgb), 0.02));
   box-shadow: 0 0.35rem 0.95rem rgba(var(--bs-dark-rgb), 0.05);
-  padding: 1rem;
+  padding: 1rem 1rem 0.9rem;
 }
 
 .aqua-feed-filter-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-  gap: 0.8rem;
+  gap: 0.9rem;
   align-items: end;
+  isolation: isolate;
 }
 
 .aqua-feed-filter-field-lg {
@@ -252,7 +255,15 @@
 }
 
 .aqua-feed-filter-field {
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
   min-width: 0;
+  overflow: visible;
+}
+
+.aqua-feed-filter-field:focus-within {
+  z-index: 50;
 }
 
 .aqua-feed-filter-grid .form-label {
@@ -269,6 +280,19 @@
 .aqua-feed-filter-grid .form-select {
   border-color: var(--bs-border-color);
   border-radius: 0.55rem;
+  min-height: 2.15rem;
+  background-color: rgba(var(--bs-body-bg-rgb), 0.96);
+  width: 100%;
+  max-width: 100%;
+}
+
+.aqua-feed-filter-grid .form-select {
+  position: relative;
+  z-index: 2;
+}
+
+.aqua-feed-filter-grid .form-select:focus {
+  z-index: 60;
 }
 
 .aqua-feed-filter-grid .btn {
@@ -286,6 +310,24 @@
   gap: 0.45rem;
   align-items: end;
   justify-self: end;
+}
+
+[data-feed-sort-filter],
+[data-feed-category-filter],
+[data-feed-photo-filter] {
+  font-weight: 500;
+}
+
+[data-feed-category-filter] {
+  min-width: 0;
+}
+
+[data-feed-radius-filter] {
+  min-width: 88px !important;
+  width: 88px !important;
+  flex: 0 0 88px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 991.98px) {
