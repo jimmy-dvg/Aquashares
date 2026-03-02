@@ -28,10 +28,161 @@ function normalizeNavPathname(pathname) {
   return pathname === '/' ? '/index.html' : pathname;
 }
 
+function isFeedPagePath(pathname) {
+  const normalized = normalizeNavPathname(pathname);
+  return normalized === '/index.html' || normalized === '/giveaway.html' || normalized === '/exchange.html';
+}
+
+function getNavSectionIcon(sectionKey) {
+  if (sectionKey === 'navForum') {
+    return '💬';
+  }
+
+  if (sectionKey === 'navGiveaway') {
+    return '🎁';
+  }
+
+  if (sectionKey === 'navExchange') {
+    return '🔄';
+  }
+
+  return '📂';
+}
+
+function applyNavSectionToggleContent(toggle, sectionKey, label) {
+  if (!(toggle instanceof HTMLElement)) {
+    return;
+  }
+
+  const icon = document.createElement('span');
+  icon.className = 'aqua-nav-section-icon';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = getNavSectionIcon(sectionKey);
+
+  const text = document.createElement('span');
+  text.textContent = label;
+
+  toggle.replaceChildren(icon, text);
+}
+
+function createNavSectionDropdown(sectionKey, label) {
+  const item = document.createElement('li');
+  item.className = 'nav-item dropdown aqua-nav-categories';
+  item.dataset[sectionKey] = 'true';
+
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'nav-link btn btn-link dropdown-toggle';
+  toggle.setAttribute('data-bs-toggle', 'dropdown');
+  toggle.setAttribute('aria-expanded', 'false');
+
+  if (sectionKey === 'navForum') {
+    toggle.dataset.navForumToggle = 'true';
+  }
+
+  if (sectionKey === 'navGiveaway') {
+    toggle.dataset.navGiveawayToggle = 'true';
+  }
+
+  if (sectionKey === 'navExchange') {
+    toggle.dataset.navExchangeToggle = 'true';
+  }
+
+  applyNavSectionToggleContent(toggle, sectionKey, label);
+
+  const menu = document.createElement('ul');
+  menu.className = 'dropdown-menu';
+
+  if (sectionKey === 'navForum') {
+    menu.dataset.navForumMenu = 'true';
+  }
+
+  if (sectionKey === 'navGiveaway') {
+    menu.dataset.navGiveawayMenu = 'true';
+  }
+
+  if (sectionKey === 'navExchange') {
+    menu.dataset.navExchangeMenu = 'true';
+  }
+
+  item.append(toggle, menu);
+  return item;
+}
+
+function ensureRequiredNavbarStructure() {
+  const navLists = document.querySelectorAll('#mainNavbar .aqua-nav-pages');
+
+  navLists.forEach((navList) => {
+    if (!(navList instanceof HTMLUListElement)) {
+      return;
+    }
+
+    const feedLink = navList.querySelector('a.nav-link[href="/index.html"]');
+    const feedItem = feedLink?.closest('li');
+    if (!feedItem) {
+      return;
+    }
+
+    if (feedLink instanceof HTMLAnchorElement) {
+      feedLink.textContent = 'Начало';
+      feedLink.dataset.navHome = 'true';
+    }
+
+    let forumItem = navList.querySelector('[data-nav-forum]');
+    if (!(forumItem instanceof HTMLLIElement)) {
+      const legacyCategoriesItem = navList.querySelector('[data-nav-categories]');
+
+      if (legacyCategoriesItem instanceof HTMLLIElement) {
+        legacyCategoriesItem.dataset.navForum = 'true';
+        legacyCategoriesItem.removeAttribute('data-nav-categories');
+        forumItem = legacyCategoriesItem;
+
+        const legacyToggle = forumItem.querySelector('[data-nav-categories-toggle]');
+        if (legacyToggle instanceof HTMLElement) {
+          legacyToggle.removeAttribute('data-nav-categories-toggle');
+          legacyToggle.dataset.navForumToggle = 'true';
+          applyNavSectionToggleContent(legacyToggle, 'navForum', 'Форум');
+        }
+
+        const legacyMenu = forumItem.querySelector('[data-nav-categories-menu]');
+        if (legacyMenu instanceof HTMLElement) {
+          legacyMenu.removeAttribute('data-nav-categories-menu');
+          legacyMenu.dataset.navForumMenu = 'true';
+        }
+      }
+    }
+
+    if (!(forumItem instanceof HTMLLIElement)) {
+      forumItem = createNavSectionDropdown('navForum', 'Форум');
+      feedItem.insertAdjacentElement('afterend', forumItem);
+    }
+
+    let giveawayItem = navList.querySelector('[data-nav-giveaway]');
+    if (!(giveawayItem instanceof HTMLLIElement)) {
+      giveawayItem = createNavSectionDropdown('navGiveaway', 'Подарявам');
+      forumItem.insertAdjacentElement('afterend', giveawayItem);
+    }
+
+    let exchangeItem = navList.querySelector('[data-nav-exchange]');
+    if (!(exchangeItem instanceof HTMLLIElement)) {
+      exchangeItem = createNavSectionDropdown('navExchange', 'Разменям');
+      giveawayItem.insertAdjacentElement('afterend', exchangeItem);
+    }
+
+    if (forumItem.parentElement === navList && giveawayItem.parentElement === navList && exchangeItem.parentElement === navList) {
+      feedItem.insertAdjacentElement('afterend', forumItem);
+      forumItem.insertAdjacentElement('afterend', giveawayItem);
+      giveawayItem.insertAdjacentElement('afterend', exchangeItem);
+    }
+  });
+}
+
 function setActiveNavbarLink() {
   const pathname = normalizeNavPathname(window.location.pathname);
   const currentParams = new URLSearchParams(window.location.search);
-  const currentCategory = pathname === '/index.html' ? (currentParams.get('category') || '') : '';
+  const currentCategory = currentParams.get('category') || '';
+  const hasFeedFilters = ['category', 'q', 'location', 'author', 'date_from', 'date_to', 'near_me', 'radius_km']
+    .some((key) => Boolean((currentParams.get(key) || '').trim()));
   const navLinks = document.querySelectorAll('#mainNavbar .navbar-nav .nav-link[href]');
 
   navLinks.forEach((link) => {
@@ -45,7 +196,9 @@ function setActiveNavbarLink() {
 
     let isActive = false;
 
-    if (linkPath === '/index.html') {
+    if (link.dataset.navHome === 'true') {
+      isActive = pathname === '/index.html' && !hasFeedFilters;
+    } else if (linkPath === '/index.html') {
       isActive = pathname === '/index.html' && linkCategory === currentCategory;
     } else {
       isActive = linkPath === pathname;
@@ -61,19 +214,29 @@ function setActiveNavbarLink() {
     link.removeAttribute('aria-current');
   });
 
-  const categoriesToggle = document.querySelector('[data-nav-categories-toggle]');
-  if (categoriesToggle instanceof HTMLElement) {
-    const categoriesActive = pathname === '/index.html' && Boolean(currentCategory);
-    categoriesToggle.classList.toggle('active', categoriesActive);
-    if (categoriesActive) {
-      categoriesToggle.setAttribute('aria-current', 'page');
-    } else {
-      categoriesToggle.removeAttribute('aria-current');
+  const forumToggle = document.querySelector('[data-nav-forum-toggle]');
+  const giveawayToggle = document.querySelector('[data-nav-giveaway-toggle]');
+  const exchangeToggle = document.querySelector('[data-nav-exchange-toggle]');
+
+  const setToggleActive = (toggle, isActive) => {
+    if (!(toggle instanceof HTMLElement)) {
+      return;
     }
-  }
+
+    toggle.classList.toggle('active', isActive);
+    if (isActive) {
+      toggle.setAttribute('aria-current', 'page');
+    } else {
+      toggle.removeAttribute('aria-current');
+    }
+  };
+
+  setToggleActive(forumToggle, pathname === '/index.html' && hasFeedFilters);
+  setToggleActive(giveawayToggle, pathname === '/giveaway.html');
+  setToggleActive(exchangeToggle, pathname === '/exchange.html');
 }
 
-function getNavbarCategoryHref(categorySlug, searchQuery = '') {
+function getNavbarCategoryHref(basePath, categorySlug, searchQuery = '') {
   const params = new URLSearchParams();
 
   if (searchQuery) {
@@ -85,7 +248,7 @@ function getNavbarCategoryHref(categorySlug, searchQuery = '') {
   }
 
   const query = params.toString();
-  return query ? `/index.html?${query}` : '/index.html';
+  return query ? `${basePath}?${query}` : basePath;
 }
 
 function createCategoryMenuLink({ href, label, iconEmoji, isActive }) {
@@ -112,10 +275,10 @@ function createCategoryMenuLink({ href, label, iconEmoji, isActive }) {
   return link;
 }
 
-function buildNavbarCategoryItem(category, selectedCategory, searchQuery) {
+function buildNavbarCategoryItem(category, selectedCategory, searchQuery, basePath) {
   const item = document.createElement('li');
   const link = createCategoryMenuLink({
-    href: getNavbarCategoryHref(category.slug, searchQuery),
+    href: getNavbarCategoryHref(basePath, category.slug, searchQuery),
     label: getCategoryDisplayName(category.name, category.slug),
     iconEmoji: getCategoryEmoji(category.slug),
     isActive: category.slug === selectedCategory
@@ -126,56 +289,71 @@ function buildNavbarCategoryItem(category, selectedCategory, searchQuery) {
 }
 
 function renderNavbarCategories(categories) {
-  const menuElements = document.querySelectorAll('[data-nav-categories-menu]');
-  if (!menuElements.length) {
+  const forumMenus = document.querySelectorAll('[data-nav-forum-menu]');
+  const giveawayMenus = document.querySelectorAll('[data-nav-giveaway-menu]');
+  const exchangeMenus = document.querySelectorAll('[data-nav-exchange-menu]');
+
+  if (!forumMenus.length && !giveawayMenus.length && !exchangeMenus.length) {
     return;
   }
 
   const pathname = normalizeNavPathname(window.location.pathname);
   const params = new URLSearchParams(window.location.search);
-  const selectedCategory = pathname === '/index.html' ? (params.get('category') || '') : '';
-  const searchQuery = pathname === '/index.html' ? (params.get('q') || '').trim() : '';
+  const selectedCategory = params.get('category') || '';
+  const searchQuery = (params.get('q') || '').trim();
 
-  menuElements.forEach((menuElement) => {
-    if (!(menuElement instanceof HTMLElement)) {
-      return;
-    }
+  const visibleCategories = (categories || []).filter((category) => !['giveaway', 'exchange'].includes(category.slug));
 
-    const allCategoriesItem = document.createElement('li');
-    const allCategoriesLink = createCategoryMenuLink({
-      href: getNavbarCategoryHref('', searchQuery),
-      label: 'Всички категории',
-      iconEmoji: '🗂️',
-      isActive: !selectedCategory && pathname === '/index.html'
+  const renderSection = (menuElements, basePath, allLabel) => {
+    menuElements.forEach((menuElement) => {
+      if (!(menuElement instanceof HTMLElement)) {
+        return;
+      }
+
+      const sectionIsActive = pathname === basePath;
+      const sectionSearch = sectionIsActive ? searchQuery : '';
+      const sectionSelectedCategory = sectionIsActive ? selectedCategory : '';
+
+      const allCategoriesItem = document.createElement('li');
+      const allCategoriesLink = createCategoryMenuLink({
+        href: getNavbarCategoryHref(basePath, '', sectionSearch),
+        label: allLabel,
+        iconEmoji: '🗂️',
+        isActive: !sectionSelectedCategory && sectionIsActive
+      });
+
+      allCategoriesItem.append(allCategoriesLink);
+      menuElement.replaceChildren(allCategoriesItem);
+
+      if (!visibleCategories.length) {
+        const emptyItem = document.createElement('li');
+        const emptyState = document.createElement('span');
+        emptyState.className = 'dropdown-item-text text-secondary small';
+        emptyState.textContent = 'Няма налични категории';
+        emptyItem.append(emptyState);
+        menuElement.append(emptyItem);
+        return;
+      }
+
+      const dividerItem = document.createElement('li');
+      const divider = document.createElement('hr');
+      divider.className = 'dropdown-divider';
+      dividerItem.append(divider);
+      menuElement.append(dividerItem);
+
+      visibleCategories.forEach((category) => {
+        menuElement.append(buildNavbarCategoryItem(category, sectionSelectedCategory, sectionSearch, basePath));
+      });
     });
+  };
 
-    allCategoriesItem.append(allCategoriesLink);
-    menuElement.replaceChildren(allCategoriesItem);
-
-    if (!categories.length) {
-      const emptyItem = document.createElement('li');
-      const emptyState = document.createElement('span');
-      emptyState.className = 'dropdown-item-text text-secondary small';
-      emptyState.textContent = 'No categories available';
-      emptyItem.append(emptyState);
-      menuElement.append(emptyItem);
-      return;
-    }
-
-    const dividerItem = document.createElement('li');
-    const divider = document.createElement('hr');
-    divider.className = 'dropdown-divider';
-    dividerItem.append(divider);
-    menuElement.append(dividerItem);
-
-    categories.forEach((category) => {
-      menuElement.append(buildNavbarCategoryItem(category, selectedCategory, searchQuery));
-    });
-  });
+  renderSection(forumMenus, '/index.html', 'Всички теми');
+  renderSection(giveawayMenus, '/giveaway.html', 'Всичко в Подарявам');
+  renderSection(exchangeMenus, '/exchange.html', 'Всичко в Разменям');
 }
 
 async function initializeNavbarCategories() {
-  const categoryMenus = document.querySelectorAll('[data-nav-categories-menu]');
+  const categoryMenus = document.querySelectorAll('[data-nav-forum-menu], [data-nav-giveaway-menu], [data-nav-exchange-menu]');
 
   if (!categoryMenus.length) {
     return;
@@ -216,7 +394,7 @@ function initializeNavbarSearch() {
       targetParams.set('q', query);
     }
 
-    const isFeedPage = window.location.pathname.endsWith('/index.html') || window.location.pathname === '/';
+    const isFeedPage = isFeedPagePath(window.location.pathname);
 
     if (isFeedPage) {
       const currentParams = new URLSearchParams(window.location.search);
@@ -257,11 +435,23 @@ function initializeTooltips() {
 }
 
 function toggleTopLevelAccountLinks({ isAuthenticated, isAdmin }) {
+  const createPostLink = document.querySelector('#mainNavbar a.nav-link[href="/post-create.html"]');
+  const chatLink = document.querySelector('#mainNavbar a.nav-link[href="/chat.html"]');
   const profileLink = document.querySelector('#mainNavbar a.nav-link[href="/profile.html"]');
   const adminLink = document.querySelector('#mainNavbar a.nav-link[href="/admin.html"]');
 
+  const createPostItem = createPostLink?.closest('.nav-item');
+  const chatItem = chatLink?.closest('.nav-item');
   const profileItem = profileLink?.closest('.nav-item');
   const adminItem = adminLink?.closest('.nav-item');
+
+  if (isAuthenticated && createPostItem instanceof HTMLElement) {
+    createPostItem.classList.add('d-none');
+  }
+
+  if (isAuthenticated && chatItem instanceof HTMLElement) {
+    chatItem.classList.add('d-none');
+  }
 
   if (isAuthenticated && profileItem instanceof HTMLElement) {
     profileItem.classList.add('d-none');
@@ -314,6 +504,98 @@ function ensureMyPostsDropdownLink(userId) {
   });
 }
 
+function ensureChatDropdownLink() {
+  const dropdownMenus = document.querySelectorAll('.dropdown-menu.dropdown-menu-end');
+
+  dropdownMenus.forEach((menu) => {
+    if (!(menu instanceof HTMLUListElement)) {
+      return;
+    }
+
+    const profileLink = menu.querySelector('a.dropdown-item[href="/profile.html"]');
+    if (!(profileLink instanceof HTMLAnchorElement)) {
+      return;
+    }
+
+    const existingChat = menu.querySelector('[data-nav-chat]');
+    if (existingChat instanceof HTMLAnchorElement) {
+      existingChat.href = '/chat.html';
+      return;
+    }
+
+    const chatItem = document.createElement('li');
+    const chatLink = document.createElement('a');
+    chatLink.className = 'dropdown-item';
+    chatLink.href = '/chat.html';
+    chatLink.dataset.navChat = 'true';
+    chatLink.textContent = 'Чат';
+    chatItem.append(chatLink);
+
+    const createPostItem = menu.querySelector('a.dropdown-item[data-nav-create-post="true"]')?.closest('li');
+    if (createPostItem?.parentElement === menu) {
+      createPostItem.insertAdjacentElement('afterend', chatItem);
+      return;
+    }
+
+    const myPostsItem = menu.querySelector('a.dropdown-item[data-nav-my-posts="true"]')?.closest('li');
+    if (myPostsItem?.parentElement === menu) {
+      myPostsItem.insertAdjacentElement('afterend', chatItem);
+      return;
+    }
+
+    const profileItem = profileLink.closest('li');
+    if (profileItem?.parentElement === menu) {
+      profileItem.insertAdjacentElement('afterend', chatItem);
+      return;
+    }
+
+    menu.prepend(chatItem);
+  });
+}
+
+function ensureCreatePostDropdownLink() {
+  const dropdownMenus = document.querySelectorAll('.dropdown-menu.dropdown-menu-end');
+
+  dropdownMenus.forEach((menu) => {
+    if (!(menu instanceof HTMLUListElement)) {
+      return;
+    }
+
+    const profileLink = menu.querySelector('a.dropdown-item[href="/profile.html"]');
+    if (!(profileLink instanceof HTMLAnchorElement)) {
+      return;
+    }
+
+    const existingCreatePost = menu.querySelector('[data-nav-create-post]');
+    if (existingCreatePost instanceof HTMLAnchorElement) {
+      existingCreatePost.href = '/post-create.html';
+      return;
+    }
+
+    const createPostItem = document.createElement('li');
+    const createPostLink = document.createElement('a');
+    createPostLink.className = 'dropdown-item';
+    createPostLink.href = '/post-create.html';
+    createPostLink.dataset.navCreatePost = 'true';
+    createPostLink.textContent = 'Нова публикация';
+    createPostItem.append(createPostLink);
+
+    const myPostsItem = menu.querySelector('a.dropdown-item[data-nav-my-posts="true"]')?.closest('li');
+    if (myPostsItem?.parentElement === menu) {
+      myPostsItem.insertAdjacentElement('afterend', createPostItem);
+      return;
+    }
+
+    const profileItem = profileLink.closest('li');
+    if (profileItem?.parentElement === menu) {
+      profileItem.insertAdjacentElement('afterend', createPostItem);
+      return;
+    }
+
+    menu.prepend(createPostItem);
+  });
+}
+
 function applyIconToDropdownItem(item, iconEmoji) {
   if (!(item instanceof HTMLElement)) {
     return;
@@ -343,11 +625,15 @@ function enhanceAccountDropdownItems() {
 
     const profileItem = menu.querySelector('a.dropdown-item[href="/profile.html"]');
     const myPostsItem = menu.querySelector('a.dropdown-item[data-nav-my-posts="true"]');
+    const createPostItem = menu.querySelector('a.dropdown-item[data-nav-create-post="true"]');
+    const chatItem = menu.querySelector('a.dropdown-item[data-nav-chat="true"]');
     const adminItem = menu.querySelector('a.dropdown-item[href="/admin.html"]');
     const logoutItem = menu.querySelector('button.dropdown-item[data-nav-logout]');
 
     applyIconToDropdownItem(profileItem, '👤');
     applyIconToDropdownItem(myPostsItem, '📝');
+    applyIconToDropdownItem(createPostItem, '✍️');
+    applyIconToDropdownItem(chatItem, '💬');
     applyIconToDropdownItem(adminItem, '🛡️');
     applyIconToDropdownItem(logoutItem, '🚪');
   });
@@ -413,6 +699,7 @@ async function initializeNavbar() {
   const userButton = document.querySelector('[data-nav-user-button]');
 
   const user = await getCurrentUser();
+  ensureRequiredNavbarStructure();
   await initializeNavbarCategories();
   setActiveNavbarLink();
   initializeNavbarSearch();
@@ -453,6 +740,8 @@ async function initializeNavbar() {
   }
 
   ensureMyPostsDropdownLink(user.id);
+  ensureCreatePostDropdownLink();
+  ensureChatDropdownLink();
   enhanceAccountDropdownItems();
   updateNavbarUserAvatar(userButton, profile, user);
 

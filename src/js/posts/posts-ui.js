@@ -55,6 +55,19 @@ const feedState = {
   }
 };
 
+function getFeedPath(pathname = window.location.pathname) {
+  if (pathname === '/') {
+    return '/index.html';
+  }
+
+  return pathname;
+}
+
+function isFeedPagePath(pathname = window.location.pathname) {
+  const normalized = getFeedPath(pathname);
+  return normalized === '/index.html' || normalized === '/giveaway.html' || normalized === '/exchange.html';
+}
+
 function formatPostTimestamp(value) {
   const date = new Date(value);
 
@@ -1275,6 +1288,10 @@ export async function loadFeed(options = {}) {
   }
 
   bindFeedPopstate(() => {
+    if (!isFeedPagePath()) {
+      return;
+    }
+
     scheduleFeedLoad();
   });
 
@@ -1319,6 +1336,7 @@ export async function loadFeed(options = {}) {
     cleanupLikesRealtime();
 
     const selectedCategorySlugFromQuery = getCategoryFromQuery();
+    const defaultCategorySlug = (feedContainer.dataset.feedDefaultCategory || '').trim();
     const searchFromQuery = getSearchFromQuery();
     const locationFromQuery = getLocationFromQuery();
     const authorFromQuery = getAuthorFromQuery();
@@ -1589,9 +1607,11 @@ export async function loadFeed(options = {}) {
     }
 
     const categorySlugs = new Set(categories.map((category) => category.slug));
-    const selectedCategorySlug = categorySlugs.has(selectedCategorySlugFromQuery) ? selectedCategorySlugFromQuery : '';
+    const categoryFromQuery = categorySlugs.has(selectedCategorySlugFromQuery) ? selectedCategorySlugFromQuery : '';
+    const categoryFromDefault = categorySlugs.has(defaultCategorySlug) ? defaultCategorySlug : '';
+    const effectiveCategorySlug = categoryFromQuery || categoryFromDefault;
 
-    if (selectedCategorySlugFromQuery && !selectedCategorySlug) {
+    if (selectedCategorySlugFromQuery && !categoryFromQuery) {
       setFeedFiltersInQuery({ category: '' });
     }
 
@@ -1603,16 +1623,18 @@ export async function loadFeed(options = {}) {
     }
 
     const filteredPosts = postsWithUiData
-      .filter((post) => (!selectedCategorySlug || post.categorySlug === selectedCategorySlug))
+      .filter((post) => (!effectiveCategorySlug || post.categorySlug === effectiveCategorySlug))
       .filter((post) => matchesFeedSearch(post, normalizedSearchQuery))
       .filter((post) => matchesFeedLocation(post, normalizedLocationQuery))
       .filter((post) => matchesFeedAuthor(post, normalizedAuthorQuery))
       .filter((post) => matchesFeedDateRange(post, dateFrom, dateTo))
       .filter((post) => (!nearMeFromQuery || matchesNearby(post, viewerCoords, radiusKmFromQuery)));
 
+    const selectedCategorySlugForUi = categoryFromQuery;
+
     updateFeedFilterUi(
       {
-        selectedSlug: selectedCategorySlug,
+        selectedSlug: selectedCategorySlugForUi,
         query: searchFromQuery,
         location: locationFromQuery,
         author: authorFromQuery,
@@ -1635,7 +1657,7 @@ export async function loadFeed(options = {}) {
     if (!filteredPosts.length) {
       renderEmptyState(
         feedContainer,
-        (selectedCategorySlug || normalizedSearchQuery)
+        (effectiveCategorySlug || normalizedSearchQuery)
           || normalizedLocationQuery
           || normalizedAuthorQuery
           || dateFrom

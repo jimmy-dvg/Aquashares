@@ -37,6 +37,13 @@ body {
   text-decoration: none;
 }
 
+.aqua-nav-section-icon {
+  width: 1rem;
+  text-align: center;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
 .aqua-nav-categories .dropdown-toggle::after {
   margin-left: 0.15rem;
 }

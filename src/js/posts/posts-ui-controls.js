@@ -122,6 +122,8 @@ export function setCategoryFilterOptions(filterElement, categories, selectedSlug
     return;
   }
 
+  const visibleCategories = (categories || []).filter((category) => !['giveaway', 'exchange'].includes(category.slug));
+
   const previousValue = selectedSlug || filterElement.value || '';
   filterElement.replaceChildren();
 
@@ -130,14 +132,14 @@ export function setCategoryFilterOptions(filterElement, categories, selectedSlug
   allOption.textContent = getAllCategoriesLabel();
   filterElement.append(allOption);
 
-  categories.forEach((category) => {
+  visibleCategories.forEach((category) => {
     const option = document.createElement('option');
     option.value = category.slug;
     option.textContent = getCategoryLabelWithEmoji(category.name, category.slug);
     filterElement.append(option);
   });
 
-  const hasCurrentValue = categories.some((category) => category.slug === previousValue);
+  const hasCurrentValue = visibleCategories.some((category) => category.slug === previousValue);
   filterElement.value = hasCurrentValue ? previousValue : '';
 }
 
