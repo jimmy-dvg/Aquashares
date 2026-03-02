@@ -1,4 +1,5 @@
 import { getCurrentUserRole } from '../auth/auth-guard.js';
+import { getConnectedSocialProviderKeysFromUser } from '../auth/social-auth.js';
 import { cleanupCommentsUi, createCommentsBlock, initializeCommentsUi } from '../comments/comments-ui.js';
 import { getLikesSummaryByPostIds, subscribeToPostLikes, togglePostLike } from '../reactions/reactions-service.js';
 import { createLikeButton, setLikeButtonState } from '../reactions/reactions-ui.js';
@@ -133,10 +134,12 @@ async function getViewerState() {
     shareNetworks: []
   };
 
+  const connectedProviderKeys = getConnectedSocialProviderKeysFromUser(data?.session?.user || null);
+
   try {
     const { data: socialProfile, error } = await supabase
       .from('profiles')
-      .select('facebook_url, x_url, linkedin_url, reddit_url, telegram_url')
+      .select('facebook_url, x_url, linkedin_url')
       .eq('id', viewerUserId)
       .maybeSingle();
 
@@ -144,12 +147,15 @@ async function getViewerState() {
       viewer.shareNetworks = getConnectedShareNetworks({
         facebookUrl: socialProfile.facebook_url || '',
         xUrl: socialProfile.x_url || '',
-        linkedinUrl: socialProfile.linkedin_url || '',
-        redditUrl: socialProfile.reddit_url || '',
-        telegramUrl: socialProfile.telegram_url || ''
-      });
+        linkedinUrl: socialProfile.linkedin_url || ''
+      }, connectedProviderKeys);
+      return viewer;
     }
   } catch {
+  }
+
+  if (connectedProviderKeys.length) {
+    viewer.shareNetworks = getConnectedShareNetworks({}, connectedProviderKeys);
   }
 
   return viewer;

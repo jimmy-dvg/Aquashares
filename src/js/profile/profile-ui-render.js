@@ -78,14 +78,6 @@ export function renderProfileForm(profile, elements) {
     elements.linkedin.value = profile.linkedinUrl || '';
   }
 
-  if (elements.reddit) {
-    elements.reddit.value = profile.redditUrl || '';
-  }
-
-  if (elements.telegram) {
-    elements.telegram.value = profile.telegramUrl || '';
-  }
-
   if (elements.isPublic) {
     elements.isPublic.checked = Boolean(profile.isPublic);
   }

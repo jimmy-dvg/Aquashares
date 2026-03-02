@@ -1,4 +1,5 @@
 import { supabase } from '../services/supabase-client.js';
+import { getConnectedSocialProviderKeys, getConnectedSocialProviderKeysFromUser, getSocialOauthProviders, linkSocialNetwork } from '../auth/social-auth.js';
 
 const SOCIAL_NETWORKS = [
   {
@@ -6,6 +7,7 @@ const SOCIAL_NETWORKS = [
     label: 'Facebook',
     icon: 'bi-facebook',
     profileField: 'facebookUrl',
+    oauthProviderKey: 'facebook',
     buildShareUrl: ({ postUrl }) => `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}`
   },
   {
@@ -13,6 +15,7 @@ const SOCIAL_NETWORKS = [
     label: 'X',
     icon: 'bi-twitter-x',
     profileField: 'xUrl',
+    oauthProviderKey: 'x',
     buildShareUrl: ({ postUrl, postTitle }) => `https://twitter.com/intent/tweet?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(postTitle)}`
   },
   {
@@ -20,21 +23,8 @@ const SOCIAL_NETWORKS = [
     label: 'LinkedIn',
     icon: 'bi-linkedin',
     profileField: 'linkedinUrl',
+    oauthProviderKey: 'linkedin',
     buildShareUrl: ({ postUrl }) => `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(postUrl)}`
-  },
-  {
-    key: 'reddit',
-    label: 'Reddit',
-    icon: 'bi-reddit',
-    profileField: 'redditUrl',
-    buildShareUrl: ({ postUrl, postTitle }) => `https://www.reddit.com/submit?url=${encodeURIComponent(postUrl)}&title=${encodeURIComponent(postTitle)}`
-  },
-  {
-    key: 'telegram',
-    label: 'Telegram',
-    icon: 'bi-telegram',
-    profileField: 'telegramUrl',
-    buildShareUrl: ({ postUrl, postTitle }) => `https://t.me/share/url?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(postTitle)}`
   }
 ];
 
@@ -70,9 +60,7 @@ function buildProfilesPayloadFromInputs(inputs) {
   const payload = {
     facebook_url: normalizeSocialUrl(inputs.facebook.value),
     x_url: normalizeSocialUrl(inputs.x.value),
-    linkedin_url: normalizeSocialUrl(inputs.linkedin.value),
-    reddit_url: normalizeSocialUrl(inputs.reddit.value),
-    telegram_url: normalizeSocialUrl(inputs.telegram.value)
+    linkedin_url: normalizeSocialUrl(inputs.linkedin.value)
   };
 
   return payload;
@@ -82,9 +70,7 @@ function toConnectedNetworksProfile(payload = {}) {
   return {
     facebookUrl: payload.facebook_url || '',
     xUrl: payload.x_url || '',
-    linkedinUrl: payload.linkedin_url || '',
-    redditUrl: payload.reddit_url || '',
-    telegramUrl: payload.telegram_url || ''
+    linkedinUrl: payload.linkedin_url || ''
   };
 }
 
@@ -114,6 +100,10 @@ function createSocialLinksModalMarkup() {
         <form data-social-setup-form>
           <div class="modal-body d-flex flex-column gap-3">
             <p class="text-secondary small mb-0">Добави линкове към профилите си, за да активираш бързо споделяне.</p>
+            <div class="border rounded-3 p-3">
+              <div class="small fw-semibold mb-2">Свързани социални профили</div>
+              <div class="d-flex flex-column gap-2" data-social-oauth-list></div>
+            </div>
             <div>
               <label for="social-setup-facebook" class="form-label"><i class="bi bi-facebook me-1" aria-hidden="true"></i>Facebook</label>
               <input id="social-setup-facebook" type="url" class="form-control" placeholder="https://facebook.com/..." data-social-setup-facebook />
@@ -125,14 +115,6 @@ function createSocialLinksModalMarkup() {
             <div>
               <label for="social-setup-linkedin" class="form-label"><i class="bi bi-linkedin me-1" aria-hidden="true"></i>LinkedIn</label>
               <input id="social-setup-linkedin" type="url" class="form-control" placeholder="https://linkedin.com/in/..." data-social-setup-linkedin />
-            </div>
-            <div>
-              <label for="social-setup-reddit" class="form-label"><i class="bi bi-reddit me-1" aria-hidden="true"></i>Reddit</label>
-              <input id="social-setup-reddit" type="url" class="form-control" placeholder="https://reddit.com/user/..." data-social-setup-reddit />
-            </div>
-            <div>
-              <label for="social-setup-telegram" class="form-label"><i class="bi bi-telegram me-1" aria-hidden="true"></i>Telegram</label>
-              <input id="social-setup-telegram" type="url" class="form-control" placeholder="https://t.me/..." data-social-setup-telegram />
             </div>
             <div class="small text-secondary" data-social-setup-feedback></div>
           </div>
@@ -165,15 +147,12 @@ function ensureSocialLinksModal() {
   const inputs = {
     facebook: modalRoot.querySelector('[data-social-setup-facebook]'),
     x: modalRoot.querySelector('[data-social-setup-x]'),
-    linkedin: modalRoot.querySelector('[data-social-setup-linkedin]'),
-    reddit: modalRoot.querySelector('[data-social-setup-reddit]'),
-    telegram: modalRoot.querySelector('[data-social-setup-telegram]')
+    linkedin: modalRoot.querySelector('[data-social-setup-linkedin]')
   };
 
   if (!(form instanceof HTMLFormElement) || !(saveButton instanceof HTMLButtonElement) || !(feedback instanceof HTMLElement)
     || !(inputs.facebook instanceof HTMLInputElement) || !(inputs.x instanceof HTMLInputElement)
-    || !(inputs.linkedin instanceof HTMLInputElement) || !(inputs.reddit instanceof HTMLInputElement)
-    || !(inputs.telegram instanceof HTMLInputElement)) {
+    || !(inputs.linkedin instanceof HTMLInputElement)) {
     throw new Error('Неуспешна инициализация на формата за социални мрежи.');
   }
 
@@ -189,7 +168,8 @@ function ensureSocialLinksModal() {
     feedback,
     inputs,
     onSaved: null,
-    inFlight: false
+    inFlight: false,
+    connectedProviderKeys: []
   };
 
   form.addEventListener('submit', async (event) => {
@@ -225,7 +205,10 @@ function ensureSocialLinksModal() {
         throw new Error(updateError.message || 'Неуспешно запазване на социалните мрежи.');
       }
 
-      const connectedNetworks = getConnectedShareNetworks(toConnectedNetworksProfile(payload));
+      const connectedNetworks = getConnectedShareNetworks(
+        toConnectedNetworksProfile(payload),
+        socialModalState.connectedProviderKeys || []
+      );
       setSocialModalFeedback(socialModalState, 'Социалните мрежи са запазени успешно.', 'success');
 
       if (typeof socialModalState.onSaved === 'function') {
@@ -259,9 +242,18 @@ async function preloadSocialLinksInputs(state) {
     throw new Error('Трябва да си влязъл, за да редактираш социални мрежи.');
   }
 
+  state.connectedProviderKeys = getConnectedSocialProviderKeysFromUser(sessionData?.session?.user || null);
+  if (!state.connectedProviderKeys.length) {
+    try {
+      state.connectedProviderKeys = await getConnectedSocialProviderKeys();
+    } catch {
+      state.connectedProviderKeys = [];
+    }
+  }
+
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('facebook_url, x_url, linkedin_url, reddit_url, telegram_url')
+    .select('facebook_url, x_url, linkedin_url')
     .eq('id', userId)
     .maybeSingle();
 
@@ -272,8 +264,6 @@ async function preloadSocialLinksInputs(state) {
   state.inputs.facebook.value = profile?.facebook_url || '';
   state.inputs.x.value = profile?.x_url || '';
   state.inputs.linkedin.value = profile?.linkedin_url || '';
-  state.inputs.reddit.value = profile?.reddit_url || '';
-  state.inputs.telegram.value = profile?.telegram_url || '';
 }
 
 export async function openSocialLinksSetupModal(options = {}) {
@@ -283,6 +273,54 @@ export async function openSocialLinksSetupModal(options = {}) {
 
   try {
     await preloadSocialLinksInputs(state);
+    const openFromOauthRedirect = new URLSearchParams(window.location.search).get('social_setup') === '1';
+    if (openFromOauthRedirect) {
+      setSocialModalFeedback(state, 'Социалният профил е върнат. Прегледай статуса и запази, ако е нужно.', 'success');
+      const nextParams = new URLSearchParams(window.location.search);
+      nextParams.delete('social_setup');
+      const nextQuery = nextParams.toString();
+      const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`;
+      window.history.replaceState(null, '', nextUrl);
+    }
+
+    const oauthList = state.root.querySelector('[data-social-oauth-list]');
+    if (oauthList instanceof HTMLElement) {
+      oauthList.replaceChildren();
+      const connectedSet = new Set(state.connectedProviderKeys || []);
+
+      getSocialOauthProviders().forEach((provider) => {
+        const row = document.createElement('div');
+        row.className = 'd-flex justify-content-between align-items-center gap-2';
+
+        const label = document.createElement('div');
+        label.className = 'small';
+        label.innerHTML = `<i class="bi ${provider.icon} me-1" aria-hidden="true"></i>${provider.label}`;
+
+        if (connectedSet.has(provider.networkKey)) {
+          const badge = document.createElement('span');
+          badge.className = 'badge text-bg-success';
+          badge.textContent = 'Свързана';
+          row.append(label, badge);
+        } else {
+          const connectButton = document.createElement('button');
+          connectButton.type = 'button';
+          connectButton.className = 'btn btn-sm btn-outline-primary';
+          connectButton.textContent = 'Свържи';
+          connectButton.addEventListener('click', async () => {
+            setSocialModalFeedback(state, `Пренасочване към ${provider.label}...`, 'secondary');
+            try {
+              await linkSocialNetwork(provider.networkKey);
+            } catch (error) {
+              setSocialModalFeedback(state, error.message || 'Неуспешно свързване на социален профил.', 'danger');
+            }
+          });
+
+          row.append(label, connectButton);
+        }
+
+        oauthList.append(row);
+      });
+    }
   } catch (error) {
     setSocialModalFeedback(state, error.message || 'Неуспешно зареждане на социалните мрежи.', 'danger');
   }
@@ -290,8 +328,14 @@ export async function openSocialLinksSetupModal(options = {}) {
   state.modalApi?.show();
 }
 
-export function getConnectedShareNetworks(profile = {}) {
-  return SOCIAL_NETWORKS.filter((network) => Boolean((profile[network.profileField] || '').trim()));
+export function getConnectedShareNetworks(profile = {}, linkedProviderKeys = []) {
+  const linkedProvidersSet = new Set(linkedProviderKeys || []);
+
+  return SOCIAL_NETWORKS.filter((network) => {
+    const hasManualUrl = Boolean((profile[network.profileField] || '').trim());
+    const hasLinkedProvider = network.oauthProviderKey ? linkedProvidersSet.has(network.oauthProviderKey) : false;
+    return hasManualUrl || hasLinkedProvider;
+  });
 }
 
 export function buildPostShareTargets(postId, postTitle, connectedNetworks = []) {

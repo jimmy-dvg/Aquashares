@@ -6,6 +6,7 @@ import { deletePost, getAllPosts, getCategories, updatePost } from './posts-serv
 import { showConfirmModal } from '../utils/confirm-modal.js';
 import { renderGallery } from './post-detail-view.js';
 import { getCategoryDisplayName, getScopedCategoryDisplayName } from '../utils/category-icons.js';
+import { getConnectedSocialProviderKeysFromUser } from '../auth/social-auth.js';
 import {
   bindCategoryFilter,
   bindFeedPopstate,
@@ -1063,6 +1064,8 @@ async function getViewerState() {
     shareNetworks: []
   };
 
+  const connectedProviderKeys = getConnectedSocialProviderKeysFromUser(session.user);
+
   const { data: roleData } = await supabase
     .from('user_roles')
     .select('role')
@@ -1076,7 +1079,7 @@ async function getViewerState() {
   try {
     const { data: socialProfile, error } = await supabase
       .from('profiles')
-      .select('facebook_url, x_url, linkedin_url, reddit_url, telegram_url')
+      .select('facebook_url, x_url, linkedin_url')
       .eq('id', session.user.id)
       .maybeSingle();
 
@@ -1084,12 +1087,15 @@ async function getViewerState() {
       viewer.shareNetworks = getConnectedShareNetworks({
         facebookUrl: socialProfile.facebook_url || '',
         xUrl: socialProfile.x_url || '',
-        linkedinUrl: socialProfile.linkedin_url || '',
-        redditUrl: socialProfile.reddit_url || '',
-        telegramUrl: socialProfile.telegram_url || ''
-      });
+        linkedinUrl: socialProfile.linkedin_url || ''
+      }, connectedProviderKeys);
+      return viewer;
     }
   } catch {
+  }
+
+  if (connectedProviderKeys.length) {
+    viewer.shareNetworks = getConnectedShareNetworks({}, connectedProviderKeys);
   }
 
   return viewer;

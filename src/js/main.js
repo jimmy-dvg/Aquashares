@@ -1,4 +1,5 @@
 import { getCurrentUser, getCurrentUserRole, requireAdmin, requireAuth } from './auth/auth-guard.js';
+import { getConnectedSocialProviderKeysFromUser } from './auth/social-auth.js';
 import { initializeLoginForm } from './auth/login.js';
 import { initializeLogout } from './auth/logout.js';
 import { initializeRegisterForm } from './auth/register.js';
@@ -731,6 +732,39 @@ function updateNavbarUserAvatar(userButton, profile, user) {
   }
 }
 
+function updateNavbarSocialIndicator(userButton, user) {
+  if (!(userButton instanceof HTMLElement)) {
+    return;
+  }
+
+  const connectedProviders = getConnectedSocialProviderKeysFromUser(user);
+  const existingBadge = userButton.querySelector('[data-nav-social-linked]');
+
+  if (!connectedProviders.length) {
+    if (existingBadge instanceof HTMLElement) {
+      existingBadge.remove();
+    }
+    return;
+  }
+
+  let badge = existingBadge;
+  if (!(badge instanceof HTMLElement)) {
+    badge = document.createElement('span');
+    badge.className = 'badge text-bg-success ms-1';
+    badge.dataset.navSocialLinked = 'true';
+
+    const roleBadge = userButton.querySelector('[data-nav-user-role]');
+    if (roleBadge instanceof HTMLElement) {
+      roleBadge.insertAdjacentElement('afterend', badge);
+    } else {
+      userButton.append(badge);
+    }
+  }
+
+  badge.textContent = `Соц ${connectedProviders.length}`;
+  badge.title = `Свързани социални профили: ${connectedProviders.join(', ')}`;
+}
+
 async function initializeNavbar() {
   const guestElements = document.querySelectorAll('[data-nav-guest]');
   const authElements = document.querySelectorAll('[data-nav-auth]');
@@ -785,6 +819,7 @@ async function initializeNavbar() {
   ensureChatDropdownLink();
   enhanceAccountDropdownItems();
   updateNavbarUserAvatar(userButton, profile, user);
+  updateNavbarSocialIndicator(userButton, user);
 
   if (userButton instanceof HTMLElement) {
     userButton.setAttribute('aria-label', `Account menu for ${user.email || 'User'}`);

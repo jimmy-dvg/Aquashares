@@ -62,8 +62,6 @@ function getElements() {
     facebook: document.querySelector('[data-profile-facebook]'),
     x: document.querySelector('[data-profile-x]'),
     linkedin: document.querySelector('[data-profile-linkedin]'),
-    reddit: document.querySelector('[data-profile-reddit]'),
-    telegram: document.querySelector('[data-profile-telegram]'),
     isPublic: document.querySelector('[data-profile-public]'),
     profileSubmit: document.querySelector('[data-profile-submit]'),
     preferencesForm: document.querySelector('[data-profile-preferences-form]'),
@@ -644,9 +642,7 @@ function validateProfileInput(payload) {
   const socialNetworks = [
     { key: 'facebookUrl', label: 'Facebook' },
     { key: 'xUrl', label: 'X' },
-    { key: 'linkedinUrl', label: 'LinkedIn' },
-    { key: 'redditUrl', label: 'Reddit' },
-    { key: 'telegramUrl', label: 'Telegram' }
+    { key: 'linkedinUrl', label: 'LinkedIn' }
   ];
 
   for (const network of socialNetworks) {
@@ -683,8 +679,6 @@ async function handleProfileSave(event, elements) {
     facebookUrl: elements.facebook?.value.trim() || '',
     xUrl: elements.x?.value.trim() || '',
     linkedinUrl: elements.linkedin?.value.trim() || '',
-    redditUrl: elements.reddit?.value.trim() || '',
-    telegramUrl: elements.telegram?.value.trim() || '',
     isPublic: Boolean(elements.isPublic?.checked),
     avatarUrl: state.profile.avatarUrl || '',
     avatarStoragePath: state.profile.avatarStoragePath || ''
