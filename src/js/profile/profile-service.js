@@ -46,6 +46,9 @@ function getDefaultPreferences() {
 }
 
 function mapProfile(row) {
+  const lat = typeof row.location_lat === 'number' ? row.location_lat : null;
+  const lng = typeof row.location_lng === 'number' ? row.location_lng : null;
+
   return {
     id: row.id,
     username: row.username || '',
@@ -54,6 +57,8 @@ function mapProfile(row) {
     avatarStoragePath: row.avatar_storage_path || '',
     bio: row.bio || '',
     location: row.location || '',
+    locationLat: Number.isFinite(lat) ? lat : null,
+    locationLng: Number.isFinite(lng) ? lng : null,
     website: row.website || '',
     isPublic: typeof row.is_public === 'boolean' ? row.is_public : true,
     createdAt: row.created_at
@@ -109,7 +114,7 @@ export async function getProfileById(userId) {
   let data = null;
   let error = null;
 
-  const extendedProfileSelect = 'id, username, display_name, avatar_url, avatar_storage_path, bio, location, website, is_public, created_at';
+  const extendedProfileSelect = 'id, username, display_name, avatar_url, avatar_storage_path, bio, location, location_lat, location_lng, website, is_public, created_at';
   const legacyProfileSelect = 'id, username, display_name, avatar_url, bio, created_at';
 
   ({ data, error } = await supabase
@@ -118,7 +123,7 @@ export async function getProfileById(userId) {
     .eq('id', userId)
     .maybeSingle());
 
-  if (error && (isMissingColumn(error, 'avatar_storage_path') || isMissingColumn(error, 'location') || isMissingColumn(error, 'website') || isMissingColumn(error, 'is_public'))) {
+  if (error && (isMissingColumn(error, 'avatar_storage_path') || isMissingColumn(error, 'location') || isMissingColumn(error, 'location_lat') || isMissingColumn(error, 'location_lng') || isMissingColumn(error, 'website') || isMissingColumn(error, 'is_public'))) {
     ({ data, error } = await supabase
       .from('profiles')
       .select(legacyProfileSelect)
@@ -157,6 +162,8 @@ export async function updateMyProfile(userId, payload) {
     display_name: payload.displayName,
     bio: payload.bio,
     location: payload.location,
+    location_lat: payload.locationLat,
+    location_lng: payload.locationLng,
     website: payload.website,
     is_public: payload.isPublic,
     avatar_url: payload.avatarUrl,
@@ -170,10 +177,10 @@ export async function updateMyProfile(userId, payload) {
     .from('profiles')
     .update(updatePayload)
     .eq('id', userId)
-    .select('id, username, display_name, avatar_url, avatar_storage_path, bio, location, website, is_public, created_at')
+    .select('id, username, display_name, avatar_url, avatar_storage_path, bio, location, location_lat, location_lng, website, is_public, created_at')
     .single());
 
-  if (error && (isMissingColumn(error, 'avatar_storage_path') || isMissingColumn(error, 'location') || isMissingColumn(error, 'website') || isMissingColumn(error, 'is_public'))) {
+  if (error && (isMissingColumn(error, 'avatar_storage_path') || isMissingColumn(error, 'location') || isMissingColumn(error, 'location_lat') || isMissingColumn(error, 'location_lng') || isMissingColumn(error, 'website') || isMissingColumn(error, 'is_public'))) {
     updatePayload = {
       username: payload.username,
       display_name: payload.displayName,
@@ -278,6 +285,39 @@ export async function getCommentsByUserId(userId, limit = 20) {
 
 export async function getMyComments(userId, limit = 20) {
   return getCommentsByUserId(userId, limit);
+}
+
+export async function getSuggestedLocations(limit = 40) {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('location, updated_at')
+    .not('location', 'is', null)
+    .order('updated_at', { ascending: false })
+    .limit(200);
+
+  if (error) {
+    throwServiceError(error, 'Failed to load location suggestions.');
+  }
+
+  const seen = new Set();
+  const suggestions = [];
+
+  (data ?? []).forEach((row) => {
+    const location = (row.location || '').replace(/\s+/g, ' ').trim();
+    if (!location) {
+      return;
+    }
+
+    const key = location.toLocaleLowerCase('bg');
+    if (seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    suggestions.push(location);
+  });
+
+  return suggestions.slice(0, limit);
 }
 
 export async function getMyProfilePreferences(userId) {

@@ -51,6 +51,24 @@ function getCategoryLabel(post) {
   return getCategoryDisplayName(post.categoryName, post.categorySlug);
 }
 
+function createLocationMeta(location) {
+  const value = (location || '').trim() || 'Не е посочена';
+
+  const locationMeta = document.createElement('span');
+  locationMeta.className = 'aqua-post-location-meta';
+
+  const icon = document.createElement('i');
+  icon.className = 'bi bi-geo-alt-fill';
+  icon.setAttribute('aria-hidden', 'true');
+
+  const text = document.createElement('span');
+  text.textContent = value;
+
+  locationMeta.append(icon, text);
+  locationMeta.title = value;
+  return locationMeta;
+}
+
 function getPostDetailHref(postId) {
   return `/post-detail.html?id=${encodeURIComponent(postId)}`;
 }
@@ -243,6 +261,10 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false)
   timestamp.title = formatDate(post.createdAt);
 
   subMeta.append(roleBadge, timestamp);
+
+  const locationMeta = createLocationMeta(post.author?.location);
+  subMeta.append(locationMeta);
+
   authorMeta.append(authorLink, subMeta);
   authorWrap.append(avatar, authorMeta);
   header.append(authorWrap);

@@ -19,6 +19,7 @@ function getElements() {
     authorAvatar: document.querySelector('[data-post-author-avatar]'),
     authorLink: document.querySelector('[data-post-author-link]'),
     authorRole: document.querySelector('[data-post-author-role]'),
+    authorLocation: document.querySelector('[data-post-author-location]'),
     createdAt: document.querySelector('[data-post-created-at]'),
     category: document.querySelector('[data-post-category]'),
     title: document.querySelector('[data-post-title]'),
@@ -134,7 +135,7 @@ async function getAuthorData(authorId) {
   const [profileResult, roleResult] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, username, display_name, avatar_url')
+      .select('id, username, display_name, avatar_url, location')
       .eq('id', authorId)
       .maybeSingle(),
     supabase
@@ -155,6 +156,7 @@ async function getAuthorData(authorId) {
     username: profile?.username || '',
     displayName: profile?.display_name || profile?.username || 'Aquashares User',
     avatarUrl: profile?.avatar_url || DEFAULT_AVATAR,
+    location: (profile?.location || '').replace(/\s+/g, ' ').trim(),
     role: roleResult.error ? 'user' : (roleResult.data?.role || 'user')
   };
 }

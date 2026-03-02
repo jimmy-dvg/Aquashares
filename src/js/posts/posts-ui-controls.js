@@ -11,15 +11,31 @@ export function getUiElements() {
     notificationRoot: document.querySelector('[data-feed-notifications]'),
     searchInput: document.querySelector('[data-feed-search]'),
     categoryFilter: document.querySelector('[data-feed-category-filter]'),
+    locationFilter: document.querySelector('[data-feed-location-filter]'),
+    useMyLocationButton: document.querySelector('[data-feed-use-my-location]'),
+    authorFilter: document.querySelector('[data-feed-author-filter]'),
+    dateFromFilter: document.querySelector('[data-feed-date-from]'),
+    dateToFilter: document.querySelector('[data-feed-date-to]'),
+    nearbyToggle: document.querySelector('[data-feed-nearby-toggle]'),
+    radiusFilter: document.querySelector('[data-feed-radius-filter]'),
+    locationList: document.querySelector('[data-feed-location-list]'),
+    authorList: document.querySelector('[data-feed-author-list]'),
     clearFilterButton: document.querySelector('[data-feed-clear-filter]'),
     filterStatus: document.querySelector('[data-feed-filter-status]')
   };
 }
 
-export function updateFeedFilterUi(filterElement, searchInput, clearFilterButton, filterStatus, categories, filteredCount, totalCount) {
-  const query = searchInput instanceof HTMLInputElement ? (searchInput.value || '').trim() : '';
-  const selectedSlug = filterElement instanceof HTMLSelectElement ? filterElement.value || '' : '';
-  const hasFilter = Boolean(selectedSlug || query);
+export function updateFeedFilterUi(filters, clearFilterButton, filterStatus, categories, filteredCount, totalCount) {
+  const query = (filters?.query || '').trim();
+  const selectedSlug = filters?.selectedSlug || '';
+  const location = (filters?.location || '').trim();
+  const author = (filters?.author || '').trim();
+  const dateFrom = (filters?.dateFrom || '').trim();
+  const dateTo = (filters?.dateTo || '').trim();
+  const nearMeEnabled = filters?.nearMe === true;
+  const radiusKm = Number(filters?.radiusKm || 25);
+  const nearMeUnavailable = filters?.nearMeUnavailable === true;
+  const hasFilter = Boolean(selectedSlug || query || location || author || dateFrom || dateTo || nearMeEnabled);
 
   if (clearFilterButton) {
     clearFilterButton.classList.toggle('d-none', !hasFilter);
@@ -41,20 +57,64 @@ export function updateFeedFilterUi(filterElement, searchInput, clearFilterButton
     const selectedCategory = (categories || []).find((category) => category.slug === selectedSlug) || null;
     const categoryName = selectedCategory
       ? getCategoryDisplayName(selectedCategory.name, selectedCategory.slug)
-      : 'Избрана категория';
-    labels.push(`category: ${categoryName}`);
+      : 'Категория';
+    labels.push(`Категория: ${categoryName}`);
   }
 
   if (query) {
-    labels.push(`search: "${query}"`);
+    labels.push(`Търсене: "${query}"`);
+  }
+
+  if (location) {
+    labels.push(`Локация: ${location}`);
+  }
+
+  if (author) {
+    labels.push(`Потребител: ${author}`);
+  }
+
+  if (dateFrom || dateTo) {
+    const fromLabel = dateFrom || '…';
+    const toLabel = dateTo || '…';
+    labels.push(`Период: ${fromLabel} → ${toLabel}`);
+  }
+
+  if (nearMeEnabled) {
+    if (nearMeUnavailable) {
+      labels.push('Близо до мен: няма достъп до локация');
+    } else {
+      labels.push(`Близо до мен: ${Number.isFinite(radiusKm) ? radiusKm : 25} км`);
+    }
   }
 
   if (typeof filteredCount === 'number' && typeof totalCount === 'number') {
-    labels.push(`${filteredCount}/${totalCount} posts`);
+    labels.push(`${filteredCount}/${totalCount} публикации`);
   }
 
-  filterStatus.textContent = `Filtering by ${labels.join(' • ')}`;
+  filterStatus.textContent = `Активни филтри: ${labels.join(' • ')}`;
   filterStatus.classList.remove('d-none');
+}
+
+export function setDatalistOptions(listElement, values) {
+  if (!(listElement instanceof HTMLDataListElement)) {
+    return;
+  }
+
+  listElement.replaceChildren();
+
+  const fragment = document.createDocumentFragment();
+  (values || []).forEach((value) => {
+    const normalized = (value || '').trim();
+    if (!normalized) {
+      return;
+    }
+
+    const option = document.createElement('option');
+    option.value = normalized;
+    fragment.append(option);
+  });
+
+  listElement.append(fragment);
 }
 
 export function setCategoryFilterOptions(filterElement, categories, selectedSlug) {

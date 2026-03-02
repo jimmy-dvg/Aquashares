@@ -219,10 +219,18 @@ function initializeNavbarSearch() {
     const isFeedPage = window.location.pathname.endsWith('/index.html') || window.location.pathname === '/';
 
     if (isFeedPage) {
-      const category = new URLSearchParams(window.location.search).get('category') || '';
+      const currentParams = new URLSearchParams(window.location.search);
+      const category = currentParams.get('category') || '';
       if (category) {
         targetParams.set('category', category);
       }
+
+      ['location', 'author', 'date_from', 'date_to', 'near_me', 'radius_km'].forEach((key) => {
+        const value = currentParams.get(key) || '';
+        if (value) {
+          targetParams.set(key, value);
+        }
+      });
 
       const queryString = targetParams.toString();
       const nextUrl = queryString ? `${window.location.pathname}?${queryString}` : window.location.pathname;
@@ -234,6 +242,17 @@ function initializeNavbarSearch() {
     const queryString = targetParams.toString();
     const targetUrl = queryString ? `/index.html?${queryString}` : '/index.html';
     window.location.assign(targetUrl);
+  });
+}
+
+function initializeTooltips() {
+  const tooltipApi = globalThis.bootstrap?.Tooltip;
+  if (!tooltipApi) {
+    return;
+  }
+
+  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach((element) => {
+    tooltipApi.getOrCreateInstance(element);
   });
 }
 
@@ -458,6 +477,7 @@ async function enforcePageAccess() {
 
 async function bootstrap() {
   initializeBulgarianLocalization();
+  initializeTooltips();
   await enforcePageAccess();
   const user = await initializeNavbar();
   initializeLogout();

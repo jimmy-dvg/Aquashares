@@ -12,20 +12,26 @@ import {
   clearError,
   getUiElements,
   setCategoryFilterOptions,
+  setDatalistOptions,
   setLoadingState,
   showError,
   updateFeedFilterUi
 } from './posts-ui-controls.js';
 import {
+  getAuthorFromQuery,
   createNotification,
+  getDateFromQuery,
+  getDateToQuery,
   focusCommentFromQuery,
   focusPostFromHash,
   getCategoryFromQuery,
+  getLocationFromQuery,
+  getNearMeFromQuery,
+  getRadiusKmFromQuery,
   getSearchFromQuery,
   renderEmptyState,
   renderPostCard,
-  setCategoryInQuery,
-  setSearchInQuery
+  setFeedFiltersInQuery
 } from './posts-ui-view.js';
 
 const feedState = {
@@ -41,7 +47,12 @@ const feedState = {
   unsubscribeLikesRealtime: null,
   quickViewBound: false,
   quickViewKeyBound: false,
-  modalState: null
+  modalState: null,
+  geolocation: {
+    coords: null,
+    resolvedAt: 0,
+    inFlight: null
+  }
 };
 
 function formatPostTimestamp(value) {
@@ -149,7 +160,8 @@ async function renderQuickViewBody(container, post, viewer) {
 
   const author = document.createElement('div');
   author.className = 'small text-secondary';
-  author.textContent = `By ${post.author?.displayName || post.author?.username || 'Aquashares User'} • ${formatPostTimestamp(post.createdAt)}`;
+  const authorLocation = ` • 📍 ${(post.author?.location || '').trim() || 'Не е посочена'}`;
+  author.textContent = `От ${post.author?.displayName || post.author?.username || 'Aquashares User'}${authorLocation} • ${formatPostTimestamp(post.createdAt)}`;
 
   const body = document.createElement('p');
   body.className = 'mb-0 text-secondary';
@@ -507,20 +519,140 @@ function scheduleFeedLoad(options = {}) {
   }, 100);
 }
 
-function scheduleSearchLoad(nextQuery) {
+function scheduleFiltersLoadFromInputs(elements) {
   if (feedState.searchDebounceTimer) {
     window.clearTimeout(feedState.searchDebounceTimer);
   }
 
   feedState.searchDebounceTimer = window.setTimeout(() => {
     feedState.searchDebounceTimer = null;
-    setSearchInQuery(nextQuery);
+    setFeedFiltersInQuery({
+      query: elements.searchInput instanceof HTMLInputElement ? elements.searchInput.value : '',
+      category: elements.categoryFilter instanceof HTMLSelectElement ? elements.categoryFilter.value : '',
+      location: elements.locationFilter instanceof HTMLInputElement ? elements.locationFilter.value : '',
+      author: elements.authorFilter instanceof HTMLInputElement ? elements.authorFilter.value : '',
+      dateFrom: elements.dateFromFilter instanceof HTMLInputElement ? elements.dateFromFilter.value : '',
+      dateTo: elements.dateToFilter instanceof HTMLInputElement ? elements.dateToFilter.value : '',
+      nearMe: elements.nearbyToggle instanceof HTMLInputElement ? elements.nearbyToggle.checked : false,
+      radiusKm: elements.radiusFilter instanceof HTMLSelectElement ? elements.radiusFilter.value : '25'
+    });
     scheduleFeedLoad();
   }, 220);
 }
 
 function normalizeText(value) {
   return (value || '').toLowerCase().trim();
+}
+
+function toRadians(value) {
+  return (value * Math.PI) / 180;
+}
+
+function getDistanceKm(fromLat, fromLng, toLat, toLng) {
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(toLat - fromLat);
+  const dLng = toRadians(toLng - fromLng);
+
+  const haversine = Math.sin(dLat / 2) ** 2
+    + Math.cos(toRadians(fromLat)) * Math.cos(toRadians(toLat)) * Math.sin(dLng / 2) ** 2;
+
+  const centralAngle = 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+  return earthRadiusKm * centralAngle;
+}
+
+function parseNullableNumber(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function getViewerCoordinates() {
+  const now = Date.now();
+  const maxAgeMs = 5 * 60 * 1000;
+
+  if (feedState.geolocation.coords && (now - feedState.geolocation.resolvedAt) < maxAgeMs) {
+    return feedState.geolocation.coords;
+  }
+
+  if (feedState.geolocation.inFlight) {
+    return feedState.geolocation.inFlight;
+  }
+
+  if (!navigator.geolocation) {
+    return null;
+  }
+
+  feedState.geolocation.inFlight = new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition((position) => {
+      const nextCoords = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude
+      };
+
+      feedState.geolocation.coords = nextCoords;
+      feedState.geolocation.resolvedAt = Date.now();
+      resolve(nextCoords);
+    }, () => {
+      resolve(null);
+    }, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 60000
+    });
+  }).finally(() => {
+    feedState.geolocation.inFlight = null;
+  });
+
+  return feedState.geolocation.inFlight;
+}
+
+async function reverseGeocodeLocationName(lat, lng) {
+  const endpoint = new URL('https://nominatim.openstreetmap.org/reverse');
+  endpoint.searchParams.set('lat', String(lat));
+  endpoint.searchParams.set('lon', String(lng));
+  endpoint.searchParams.set('format', 'jsonv2');
+  endpoint.searchParams.set('accept-language', 'bg');
+
+  const response = await fetch(endpoint.toString(), {
+    headers: {
+      Accept: 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Неуспешно извличане на локацията.');
+  }
+
+  const payload = await response.json();
+  const address = payload?.address || {};
+
+  const locationName = [
+    address.city,
+    address.town,
+    address.village,
+    address.municipality,
+    address.state,
+    payload?.display_name
+  ].find((value) => (value || '').trim());
+
+  return (locationName || '').replace(/\s+/g, ' ').trim();
+}
+
+function parseDateBoundary(value, boundary = 'start') {
+  const normalized = (value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return null;
+  }
+
+  const date = new Date(`${normalized}T00:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  if (boundary === 'end') {
+    date.setHours(23, 59, 59, 999);
+  }
+
+  return date;
 }
 
 function matchesFeedSearch(post, searchQuery) {
@@ -533,10 +665,93 @@ function matchesFeedSearch(post, searchQuery) {
     post.body,
     post.categoryName,
     post.author?.username,
-    post.author?.displayName
+    post.author?.displayName,
+    post.author?.location
   ].join(' '));
 
   return haystack.includes(searchQuery);
+}
+
+function matchesFeedLocation(post, locationQuery) {
+  if (!locationQuery) {
+    return true;
+  }
+
+  return normalizeText(post.author?.location || '').includes(locationQuery);
+}
+
+function matchesFeedAuthor(post, authorQuery) {
+  if (!authorQuery) {
+    return true;
+  }
+
+  const authorHaystack = normalizeText([
+    post.author?.username,
+    post.author?.displayName
+  ].join(' '));
+
+  return authorHaystack.includes(authorQuery);
+}
+
+function matchesFeedDateRange(post, dateFrom, dateTo) {
+  if (!dateFrom && !dateTo) {
+    return true;
+  }
+
+  const createdAt = new Date(post.createdAt);
+  if (Number.isNaN(createdAt.getTime())) {
+    return false;
+  }
+
+  if (dateFrom && createdAt < dateFrom) {
+    return false;
+  }
+
+  if (dateTo && createdAt > dateTo) {
+    return false;
+  }
+
+  return true;
+}
+
+function matchesNearby(post, centerCoords, radiusKm) {
+  if (!centerCoords) {
+    return true;
+  }
+
+  const lat = parseNullableNumber(post.author?.locationLat);
+  const lng = parseNullableNumber(post.author?.locationLng);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return false;
+  }
+
+  return getDistanceKm(centerCoords.lat, centerCoords.lng, lat, lng) <= radiusKm;
+}
+
+function buildFilterSuggestions(postsWithUiData) {
+  const uniqueLocations = [...new Set(
+    (postsWithUiData || [])
+      .map((post) => (post.author?.location || '').trim())
+      .filter(Boolean)
+  )].sort((left, right) => left.localeCompare(right, 'bg'));
+
+  const uniqueAuthors = [...new Set(
+    (postsWithUiData || [])
+      .map((post) => {
+        if (post.author?.username) {
+          return `@${post.author.username}`;
+        }
+
+        return (post.author?.displayName || '').trim();
+      })
+      .filter(Boolean)
+  )].sort((left, right) => left.localeCompare(right, 'bg'));
+
+  return {
+    locations: uniqueLocations,
+    authors: uniqueAuthors
+  };
 }
 
 
@@ -546,6 +761,7 @@ function mapPostWithUiData(post, authorById, commentCountByPostId, likesSummaryB
     username: '',
     displayName: 'Aquashares User',
     avatarUrl: '',
+    location: '',
     role: 'user'
   };
 
@@ -573,7 +789,7 @@ async function buildAuthorMap(posts, viewer) {
 
   const { data: profiles, error } = await supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url')
+    .select('id, username, display_name, avatar_url, location, location_lat, location_lng')
     .in('id', userIds);
 
   if (error) {
@@ -586,6 +802,9 @@ async function buildAuthorMap(posts, viewer) {
       username: profile.username || '',
       displayName: profile.display_name || profile.username || 'Aquashares User',
       avatarUrl: profile.avatar_url || '',
+      location: (profile.location || '').replace(/\s+/g, ' ').trim(),
+      locationLat: parseNullableNumber(profile.location_lat),
+      locationLng: parseNullableNumber(profile.location_lng),
       role: 'user'
     });
   });
@@ -1038,6 +1257,15 @@ export async function loadFeed(options = {}) {
     notificationRoot,
     searchInput,
     categoryFilter,
+    locationFilter,
+    useMyLocationButton,
+    authorFilter,
+    dateFromFilter,
+    dateToFilter,
+    nearbyToggle,
+    radiusFilter,
+    locationList,
+    authorList,
     clearFilterButton,
     filterStatus
   } = getUiElements();
@@ -1057,6 +1285,27 @@ export async function loadFeed(options = {}) {
   if (categoryFilter instanceof HTMLSelectElement) {
     categoryFilter.disabled = true;
   }
+  if (locationFilter instanceof HTMLInputElement) {
+    locationFilter.disabled = true;
+  }
+  if (useMyLocationButton instanceof HTMLButtonElement) {
+    useMyLocationButton.disabled = true;
+  }
+  if (authorFilter instanceof HTMLInputElement) {
+    authorFilter.disabled = true;
+  }
+  if (dateFromFilter instanceof HTMLInputElement) {
+    dateFromFilter.disabled = true;
+  }
+  if (dateToFilter instanceof HTMLInputElement) {
+    dateToFilter.disabled = true;
+  }
+  if (nearbyToggle instanceof HTMLInputElement) {
+    nearbyToggle.disabled = true;
+  }
+  if (radiusFilter instanceof HTMLSelectElement) {
+    radiusFilter.disabled = true;
+  }
   if (clearFilterButton instanceof HTMLButtonElement) {
     clearFilterButton.disabled = true;
   }
@@ -1071,10 +1320,38 @@ export async function loadFeed(options = {}) {
 
     const selectedCategorySlugFromQuery = getCategoryFromQuery();
     const searchFromQuery = getSearchFromQuery();
+    const locationFromQuery = getLocationFromQuery();
+    const authorFromQuery = getAuthorFromQuery();
+    const dateFromQuery = getDateFromQuery();
+    const dateToQuery = getDateToQuery();
+    const nearMeFromQuery = getNearMeFromQuery();
+    const radiusKmFromQuery = getRadiusKmFromQuery(25);
     const normalizedSearchQuery = normalizeText(searchFromQuery);
+    const normalizedLocationQuery = normalizeText(locationFromQuery);
+    const normalizedAuthorQuery = normalizeText(authorFromQuery);
+    const dateFrom = parseDateBoundary(dateFromQuery, 'start');
+    const dateTo = parseDateBoundary(dateToQuery, 'end');
 
     if (searchInput instanceof HTMLInputElement && searchInput.value !== searchFromQuery) {
       searchInput.value = searchFromQuery;
+    }
+    if (locationFilter instanceof HTMLInputElement && locationFilter.value !== locationFromQuery) {
+      locationFilter.value = locationFromQuery;
+    }
+    if (authorFilter instanceof HTMLInputElement && authorFilter.value !== authorFromQuery) {
+      authorFilter.value = authorFromQuery;
+    }
+    if (dateFromFilter instanceof HTMLInputElement && dateFromFilter.value !== dateFromQuery) {
+      dateFromFilter.value = dateFromQuery;
+    }
+    if (dateToFilter instanceof HTMLInputElement && dateToFilter.value !== dateToQuery) {
+      dateToFilter.value = dateToQuery;
+    }
+    if (nearbyToggle instanceof HTMLInputElement && nearbyToggle.checked !== nearMeFromQuery) {
+      nearbyToggle.checked = nearMeFromQuery;
+    }
+    if (radiusFilter instanceof HTMLSelectElement && radiusFilter.value !== String(radiusKmFromQuery)) {
+      radiusFilter.value = String(radiusKmFromQuery);
     }
 
     const { postsWithUiData, viewer, categories } = await getFeedData(forceRefresh);
@@ -1082,17 +1359,191 @@ export async function loadFeed(options = {}) {
     if (searchInput instanceof HTMLInputElement && searchInput.dataset.bound !== 'true') {
       searchInput.dataset.bound = 'true';
       searchInput.addEventListener('input', () => {
-        scheduleSearchLoad(searchInput.value || '');
+        scheduleFiltersLoadFromInputs({
+          searchInput,
+          categoryFilter,
+          locationFilter,
+          authorFilter,
+          dateFromFilter,
+          dateToFilter,
+          nearbyToggle,
+          radiusFilter
+        });
+      });
+    }
+
+    if (locationFilter instanceof HTMLInputElement && locationFilter.dataset.bound !== 'true') {
+      locationFilter.dataset.bound = 'true';
+      locationFilter.addEventListener('input', () => {
+        scheduleFiltersLoadFromInputs({
+          searchInput,
+          categoryFilter,
+          locationFilter,
+          authorFilter,
+          dateFromFilter,
+          dateToFilter,
+          nearbyToggle,
+          radiusFilter
+        });
+      });
+    }
+
+    if (useMyLocationButton instanceof HTMLButtonElement && useMyLocationButton.dataset.bound !== 'true') {
+      useMyLocationButton.dataset.bound = 'true';
+      useMyLocationButton.addEventListener('click', async () => {
+        useMyLocationButton.disabled = true;
+
+        const icon = useMyLocationButton.querySelector('i');
+        const previousIconClass = icon?.className || '';
+
+        if (icon instanceof HTMLElement) {
+          icon.className = 'bi bi-hourglass-split';
+        }
+
+        try {
+          const coords = await getViewerCoordinates();
+          if (!coords) {
+            if (notificationRoot) {
+              notificationRoot.replaceChildren(createNotification('Нужен е достъп до локация, за да използваш тази функция.', 'warning'));
+            }
+            return;
+          }
+
+          const locationName = await reverseGeocodeLocationName(coords.lat, coords.lng);
+          if (!locationName) {
+            if (notificationRoot) {
+              notificationRoot.replaceChildren(createNotification('Не успяхме да определим населено място от текущата позиция.', 'warning'));
+            }
+            return;
+          }
+
+          if (locationFilter instanceof HTMLInputElement) {
+            locationFilter.value = locationName;
+          }
+
+          scheduleFiltersLoadFromInputs({
+            searchInput,
+            categoryFilter,
+            locationFilter,
+            authorFilter,
+            dateFromFilter,
+            dateToFilter,
+            nearbyToggle,
+            radiusFilter
+          });
+        } catch (error) {
+          if (notificationRoot) {
+            notificationRoot.replaceChildren(createNotification(error.message || 'Неуспешно определяне на локация.', 'warning'));
+          }
+        } finally {
+          useMyLocationButton.disabled = false;
+          if (icon instanceof HTMLElement) {
+            icon.className = previousIconClass || 'bi bi-crosshair';
+          }
+        }
+      });
+    }
+
+    if (authorFilter instanceof HTMLInputElement && authorFilter.dataset.bound !== 'true') {
+      authorFilter.dataset.bound = 'true';
+      authorFilter.addEventListener('input', () => {
+        scheduleFiltersLoadFromInputs({
+          searchInput,
+          categoryFilter,
+          locationFilter,
+          authorFilter,
+          dateFromFilter,
+          dateToFilter,
+          nearbyToggle,
+          radiusFilter
+        });
+      });
+    }
+
+    if (dateFromFilter instanceof HTMLInputElement && dateFromFilter.dataset.bound !== 'true') {
+      dateFromFilter.dataset.bound = 'true';
+      dateFromFilter.addEventListener('change', () => {
+        scheduleFiltersLoadFromInputs({
+          searchInput,
+          categoryFilter,
+          locationFilter,
+          authorFilter,
+          dateFromFilter,
+          dateToFilter,
+          nearbyToggle,
+          radiusFilter
+        });
+      });
+    }
+
+    if (dateToFilter instanceof HTMLInputElement && dateToFilter.dataset.bound !== 'true') {
+      dateToFilter.dataset.bound = 'true';
+      dateToFilter.addEventListener('change', () => {
+        scheduleFiltersLoadFromInputs({
+          searchInput,
+          categoryFilter,
+          locationFilter,
+          authorFilter,
+          dateFromFilter,
+          dateToFilter,
+          nearbyToggle,
+          radiusFilter
+        });
+      });
+    }
+
+    if (nearbyToggle instanceof HTMLInputElement && nearbyToggle.dataset.bound !== 'true') {
+      nearbyToggle.dataset.bound = 'true';
+      nearbyToggle.addEventListener('change', () => {
+        scheduleFiltersLoadFromInputs({
+          searchInput,
+          categoryFilter,
+          locationFilter,
+          authorFilter,
+          dateFromFilter,
+          dateToFilter,
+          nearbyToggle,
+          radiusFilter
+        });
+      });
+    }
+
+    if (radiusFilter instanceof HTMLSelectElement && radiusFilter.dataset.bound !== 'true') {
+      radiusFilter.dataset.bound = 'true';
+      radiusFilter.addEventListener('change', () => {
+        scheduleFiltersLoadFromInputs({
+          searchInput,
+          categoryFilter,
+          locationFilter,
+          authorFilter,
+          dateFromFilter,
+          dateToFilter,
+          nearbyToggle,
+          radiusFilter
+        });
       });
     }
 
     if (categoryFilter) {
       setCategoryFilterOptions(categoryFilter, categories, selectedCategorySlugFromQuery);
       bindCategoryFilter(categoryFilter, clearFilterButton, (selectedSlug) => {
-        setCategoryInQuery(selectedSlug);
+        setFeedFiltersInQuery({
+          category: selectedSlug,
+          query: searchInput instanceof HTMLInputElement ? searchInput.value : '',
+          location: locationFilter instanceof HTMLInputElement ? locationFilter.value : '',
+          author: authorFilter instanceof HTMLInputElement ? authorFilter.value : '',
+          dateFrom: dateFromFilter instanceof HTMLInputElement ? dateFromFilter.value : '',
+          dateTo: dateToFilter instanceof HTMLInputElement ? dateToFilter.value : '',
+          nearMe: nearbyToggle instanceof HTMLInputElement ? nearbyToggle.checked : false,
+          radiusKm: radiusFilter instanceof HTMLSelectElement ? radiusFilter.value : '25'
+        });
         scheduleFeedLoad();
       });
     }
+
+    const filterSuggestions = buildFilterSuggestions(postsWithUiData);
+    setDatalistOptions(locationList, filterSuggestions.locations);
+    setDatalistOptions(authorList, filterSuggestions.authors);
 
     if (clearFilterButton && clearFilterButton.dataset.bound !== 'true') {
       clearFilterButton.dataset.bound = 'true';
@@ -1104,9 +1555,35 @@ export async function loadFeed(options = {}) {
         if (categoryFilter instanceof HTMLSelectElement) {
           categoryFilter.value = '';
         }
+        if (locationFilter instanceof HTMLInputElement) {
+          locationFilter.value = '';
+        }
+        if (authorFilter instanceof HTMLInputElement) {
+          authorFilter.value = '';
+        }
+        if (dateFromFilter instanceof HTMLInputElement) {
+          dateFromFilter.value = '';
+        }
+        if (dateToFilter instanceof HTMLInputElement) {
+          dateToFilter.value = '';
+        }
+        if (nearbyToggle instanceof HTMLInputElement) {
+          nearbyToggle.checked = false;
+        }
+        if (radiusFilter instanceof HTMLSelectElement) {
+          radiusFilter.value = '25';
+        }
 
-        setCategoryInQuery('');
-        setSearchInQuery('');
+        setFeedFiltersInQuery({
+          category: '',
+          query: '',
+          location: '',
+          author: '',
+          dateFrom: '',
+          dateTo: '',
+          nearMe: false,
+          radiusKm: '25'
+        });
         scheduleFeedLoad();
       });
     }
@@ -1115,17 +1592,36 @@ export async function loadFeed(options = {}) {
     const selectedCategorySlug = categorySlugs.has(selectedCategorySlugFromQuery) ? selectedCategorySlugFromQuery : '';
 
     if (selectedCategorySlugFromQuery && !selectedCategorySlug) {
-      setCategoryInQuery('');
+      setFeedFiltersInQuery({ category: '' });
     }
 
-    const categoryFilteredPosts = selectedCategorySlug
-      ? postsWithUiData.filter((post) => post.categorySlug === selectedCategorySlug)
-      : postsWithUiData;
-    const filteredPosts = categoryFilteredPosts.filter((post) => matchesFeedSearch(post, normalizedSearchQuery));
+    const viewerCoords = nearMeFromQuery ? await getViewerCoordinates() : null;
+    const nearMeUnavailable = nearMeFromQuery && !viewerCoords;
+
+    if (nearMeUnavailable && notificationRoot) {
+      notificationRoot.replaceChildren(createNotification('Филтърът „Близо до мен“ изисква разрешение за геолокация в браузъра.', 'warning'));
+    }
+
+    const filteredPosts = postsWithUiData
+      .filter((post) => (!selectedCategorySlug || post.categorySlug === selectedCategorySlug))
+      .filter((post) => matchesFeedSearch(post, normalizedSearchQuery))
+      .filter((post) => matchesFeedLocation(post, normalizedLocationQuery))
+      .filter((post) => matchesFeedAuthor(post, normalizedAuthorQuery))
+      .filter((post) => matchesFeedDateRange(post, dateFrom, dateTo))
+      .filter((post) => (!nearMeFromQuery || matchesNearby(post, viewerCoords, radiusKmFromQuery)));
 
     updateFeedFilterUi(
-      categoryFilter,
-      searchInput,
+      {
+        selectedSlug: selectedCategorySlug,
+        query: searchFromQuery,
+        location: locationFromQuery,
+        author: authorFromQuery,
+        dateFrom: dateFromQuery,
+        dateTo: dateToQuery,
+        nearMe: nearMeFromQuery,
+        radiusKm: radiusKmFromQuery,
+        nearMeUnavailable
+      },
       clearFilterButton,
       filterStatus,
       categories,
@@ -1140,8 +1636,13 @@ export async function loadFeed(options = {}) {
       renderEmptyState(
         feedContainer,
         (selectedCategorySlug || normalizedSearchQuery)
-          ? 'No posts match your current filters.'
-          : 'Be the first to create a post.'
+          || normalizedLocationQuery
+          || normalizedAuthorQuery
+          || dateFrom
+          || dateTo
+          || nearMeFromQuery
+          ? 'Няма публикации по зададените филтри.'
+          : 'Бъди първият с нова публикация.'
       );
     } else {
       const fragment = document.createDocumentFragment();
@@ -1168,6 +1669,27 @@ export async function loadFeed(options = {}) {
     }
     if (categoryFilter instanceof HTMLSelectElement) {
       categoryFilter.disabled = false;
+    }
+    if (locationFilter instanceof HTMLInputElement) {
+      locationFilter.disabled = false;
+    }
+    if (useMyLocationButton instanceof HTMLButtonElement) {
+      useMyLocationButton.disabled = false;
+    }
+    if (authorFilter instanceof HTMLInputElement) {
+      authorFilter.disabled = false;
+    }
+    if (dateFromFilter instanceof HTMLInputElement) {
+      dateFromFilter.disabled = false;
+    }
+    if (dateToFilter instanceof HTMLInputElement) {
+      dateToFilter.disabled = false;
+    }
+    if (nearbyToggle instanceof HTMLInputElement) {
+      nearbyToggle.disabled = false;
+    }
+    if (radiusFilter instanceof HTMLSelectElement) {
+      radiusFilter.disabled = false;
     }
     if (clearFilterButton instanceof HTMLButtonElement) {
       clearFilterButton.disabled = false;

@@ -237,6 +237,23 @@ export function renderPost(elements, post, author, defaultAvatar) {
     elements.authorRole.textContent = getRoleLabel(author.role);
   }
 
+  if (elements.authorLocation) {
+    elements.authorLocation.replaceChildren();
+
+    const locationValue = (author.location || '').trim() || 'Не е посочена';
+
+    const icon = document.createElement('i');
+    icon.className = 'bi bi-geo-alt-fill';
+    icon.setAttribute('aria-hidden', 'true');
+
+    const text = document.createElement('span');
+    text.textContent = locationValue;
+
+    elements.authorLocation.append(icon, text);
+    elements.authorLocation.classList.remove('d-none');
+    elements.authorLocation.title = locationValue;
+  }
+
   if (elements.createdAt) {
     elements.createdAt.textContent = formatDate(post.createdAt);
   }

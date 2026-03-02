@@ -4,6 +4,7 @@ import {
   getPostsByUserId,
   getProfileById,
   getMyProfilePreferences,
+  getSuggestedLocations,
   getProfileStatsByUserId,
   updateMyProfile,
   updateMyProfilePreferences
@@ -17,10 +18,18 @@ import {
   renderProfileForm,
   renderProfileSummary
 } from './profile-ui-render.js';
+import { BULGARIAN_LOCATION_SUGGESTIONS, mergeLocationSuggestions, sanitizeLocation } from '../utils/locations-bg.js';
 
 const state = {
   user: null,
-  profile: null
+  profile: null,
+  locationMap: {
+    map: null,
+    marker: null,
+    modalApi: null,
+    selectedLat: null,
+    selectedLng: null
+  }
 };
 
 function getElements() {
@@ -35,6 +44,17 @@ function getElements() {
     username: document.querySelector('[data-profile-username]'),
     bio: document.querySelector('[data-profile-bio]'),
     location: document.querySelector('[data-profile-location]'),
+    locationList: document.querySelector('[data-profile-location-list]'),
+    locationClear: document.querySelector('[data-profile-location-clear]'),
+    locationLat: document.querySelector('[data-profile-location-lat]'),
+    locationLng: document.querySelector('[data-profile-location-lng]'),
+    locationCoords: document.querySelector('[data-profile-location-coords]'),
+    locationMapOpen: document.querySelector('[data-profile-location-map-open]'),
+    locationModal: document.querySelector('[data-profile-location-modal]'),
+    locationMapRoot: document.querySelector('[data-profile-location-map]'),
+    locationMapStatus: document.querySelector('[data-profile-location-map-status]'),
+    locationMapApply: document.querySelector('[data-profile-location-map-apply]'),
+    locationMapGeolocate: document.querySelector('[data-profile-location-map-geolocate]'),
     website: document.querySelector('[data-profile-website]'),
     isPublic: document.querySelector('[data-profile-public]'),
     profileSubmit: document.querySelector('[data-profile-submit]'),
@@ -55,6 +75,294 @@ function getElements() {
     postsList: document.querySelector('[data-profile-posts-list]'),
     commentsList: document.querySelector('[data-profile-comments-list]')
   };
+}
+
+function updateLocationCoordinatesPreview(elements) {
+  if (!(elements.locationCoords instanceof HTMLElement)) {
+    return;
+  }
+
+  const lat = Number(elements.locationLat?.value || '');
+  const lng = Number(elements.locationLng?.value || '');
+
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    elements.locationCoords.textContent = `Координати: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    return;
+  }
+
+  elements.locationCoords.textContent = 'Координати: не са избрани';
+}
+
+function updateLocationCoordinateInputs(elements, lat, lng) {
+  if (elements.locationLat instanceof HTMLInputElement) {
+    elements.locationLat.value = Number.isFinite(lat) ? String(lat) : '';
+  }
+
+  if (elements.locationLng instanceof HTMLInputElement) {
+    elements.locationLng.value = Number.isFinite(lng) ? String(lng) : '';
+  }
+
+  updateLocationCoordinatesPreview(elements);
+}
+
+async function reverseGeocode(lat, lng) {
+  const endpoint = new URL('https://nominatim.openstreetmap.org/reverse');
+  endpoint.searchParams.set('lat', String(lat));
+  endpoint.searchParams.set('lon', String(lng));
+  endpoint.searchParams.set('format', 'jsonv2');
+  endpoint.searchParams.set('accept-language', 'bg');
+
+  const response = await fetch(endpoint.toString(), {
+    headers: {
+      Accept: 'application/json'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Неуспешно извличане на адрес от картата.');
+  }
+
+  const payload = await response.json();
+  const address = payload?.address || {};
+
+  return sanitizeLocation(
+    address.city
+      || address.town
+      || address.village
+      || address.municipality
+      || payload?.display_name
+      || ''
+  );
+}
+
+function initializeLeafletMap(elements) {
+  if (state.locationMap.map || !(elements.locationMapRoot instanceof HTMLElement) || !globalThis.L) {
+    return;
+  }
+
+  const map = globalThis.L.map(elements.locationMapRoot, {
+    center: [42.7339, 25.4858],
+    zoom: 7,
+    zoomControl: true
+  });
+
+  globalThis.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  map.on('click', (event) => {
+    const { lat, lng } = event.latlng;
+    state.locationMap.selectedLat = lat;
+    state.locationMap.selectedLng = lng;
+
+    if (!state.locationMap.marker) {
+      state.locationMap.marker = globalThis.L.marker([lat, lng]).addTo(map);
+    } else {
+      state.locationMap.marker.setLatLng([lat, lng]);
+    }
+
+    if (elements.locationMapStatus instanceof HTMLElement) {
+      elements.locationMapStatus.textContent = `Избрана точка: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+    }
+  });
+
+  state.locationMap.map = map;
+}
+
+function setMapPositionFromProfile(elements) {
+  const lat = Number(elements.locationLat?.value || '');
+  const lng = Number(elements.locationLng?.value || '');
+
+  if (!state.locationMap.map || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return;
+  }
+
+  state.locationMap.selectedLat = lat;
+  state.locationMap.selectedLng = lng;
+
+  if (!state.locationMap.marker) {
+    state.locationMap.marker = globalThis.L.marker([lat, lng]).addTo(state.locationMap.map);
+  } else {
+    state.locationMap.marker.setLatLng([lat, lng]);
+  }
+
+  state.locationMap.map.setView([lat, lng], 11);
+}
+
+function initializeLocationMapPicker(elements) {
+  if (!(elements.locationModal instanceof HTMLElement) || !(elements.locationMapOpen instanceof HTMLButtonElement)) {
+    return;
+  }
+
+  const modalApi = globalThis.bootstrap?.Modal
+    ? globalThis.bootstrap.Modal.getOrCreateInstance(elements.locationModal)
+    : null;
+
+  state.locationMap.modalApi = modalApi;
+
+  if (elements.locationMapOpen.dataset.bound !== 'true') {
+    elements.locationMapOpen.dataset.bound = 'true';
+    elements.locationMapOpen.addEventListener('click', () => {
+      initializeLeafletMap(elements);
+      setMapPositionFromProfile(elements);
+      modalApi?.show();
+    });
+  }
+
+  if (elements.locationModal.dataset.bound !== 'true') {
+    elements.locationModal.dataset.bound = 'true';
+    elements.locationModal.addEventListener('shown.bs.modal', () => {
+      initializeLeafletMap(elements);
+      setMapPositionFromProfile(elements);
+      if (state.locationMap.map) {
+        state.locationMap.map.invalidateSize();
+      }
+    });
+  }
+
+  if (elements.locationMapGeolocate instanceof HTMLButtonElement && elements.locationMapGeolocate.dataset.bound !== 'true') {
+    elements.locationMapGeolocate.dataset.bound = 'true';
+    elements.locationMapGeolocate.addEventListener('click', () => {
+      if (!navigator.geolocation) {
+        if (elements.locationMapStatus instanceof HTMLElement) {
+          elements.locationMapStatus.textContent = 'Браузърът не поддържа геолокация.';
+        }
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition((position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        initializeLeafletMap(elements);
+
+        state.locationMap.selectedLat = lat;
+        state.locationMap.selectedLng = lng;
+
+        if (!state.locationMap.marker) {
+          state.locationMap.marker = globalThis.L.marker([lat, lng]).addTo(state.locationMap.map);
+        } else {
+          state.locationMap.marker.setLatLng([lat, lng]);
+        }
+
+        state.locationMap.map?.setView([lat, lng], 13);
+
+        if (elements.locationMapStatus instanceof HTMLElement) {
+          elements.locationMapStatus.textContent = `Текуща позиция: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+        }
+      }, () => {
+        if (elements.locationMapStatus instanceof HTMLElement) {
+          elements.locationMapStatus.textContent = 'Нямаме достъп до текущата позиция.';
+        }
+      }, {
+        enableHighAccuracy: true,
+        timeout: 10000
+      });
+    });
+  }
+
+  if (elements.locationMapApply instanceof HTMLButtonElement && elements.locationMapApply.dataset.bound !== 'true') {
+    elements.locationMapApply.dataset.bound = 'true';
+    elements.locationMapApply.addEventListener('click', async () => {
+      const lat = state.locationMap.selectedLat;
+      const lng = state.locationMap.selectedLng;
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        if (elements.locationMapStatus instanceof HTMLElement) {
+          elements.locationMapStatus.textContent = 'Първо избери точка от картата.';
+        }
+        return;
+      }
+
+      if (elements.locationMapApply instanceof HTMLButtonElement) {
+        elements.locationMapApply.disabled = true;
+      }
+
+      try {
+        const locationName = await reverseGeocode(lat, lng);
+
+        if (elements.location instanceof HTMLInputElement) {
+          elements.location.value = locationName || elements.location.value;
+        }
+
+        updateLocationCoordinateInputs(elements, lat, lng);
+        updateLocationClearVisibility(elements);
+        modalApi?.hide();
+      } catch (error) {
+        if (elements.locationMapStatus instanceof HTMLElement) {
+          elements.locationMapStatus.textContent = error.message || 'Неуспешно извличане на локацията.';
+        }
+      } finally {
+        if (elements.locationMapApply instanceof HTMLButtonElement) {
+          elements.locationMapApply.disabled = false;
+        }
+      }
+    });
+  }
+}
+
+function updateLocationClearVisibility(elements) {
+  if (!(elements.locationClear instanceof HTMLButtonElement) || !(elements.location instanceof HTMLInputElement)) {
+    return;
+  }
+
+  elements.locationClear.classList.toggle('d-none', !elements.location.value.trim());
+}
+
+async function initializeLocationPicker(elements) {
+  if (!(elements.location instanceof HTMLInputElement) || !(elements.locationList instanceof HTMLDataListElement)) {
+    return;
+  }
+
+  let dynamicLocations = [];
+  try {
+    dynamicLocations = await getSuggestedLocations(50);
+  } catch {
+    dynamicLocations = [];
+  }
+
+  const suggestions = mergeLocationSuggestions(BULGARIAN_LOCATION_SUGGESTIONS, dynamicLocations, 80);
+  const fragment = document.createDocumentFragment();
+
+  suggestions.forEach((location) => {
+    const option = document.createElement('option');
+    option.value = location;
+    fragment.append(option);
+  });
+
+  elements.locationList.replaceChildren(fragment);
+
+  if (elements.location.dataset.bound !== 'true') {
+    elements.location.dataset.bound = 'true';
+    elements.location.addEventListener('input', () => {
+      elements.location.value = sanitizeLocation(elements.location.value);
+      updateLocationCoordinateInputs(elements, null, null);
+      updateLocationClearVisibility(elements);
+    });
+
+    elements.location.addEventListener('blur', () => {
+      elements.location.value = sanitizeLocation(elements.location.value);
+      updateLocationClearVisibility(elements);
+    });
+  }
+
+  if (elements.locationClear instanceof HTMLButtonElement && elements.locationClear.dataset.bound !== 'true') {
+    elements.locationClear.dataset.bound = 'true';
+    elements.locationClear.addEventListener('click', () => {
+      if (!(elements.location instanceof HTMLInputElement)) {
+        return;
+      }
+
+      elements.location.value = '';
+      updateLocationCoordinateInputs(elements, null, null);
+      updateLocationClearVisibility(elements);
+      elements.location.focus();
+    });
+  }
+
+  updateLocationClearVisibility(elements);
+  updateLocationCoordinatesPreview(elements);
 }
 
 function getTargetUserId() {
@@ -236,12 +544,24 @@ async function handleProfileSave(event, elements) {
     displayName: elements.displayName?.value.trim() || '',
     username: elements.username?.value.trim() || '',
     bio: elements.bio?.value.trim() || '',
-    location: elements.location?.value.trim() || '',
+    location: sanitizeLocation(elements.location?.value || ''),
+    locationLat: null,
+    locationLng: null,
     website: elements.website?.value.trim() || '',
     isPublic: Boolean(elements.isPublic?.checked),
     avatarUrl: state.profile.avatarUrl || '',
     avatarStoragePath: state.profile.avatarStoragePath || ''
   };
+
+  const locationLatRaw = elements.locationLat?.value?.trim() || '';
+  const locationLngRaw = elements.locationLng?.value?.trim() || '';
+  const parsedLat = Number(locationLatRaw);
+  const parsedLng = Number(locationLngRaw);
+
+  if (locationLatRaw && locationLngRaw && Number.isFinite(parsedLat) && Number.isFinite(parsedLng)) {
+    payload.locationLat = parsedLat;
+    payload.locationLng = parsedLng;
+  }
 
   const validationError = validateProfileInput(payload);
   if (validationError) {
@@ -281,6 +601,7 @@ async function handleProfileSave(event, elements) {
     if (elements.avatarInput) {
       elements.avatarInput.value = '';
     }
+    updateLocationCoordinateInputs(elements, updated.locationLat, updated.locationLng);
   } catch (error) {
     if (newAvatar?.storagePath) {
       try {
@@ -396,6 +717,9 @@ export async function initializeProfilePage() {
     renderProfileSummary(profile, stats, elements);
     if (isOwnProfile) {
       renderProfileForm(profile, elements);
+      await initializeLocationPicker(elements);
+      initializeLocationMapPicker(elements);
+      updateLocationCoordinateInputs(elements, profile.locationLat, profile.locationLng);
       renderPreferences(preferences, elements);
       bindEvents(elements);
     }

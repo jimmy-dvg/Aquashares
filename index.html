@@ -125,34 +125,99 @@
 
     <main class="container page-content">
       <div class="aqua-feed-filter-bar mb-3">
+        <h1 class="h3 mb-3">Общностен фийд</h1>
         <div class="aqua-feed-filter-grid">
-        <h1 class="h3 mb-0">Community Feed</h1>
         <div class="aqua-feed-filter-field aqua-feed-filter-field-lg">
-          <label class="form-label form-label-sm mb-1">Search</label>
+          <label class="form-label form-label-sm mb-1">Търсене</label>
           <div class="input-group input-group-sm">
             <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
             <input
               type="search"
               class="form-control"
               name="feed-search"
-              placeholder="Search by title, text, category, author..."
-              aria-label="Search feed posts"
+              placeholder="По заглавие, текст, категория..."
+              aria-label="Търсене във фийда"
               data-feed-search
             />
           </div>
         </div>
         <div class="aqua-feed-filter-field">
-          <label class="form-label form-label-sm mb-1">Category</label>
-          <select class="form-select form-select-sm" data-feed-category-filter aria-label="Filter posts by category">
-            <option value="">All Categories</option>
+          <label class="form-label form-label-sm mb-1">Категория</label>
+          <select class="form-select form-select-sm" data-feed-category-filter aria-label="Филтър по категория">
+            <option value="">Всички категории</option>
           </select>
+        </div>
+        <div class="aqua-feed-filter-field">
+          <label class="form-label form-label-sm mb-1">Локация</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-geo-alt" aria-hidden="true"></i></span>
+            <input
+              type="text"
+              class="form-control"
+              placeholder="Напр. София"
+              list="feed-location-suggestions"
+              aria-label="Филтър по локация"
+              data-feed-location-filter
+            />
+            <button
+              type="button"
+              class="btn btn-outline-secondary"
+              data-feed-use-my-location
+              aria-label="Използвай моята позиция"
+              title="Използвай моята позиция"
+              data-bs-toggle="tooltip"
+              data-bs-placement="top"
+            >
+              <i class="bi bi-crosshair" aria-hidden="true"></i>
+            </button>
+          </div>
+          <datalist id="feed-location-suggestions" data-feed-location-list></datalist>
+        </div>
+        <div class="aqua-feed-filter-field">
+          <label class="form-label form-label-sm mb-1">Потребител</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-person" aria-hidden="true"></i></span>
+            <input
+              type="text"
+              class="form-control"
+              placeholder="@username или име"
+              list="feed-author-suggestions"
+              aria-label="Филтър по потребител"
+              data-feed-author-filter
+            />
+          </div>
+          <datalist id="feed-author-suggestions" data-feed-author-list></datalist>
+        </div>
+        <div class="aqua-feed-filter-field">
+          <label class="form-label form-label-sm mb-1">Дата от</label>
+          <input type="date" class="form-control form-control-sm" data-feed-date-from aria-label="Филтър от дата" />
+        </div>
+        <div class="aqua-feed-filter-field">
+          <label class="form-label form-label-sm mb-1">Дата до</label>
+          <input type="date" class="form-control form-control-sm" data-feed-date-to aria-label="Филтър до дата" />
+        </div>
+        <div class="aqua-feed-filter-field">
+          <label class="form-label form-label-sm mb-1">Близо до мен</label>
+          <div class="d-flex align-items-center gap-2">
+            <div class="form-check form-switch mb-0">
+              <input class="form-check-input" type="checkbox" role="switch" id="feed-nearby-switch" data-feed-nearby-toggle />
+              <label class="form-check-label small" for="feed-nearby-switch">Активирай</label>
+            </div>
+            <select class="form-select form-select-sm" data-feed-radius-filter aria-label="Радиус за близо до мен" style="max-width: 120px;">
+              <option value="5">5 км</option>
+              <option value="10">10 км</option>
+              <option value="25" selected>25 км</option>
+              <option value="50">50 км</option>
+              <option value="100">100 км</option>
+            </select>
+          </div>
         </div>
         <div class="aqua-feed-filter-actions">
           <button type="button" class="btn btn-outline-secondary btn-sm d-none" data-feed-clear-filter>
             <i class="bi bi-x-circle" aria-hidden="true"></i>
-            Clear
+            Изчисти
           </button>
-          <a href="/post-create.html" class="btn btn-primary btn-sm">New Post</a>
+          <a href="/post-create.html" class="btn btn-primary btn-sm">Нова публикация</a>
         </div>
         </div>
       </div>
