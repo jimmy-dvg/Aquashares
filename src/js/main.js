@@ -5,6 +5,7 @@ import { initializeRegisterForm } from './auth/register.js';
 import { initializeChatPage } from './chat/chat-ui.js';
 import { cleanupNotifications, initializeNotifications } from './notifications/notifications-ui.js';
 import { initializePostDetailPage } from './posts/post-detail.js';
+import { getCategories } from './posts/posts-service.js';
 import { loadFeed } from './posts/posts-ui.js';
 import { initializePostForm } from './posts/post-form.js';
 import { initializeProfilePage } from './profile/profile-ui.js';
@@ -20,8 +21,14 @@ function toggleElements(elements, isVisible) {
   });
 }
 
+function normalizeNavPathname(pathname) {
+  return pathname === '/' ? '/index.html' : pathname;
+}
+
 function setActiveNavbarLink() {
-  const pathname = window.location.pathname;
+  const pathname = normalizeNavPathname(window.location.pathname);
+  const currentParams = new URLSearchParams(window.location.search);
+  const currentCategory = pathname === '/index.html' ? (currentParams.get('category') || '') : '';
   const navLinks = document.querySelectorAll('#mainNavbar .navbar-nav .nav-link[href]');
 
   navLinks.forEach((link) => {
@@ -29,7 +36,18 @@ function setActiveNavbarLink() {
       return;
     }
 
-    const isActive = link.pathname === pathname;
+    const linkUrl = new URL(link.href, window.location.origin);
+    const linkPath = normalizeNavPathname(linkUrl.pathname);
+    const linkCategory = linkUrl.searchParams.get('category') || '';
+
+    let isActive = false;
+
+    if (linkPath === '/index.html') {
+      isActive = pathname === '/index.html' && linkCategory === currentCategory;
+    } else {
+      isActive = linkPath === pathname;
+    }
+
     link.classList.toggle('active', isActive);
 
     if (isActive) {
@@ -39,6 +57,145 @@ function setActiveNavbarLink() {
 
     link.removeAttribute('aria-current');
   });
+
+  const categoriesToggle = document.querySelector('[data-nav-categories-toggle]');
+  if (categoriesToggle instanceof HTMLElement) {
+    const categoriesActive = pathname === '/index.html' && Boolean(currentCategory);
+    categoriesToggle.classList.toggle('active', categoriesActive);
+    if (categoriesActive) {
+      categoriesToggle.setAttribute('aria-current', 'page');
+    } else {
+      categoriesToggle.removeAttribute('aria-current');
+    }
+  }
+}
+
+function getNavbarCategoryHref(categorySlug, searchQuery = '') {
+  const params = new URLSearchParams();
+
+  if (searchQuery) {
+    params.set('q', searchQuery);
+  }
+
+  if (categorySlug) {
+    params.set('category', categorySlug);
+  }
+
+  const query = params.toString();
+  return query ? `/index.html?${query}` : '/index.html';
+}
+
+function getCategoryIconClass(categorySlug) {
+  const iconBySlug = {
+    fish: 'bi bi-water',
+    plants: 'bi bi-flower1',
+    inhabitants: 'bi bi-emoji-smile',
+    equipment: 'bi bi-tools',
+    shrimp: 'bi bi-bug',
+    snails: 'bi bi-circle',
+    other: 'bi bi-three-dots'
+  };
+
+  return iconBySlug[categorySlug] || 'bi bi-tag';
+}
+
+function createCategoryMenuLink({ href, label, iconClass, isActive }) {
+  const link = document.createElement('a');
+  link.className = 'dropdown-item aqua-nav-category-item';
+  link.href = href;
+
+  const icon = document.createElement('i');
+  icon.className = `${iconClass} aqua-nav-category-icon`;
+  icon.setAttribute('aria-hidden', 'true');
+
+  const text = document.createElement('span');
+  text.textContent = label;
+
+  link.append(icon, text);
+
+  if (isActive) {
+    link.classList.add('active');
+    link.setAttribute('aria-current', 'page');
+  }
+
+  return link;
+}
+
+function buildNavbarCategoryItem(category, selectedCategory, searchQuery) {
+  const item = document.createElement('li');
+  const link = createCategoryMenuLink({
+    href: getNavbarCategoryHref(category.slug, searchQuery),
+    label: category.name,
+    iconClass: getCategoryIconClass(category.slug),
+    isActive: category.slug === selectedCategory
+  });
+
+  item.append(link);
+  return item;
+}
+
+function renderNavbarCategories(categories) {
+  const menuElements = document.querySelectorAll('[data-nav-categories-menu]');
+  if (!menuElements.length) {
+    return;
+  }
+
+  const pathname = normalizeNavPathname(window.location.pathname);
+  const params = new URLSearchParams(window.location.search);
+  const selectedCategory = pathname === '/index.html' ? (params.get('category') || '') : '';
+  const searchQuery = pathname === '/index.html' ? (params.get('q') || '').trim() : '';
+
+  menuElements.forEach((menuElement) => {
+    if (!(menuElement instanceof HTMLElement)) {
+      return;
+    }
+
+    const allCategoriesItem = document.createElement('li');
+    const allCategoriesLink = createCategoryMenuLink({
+      href: getNavbarCategoryHref('', searchQuery),
+      label: 'All Categories',
+      iconClass: 'bi bi-grid-3x3-gap',
+      isActive: !selectedCategory && pathname === '/index.html'
+    });
+
+    allCategoriesItem.append(allCategoriesLink);
+    menuElement.replaceChildren(allCategoriesItem);
+
+    if (!categories.length) {
+      const emptyItem = document.createElement('li');
+      const emptyState = document.createElement('span');
+      emptyState.className = 'dropdown-item-text text-secondary small';
+      emptyState.textContent = 'No categories available';
+      emptyItem.append(emptyState);
+      menuElement.append(emptyItem);
+      return;
+    }
+
+    const dividerItem = document.createElement('li');
+    const divider = document.createElement('hr');
+    divider.className = 'dropdown-divider';
+    dividerItem.append(divider);
+    menuElement.append(dividerItem);
+
+    categories.forEach((category) => {
+      menuElement.append(buildNavbarCategoryItem(category, selectedCategory, searchQuery));
+    });
+  });
+}
+
+async function initializeNavbarCategories() {
+  const categoryMenus = document.querySelectorAll('[data-nav-categories-menu]');
+
+  if (!categoryMenus.length) {
+    return;
+  }
+
+  try {
+    const categories = await getCategories();
+    renderNavbarCategories(categories);
+  } catch {
+    renderNavbarCategories([]);
+  }
 }
 
 function initializeNavbarSearch() {
@@ -114,6 +271,7 @@ async function initializeNavbar() {
   const userButton = document.querySelector('[data-nav-user-button]');
 
   const user = await getCurrentUser();
+  await initializeNavbarCategories();
   setActiveNavbarLink();
   initializeNavbarSearch();
 
