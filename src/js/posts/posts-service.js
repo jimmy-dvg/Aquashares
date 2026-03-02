@@ -30,6 +30,43 @@ function mapCategory(category) {
   };
 }
 
+function sortCategories(categories) {
+  const preferredOrder = ['fish', 'plants', 'inhabitants', 'equipment', 'giveaway', 'exchange'];
+
+  return [...categories].sort((left, right) => {
+    const leftSlug = left.slug || '';
+    const rightSlug = right.slug || '';
+
+    if (leftSlug === 'other' && rightSlug !== 'other') {
+      return 1;
+    }
+
+    if (rightSlug === 'other' && leftSlug !== 'other') {
+      return -1;
+    }
+
+    const leftPreferredIndex = preferredOrder.indexOf(leftSlug);
+    const rightPreferredIndex = preferredOrder.indexOf(rightSlug);
+
+    const leftPreferred = leftPreferredIndex !== -1;
+    const rightPreferred = rightPreferredIndex !== -1;
+
+    if (leftPreferred && rightPreferred) {
+      return leftPreferredIndex - rightPreferredIndex;
+    }
+
+    if (leftPreferred) {
+      return -1;
+    }
+
+    if (rightPreferred) {
+      return 1;
+    }
+
+    return (left.name || '').localeCompare(right.name || '', undefined, { sensitivity: 'base' });
+  });
+}
+
 function throwServiceError(error, fallbackMessage) {
   throw new Error(error?.message || fallbackMessage);
 }
@@ -183,5 +220,5 @@ export async function getCategories() {
     throwServiceError(error, 'Failed to load categories.');
   }
 
-  return (data ?? []).map(mapCategory);
+  return sortCategories((data ?? []).map(mapCategory));
 }

@@ -68,7 +68,8 @@ body {
 .aqua-nav-category-icon {
   width: 1rem;
   text-align: center;
-  opacity: 0.9;
+  opacity: 1;
+  font-size: 1rem;
 }
 
 .aqua-nav-categories .dropdown-item.active,

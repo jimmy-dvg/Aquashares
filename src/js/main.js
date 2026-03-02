@@ -9,6 +9,7 @@ import { getCategories } from './posts/posts-service.js';
 import { loadFeed } from './posts/posts-ui.js';
 import { initializePostForm } from './posts/post-form.js';
 import { initializeProfilePage } from './profile/profile-ui.js';
+import { getCategoryEmoji } from './utils/category-icons.js';
 
 function toggleElements(elements, isVisible) {
   elements.forEach((element) => {
@@ -85,27 +86,15 @@ function getNavbarCategoryHref(categorySlug, searchQuery = '') {
   return query ? `/index.html?${query}` : '/index.html';
 }
 
-function getCategoryIconClass(categorySlug) {
-  const iconBySlug = {
-    fish: 'bi bi-water',
-    plants: 'bi bi-flower1',
-    inhabitants: 'bi bi-emoji-smile',
-    equipment: 'bi bi-tools',
-    shrimp: 'bi bi-bug',
-    snails: 'bi bi-circle',
-    other: 'bi bi-three-dots'
-  };
-
-  return iconBySlug[categorySlug] || 'bi bi-tag';
-}
-
-function createCategoryMenuLink({ href, label, iconClass, isActive }) {
+function createCategoryMenuLink({ href, label, iconEmoji, isActive }) {
   const link = document.createElement('a');
   link.className = 'dropdown-item aqua-nav-category-item';
   link.href = href;
 
-  const icon = document.createElement('i');
-  icon.className = `${iconClass} aqua-nav-category-icon`;
+  const icon = document.createElement('span');
+  icon.textContent = iconEmoji;
+  icon.className = 'aqua-nav-category-icon';
+
   icon.setAttribute('aria-hidden', 'true');
 
   const text = document.createElement('span');
@@ -126,7 +115,7 @@ function buildNavbarCategoryItem(category, selectedCategory, searchQuery) {
   const link = createCategoryMenuLink({
     href: getNavbarCategoryHref(category.slug, searchQuery),
     label: category.name,
-    iconClass: getCategoryIconClass(category.slug),
+    iconEmoji: getCategoryEmoji(category.slug),
     isActive: category.slug === selectedCategory
   });
 
@@ -154,7 +143,7 @@ function renderNavbarCategories(categories) {
     const allCategoriesLink = createCategoryMenuLink({
       href: getNavbarCategoryHref('', searchQuery),
       label: 'All Categories',
-      iconClass: 'bi bi-grid-3x3-gap',
+      iconEmoji: '🗂️',
       isActive: !selectedCategory && pathname === '/index.html'
     });
 

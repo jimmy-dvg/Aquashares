@@ -1,3 +1,5 @@
+import { getAllCategoriesLabel, getCategoryLabelWithEmoji } from '../utils/category-icons.js';
+
 let categoriesBound = false;
 let popstateBound = false;
 
@@ -62,13 +64,13 @@ export function setCategoryFilterOptions(filterElement, categories, selectedSlug
 
   const allOption = document.createElement('option');
   allOption.value = '';
-  allOption.textContent = 'All Categories';
+  allOption.textContent = getAllCategoriesLabel();
   filterElement.append(allOption);
 
   categories.forEach((category) => {
     const option = document.createElement('option');
     option.value = category.slug;
-    option.textContent = category.name;
+    option.textContent = getCategoryLabelWithEmoji(category.name, category.slug);
     filterElement.append(option);
   });
 
