@@ -19,6 +19,7 @@ import {
 } from './posts-ui-controls.js';
 import {
   getAuthorFromQuery,
+  getPhotoFromQuery,
   createNotification,
   getDateFromQuery,
   getDateToQuery,
@@ -546,9 +547,15 @@ function scheduleFiltersLoadFromInputs(elements) {
 
   feedState.searchDebounceTimer = window.setTimeout(() => {
     feedState.searchDebounceTimer = null;
+
+    const photoFilterElement = elements.photoFilter instanceof HTMLSelectElement
+      ? elements.photoFilter
+      : document.querySelector('[data-feed-photo-filter]');
+
     setFeedFiltersInQuery({
       query: elements.searchInput instanceof HTMLInputElement ? elements.searchInput.value : '',
       category: elements.categoryFilter instanceof HTMLSelectElement ? elements.categoryFilter.value : '',
+      photo: photoFilterElement instanceof HTMLSelectElement ? photoFilterElement.value : '',
       location: elements.locationFilter instanceof HTMLInputElement ? elements.locationFilter.value : '',
       author: elements.authorFilter instanceof HTMLInputElement ? elements.authorFilter.value : '',
       dateFrom: elements.dateFromFilter instanceof HTMLInputElement ? elements.dateFromFilter.value : '',
@@ -711,6 +718,20 @@ function matchesFeedAuthor(post, authorQuery) {
   ].join(' '));
 
   return authorHaystack.includes(authorQuery);
+}
+
+function normalizePhotoFilter(value) {
+  const normalized = (value || '').trim().toLowerCase();
+  return normalized === 'with' || normalized === 'without' ? normalized : '';
+}
+
+function matchesFeedPhoto(post, photoFilter) {
+  if (!photoFilter) {
+    return true;
+  }
+
+  const hasPhotos = Array.isArray(post.photos) && post.photos.length > 0;
+  return photoFilter === 'with' ? hasPhotos : !hasPhotos;
 }
 
 function matchesFeedDateRange(post, dateFrom, dateTo) {
@@ -1282,6 +1303,7 @@ export async function loadFeed(options = {}) {
     notificationRoot,
     searchInput,
     categoryFilter,
+    photoFilter,
     locationFilter,
     useMyLocationButton,
     authorFilter,
@@ -1313,6 +1335,9 @@ export async function loadFeed(options = {}) {
   }
   if (categoryFilter instanceof HTMLSelectElement) {
     categoryFilter.disabled = true;
+  }
+  if (photoFilter instanceof HTMLSelectElement) {
+    photoFilter.disabled = true;
   }
   if (locationFilter instanceof HTMLInputElement) {
     locationFilter.disabled = true;
@@ -1351,6 +1376,7 @@ export async function loadFeed(options = {}) {
     const sectionHost = feedContainer.closest('[data-feed-section]');
     const feedSection = ((sectionHost instanceof HTMLElement ? sectionHost.dataset.feedSection : '') || 'forum').trim();
     const searchFromQuery = getSearchFromQuery();
+    const photoFromQuery = normalizePhotoFilter(getPhotoFromQuery());
     const locationFromQuery = getLocationFromQuery();
     const authorFromQuery = getAuthorFromQuery();
     const dateFromQuery = getDateFromQuery();
@@ -1368,6 +1394,9 @@ export async function loadFeed(options = {}) {
     }
     if (locationFilter instanceof HTMLInputElement && locationFilter.value !== locationFromQuery) {
       locationFilter.value = locationFromQuery;
+    }
+    if (photoFilter instanceof HTMLSelectElement && photoFilter.value !== photoFromQuery) {
+      photoFilter.value = photoFromQuery;
     }
     if (authorFilter instanceof HTMLInputElement && authorFilter.value !== authorFromQuery) {
       authorFilter.value = authorFromQuery;
@@ -1560,6 +1589,7 @@ export async function loadFeed(options = {}) {
       bindCategoryFilter(categoryFilter, clearFilterButton, (selectedSlug) => {
         setFeedFiltersInQuery({
           category: selectedSlug,
+          photo: photoFilter instanceof HTMLSelectElement ? photoFilter.value : '',
           query: searchInput instanceof HTMLInputElement ? searchInput.value : '',
           location: locationFilter instanceof HTMLInputElement ? locationFilter.value : '',
           author: authorFilter instanceof HTMLInputElement ? authorFilter.value : '',
@@ -1569,6 +1599,23 @@ export async function loadFeed(options = {}) {
           radiusKm: radiusFilter instanceof HTMLSelectElement ? radiusFilter.value : '25'
         });
         scheduleFeedLoad();
+      });
+    }
+
+    if (photoFilter instanceof HTMLSelectElement && photoFilter.dataset.bound !== 'true') {
+      photoFilter.dataset.bound = 'true';
+      photoFilter.addEventListener('change', () => {
+        scheduleFiltersLoadFromInputs({
+          searchInput,
+          categoryFilter,
+          photoFilter,
+          locationFilter,
+          authorFilter,
+          dateFromFilter,
+          dateToFilter,
+          nearbyToggle,
+          radiusFilter
+        });
       });
     }
 
@@ -1585,6 +1632,9 @@ export async function loadFeed(options = {}) {
 
         if (categoryFilter instanceof HTMLSelectElement) {
           categoryFilter.value = '';
+        }
+        if (photoFilter instanceof HTMLSelectElement) {
+          photoFilter.value = '';
         }
         if (locationFilter instanceof HTMLInputElement) {
           locationFilter.value = '';
@@ -1607,6 +1657,7 @@ export async function loadFeed(options = {}) {
 
         setFeedFiltersInQuery({
           category: '',
+          photo: '',
           query: '',
           location: '',
           author: '',
@@ -1622,6 +1673,7 @@ export async function loadFeed(options = {}) {
     const categorySlugs = new Set(categories.map((category) => category.slug));
     const categoryFromQuery = categorySlugs.has(selectedCategorySlugFromQuery) ? selectedCategorySlugFromQuery : '';
     const effectiveCategorySlug = categoryFromQuery;
+    const effectivePhotoFilter = photoFromQuery;
 
     if (selectedCategorySlugFromQuery && !categoryFromQuery) {
       setFeedFiltersInQuery({ category: '' });
@@ -1637,6 +1689,7 @@ export async function loadFeed(options = {}) {
     const filteredPosts = postsWithUiData
       .filter((post) => (post.section || post.categorySection || 'forum') === feedSection)
       .filter((post) => (!effectiveCategorySlug || post.categorySlug === effectiveCategorySlug))
+      .filter((post) => matchesFeedPhoto(post, effectivePhotoFilter))
       .filter((post) => matchesFeedSearch(post, normalizedSearchQuery))
       .filter((post) => matchesFeedLocation(post, normalizedLocationQuery))
       .filter((post) => matchesFeedAuthor(post, normalizedAuthorQuery))
@@ -1648,6 +1701,7 @@ export async function loadFeed(options = {}) {
     updateFeedFilterUi(
       {
         selectedSlug: selectedCategorySlugForUi,
+        photo: effectivePhotoFilter,
         query: searchFromQuery,
         location: locationFromQuery,
         author: authorFromQuery,
@@ -1671,6 +1725,7 @@ export async function loadFeed(options = {}) {
       renderEmptyState(
         feedContainer,
         (effectiveCategorySlug || normalizedSearchQuery)
+          || effectivePhotoFilter
           || normalizedLocationQuery
           || normalizedAuthorQuery
           || dateFrom
@@ -1704,6 +1759,9 @@ export async function loadFeed(options = {}) {
     }
     if (categoryFilter instanceof HTMLSelectElement) {
       categoryFilter.disabled = false;
+    }
+    if (photoFilter instanceof HTMLSelectElement) {
+      photoFilter.disabled = false;
     }
     if (locationFilter instanceof HTMLInputElement) {
       locationFilter.disabled = false;

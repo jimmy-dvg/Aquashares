@@ -117,35 +117,7 @@ function ensureRequiredNavbarStructure() {
       return;
     }
 
-    const feedLink = navList.querySelector('a.nav-link[href="/index.html"]');
-    const feedItem = feedLink?.closest('li');
-    if (feedItem instanceof HTMLLIElement) {
-      feedItem.remove();
-    }
-
     let forumItem = navList.querySelector('[data-nav-forum]');
-    if (!(forumItem instanceof HTMLLIElement)) {
-      const legacyCategoriesItem = navList.querySelector('[data-nav-categories]');
-
-      if (legacyCategoriesItem instanceof HTMLLIElement) {
-        legacyCategoriesItem.dataset.navForum = 'true';
-        legacyCategoriesItem.removeAttribute('data-nav-categories');
-        forumItem = legacyCategoriesItem;
-
-        const legacyToggle = forumItem.querySelector('[data-nav-categories-toggle]');
-        if (legacyToggle instanceof HTMLElement) {
-          legacyToggle.removeAttribute('data-nav-categories-toggle');
-          legacyToggle.dataset.navForumToggle = 'true';
-          applyNavSectionToggleContent(legacyToggle, 'navForum', 'Форум');
-        }
-
-        const legacyMenu = forumItem.querySelector('[data-nav-categories-menu]');
-        if (legacyMenu instanceof HTMLElement) {
-          legacyMenu.removeAttribute('data-nav-categories-menu');
-          legacyMenu.dataset.navForumMenu = 'true';
-        }
-      }
-    }
 
     if (!(forumItem instanceof HTMLLIElement)) {
       forumItem = createNavSectionDropdown('navForum', 'Форум');
@@ -168,6 +140,21 @@ function ensureRequiredNavbarStructure() {
       navList.prepend(forumItem);
       forumItem.insertAdjacentElement('afterend', giveawayItem);
       giveawayItem.insertAdjacentElement('afterend', exchangeItem);
+    }
+
+    const forumToggle = forumItem.querySelector('[data-nav-forum-toggle]');
+    if (forumToggle instanceof HTMLElement) {
+      applyNavSectionToggleContent(forumToggle, 'navForum', 'Форум');
+    }
+
+    const giveawayToggle = giveawayItem.querySelector('[data-nav-giveaway-toggle]');
+    if (giveawayToggle instanceof HTMLElement) {
+      applyNavSectionToggleContent(giveawayToggle, 'navGiveaway', 'Подарявам');
+    }
+
+    const exchangeToggle = exchangeItem.querySelector('[data-nav-exchange-toggle]');
+    if (exchangeToggle instanceof HTMLElement) {
+      applyNavSectionToggleContent(exchangeToggle, 'navExchange', 'Разменям');
     }
   });
 }
@@ -396,7 +383,7 @@ function initializeNavbarSearch() {
         targetParams.set('category', category);
       }
 
-      ['location', 'author', 'date_from', 'date_to', 'near_me', 'radius_km'].forEach((key) => {
+      ['location', 'author', 'photo', 'date_from', 'date_to', 'near_me', 'radius_km'].forEach((key) => {
         const value = currentParams.get(key) || '';
         if (value) {
           targetParams.set(key, value);

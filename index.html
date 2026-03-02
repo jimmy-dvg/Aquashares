@@ -35,17 +35,17 @@
 
         <div class="collapse navbar-collapse" id="mainNavbar">
           <ul class="navbar-nav align-items-lg-center gap-lg-1 mb-2 mb-lg-0 aqua-nav-pages">
-            <li class="nav-item dropdown aqua-nav-categories" data-nav-categories>
+            <li class="nav-item dropdown aqua-nav-categories" data-nav-forum>
               <button
                 type="button"
                 class="nav-link btn btn-link dropdown-toggle"
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
-                data-nav-categories-toggle
+                data-nav-forum-toggle
               >
                 Categories
               </button>
-              <ul class="dropdown-menu" data-nav-categories-menu>
+              <ul class="dropdown-menu" data-nav-forum-menu>
                 <li><a class="dropdown-item" href="/index.html">All Categories</a></li>
               </ul>
             </li>
@@ -124,7 +124,7 @@
 
     <main class="container page-content" data-feed-section="forum">
       <div class="aqua-feed-filter-bar mb-3">
-        <h1 class="h3 mb-3">Общностен фийд</h1>
+        <h1 class="h3 mb-3">Форум</h1>
         <div class="aqua-feed-filter-grid">
         <div class="aqua-feed-filter-field aqua-feed-filter-field-lg">
           <label class="form-label form-label-sm mb-1">Търсене</label>
@@ -144,6 +144,14 @@
           <label class="form-label form-label-sm mb-1">Категория</label>
           <select class="form-select form-select-sm" data-feed-category-filter aria-label="Филтър по категория">
             <option value="">Всички категории</option>
+          </select>
+        </div>
+        <div class="aqua-feed-filter-field">
+          <label class="form-label form-label-sm mb-1">Снимки</label>
+          <select class="form-select form-select-sm" data-feed-photo-filter aria-label="Филтър по снимки">
+            <option value="">Всички</option>
+            <option value="with">Със снимка</option>
+            <option value="without">Без снимка</option>
           </select>
         </div>
         <div class="aqua-feed-filter-field">

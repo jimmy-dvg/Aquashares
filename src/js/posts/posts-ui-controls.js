@@ -11,6 +11,7 @@ export function getUiElements() {
     notificationRoot: document.querySelector('[data-feed-notifications]'),
     searchInput: document.querySelector('[data-feed-search]'),
     categoryFilter: document.querySelector('[data-feed-category-filter]'),
+    photoFilter: document.querySelector('[data-feed-photo-filter]'),
     locationFilter: document.querySelector('[data-feed-location-filter]'),
     useMyLocationButton: document.querySelector('[data-feed-use-my-location]'),
     authorFilter: document.querySelector('[data-feed-author-filter]'),
@@ -30,12 +31,13 @@ export function updateFeedFilterUi(filters, clearFilterButton, filterStatus, cat
   const selectedSlug = filters?.selectedSlug || '';
   const location = (filters?.location || '').trim();
   const author = (filters?.author || '').trim();
+  const photo = (filters?.photo || '').trim();
   const dateFrom = (filters?.dateFrom || '').trim();
   const dateTo = (filters?.dateTo || '').trim();
   const nearMeEnabled = filters?.nearMe === true;
   const radiusKm = Number(filters?.radiusKm || 25);
   const nearMeUnavailable = filters?.nearMeUnavailable === true;
-  const hasFilter = Boolean(selectedSlug || query || location || author || dateFrom || dateTo || nearMeEnabled);
+  const hasFilter = Boolean(selectedSlug || photo || query || location || author || dateFrom || dateTo || nearMeEnabled);
 
   if (clearFilterButton) {
     clearFilterButton.classList.toggle('d-none', !hasFilter);
@@ -59,6 +61,14 @@ export function updateFeedFilterUi(filters, clearFilterButton, filterStatus, cat
       ? getCategoryDisplayName(selectedCategory.name, selectedCategory.slug)
       : 'Категория';
     labels.push(`Категория: ${categoryName}`);
+  }
+
+  if (photo === 'with') {
+    labels.push('Снимки: със снимка');
+  }
+
+  if (photo === 'without') {
+    labels.push('Снимки: без снимка');
   }
 
   if (query) {

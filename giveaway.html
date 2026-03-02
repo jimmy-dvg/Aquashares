@@ -35,17 +35,17 @@
 
         <div class="collapse navbar-collapse" id="mainNavbar">
           <ul class="navbar-nav align-items-lg-center gap-lg-1 mb-2 mb-lg-0 aqua-nav-pages">
-            <li class="nav-item dropdown aqua-nav-categories" data-nav-categories>
+            <li class="nav-item dropdown aqua-nav-categories" data-nav-forum>
               <button
                 type="button"
                 class="nav-link btn btn-link dropdown-toggle"
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
-                data-nav-categories-toggle
+                data-nav-forum-toggle
               >
                 Categories
               </button>
-              <ul class="dropdown-menu" data-nav-categories-menu>
+              <ul class="dropdown-menu" data-nav-forum-menu>
                 <li><a class="dropdown-item" href="/index.html">All Categories</a></li>
               </ul>
             </li>
@@ -139,6 +139,14 @@
               data-feed-search
             />
           </div>
+        </div>
+        <div class="aqua-feed-filter-field">
+          <label class="form-label form-label-sm mb-1">Снимки</label>
+          <select class="form-select form-select-sm" data-feed-photo-filter aria-label="Филтър по снимки">
+            <option value="">Всички</option>
+            <option value="with">Със снимка</option>
+            <option value="without">Без снимка</option>
+          </select>
         </div>
         <div class="aqua-feed-filter-field">
           <label class="form-label form-label-sm mb-1">Локация</label>

@@ -111,6 +111,12 @@ export function getAuthorFromQuery() {
   return value && value.trim() ? value.trim() : '';
 }
 
+export function getPhotoFromQuery() {
+  const params = new URLSearchParams(window.location.search);
+  const value = params.get('photo');
+  return value && value.trim() ? value.trim() : '';
+}
+
 export function getDateFromQuery() {
   const params = new URLSearchParams(window.location.search);
   const value = params.get('date_from');
@@ -157,6 +163,7 @@ export function setFeedFiltersInQuery(filters = {}) {
   };
 
   applyValue('category', filters.category);
+  applyValue('photo', filters.photo);
   applyValue('q', filters.query);
   applyValue('location', filters.location);
   applyValue('author', filters.author);

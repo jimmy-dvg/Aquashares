@@ -202,22 +202,6 @@ function getFilesFromInput(inputElement) {
   return [...inputElement.files];
 }
 
-async function prefillFormForEdit(postId, elements) {
-  const post = await getPostById(postId);
-  elements.titleInput.value = post.title;
-  elements.bodyInput.value = post.body;
-
-  if (elements.heading) {
-    elements.heading.textContent = 'Edit Post';
-  }
-
-  if (elements.submitButton) {
-    elements.submitButton.textContent = 'Save Changes';
-  }
-
-  return post;
-}
-
 function renderExistingImages(elements, photos) {
   if (!elements.currentImageSection || !elements.currentImageList) {
     return;
@@ -414,7 +398,7 @@ export async function initializePostForm() {
 
   if (isEditMode) {
     try {
-      const post = editingPost || await prefillFormForEdit(postId, elements);
+      const post = editingPost;
       elements.titleInput.value = post.title;
       elements.bodyInput.value = post.body;
 
