@@ -52,6 +52,20 @@ export function getScopedCategoryDisplayName(categoryName, categorySlug, categor
   return `${sectionLabel} • ${categoryLabel}`;
 }
 
-export function getAllCategoriesLabel() {
+export function getAllCategoriesLabel(section = '') {
+  const normalizedSection = (section || '').trim().toLowerCase();
+
+  if (normalizedSection === 'forum') {
+    return '🗂️ Всички теми';
+  }
+
+  if (normalizedSection === 'giveaway') {
+    return '🗂️ Всичко в Подарявам';
+  }
+
+  if (normalizedSection === 'exchange') {
+    return '🗂️ Всичко в Разменям';
+  }
+
   return '🗂️ Всички категории';
 }

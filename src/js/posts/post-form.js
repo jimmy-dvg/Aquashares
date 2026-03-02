@@ -14,6 +14,7 @@ import { getScopedCategoryDisplayName } from '../utils/category-icons.js';
 function getElements() {
   return {
     form: document.querySelector('[data-post-form]'),
+    sectionInput: document.querySelector('[data-post-section]'),
     titleInput: document.querySelector('[data-post-title]'),
     categoryInput: document.querySelector('[data-post-category]'),
     bodyInput: document.querySelector('[data-post-body]'),
@@ -29,6 +30,12 @@ function getElements() {
 }
 
 const VALID_SECTIONS = new Set(['forum', 'giveaway', 'exchange']);
+
+const SECTION_OPTIONS = [
+  { value: 'forum', label: 'Форум' },
+  { value: 'giveaway', label: 'Подарявам' },
+  { value: 'exchange', label: 'Разменям' }
+];
 
 function normalizeSection(section) {
   const normalized = (section || '').trim().toLowerCase();
@@ -98,6 +105,32 @@ function validateForm(title, body, categoryId, categoryRequired) {
   }
 
   return null;
+}
+
+function populateSectionSelect(selectElement, selectedSection = 'forum') {
+  if (!(selectElement instanceof HTMLSelectElement)) {
+    return;
+  }
+
+  const normalizedSection = normalizeSection(selectedSection) || 'forum';
+  selectElement.replaceChildren();
+
+  SECTION_OPTIONS.forEach((sectionOption) => {
+    const option = document.createElement('option');
+    option.value = sectionOption.value;
+    option.textContent = sectionOption.label;
+    selectElement.append(option);
+  });
+
+  selectElement.value = normalizedSection;
+}
+
+async function loadCategoriesBySection(section) {
+  try {
+    return await getCategories(section);
+  } catch {
+    return [];
+  }
 }
 
 function populateCategorySelect(selectElement, categories, selectedCategoryId = null, isEditMode = false) {
@@ -340,12 +373,13 @@ export async function initializePostForm() {
     }
   }
 
-  let categories = [];
-  try {
-    categories = await getCategories(activeSection);
-  } catch (error) {
-    categories = [];
+  if (!activeSection) {
+    activeSection = 'forum';
   }
+
+  populateSectionSelect(elements.sectionInput, activeSection);
+
+  let categories = await loadCategoriesBySection(activeSection);
 
   categoryRequired = categories.length > 0;
 
@@ -355,6 +389,27 @@ export async function initializePostForm() {
 
   if (elements.cancelButton instanceof HTMLAnchorElement) {
     elements.cancelButton.href = getFeedPathBySection(activeSection);
+  }
+
+  if (elements.sectionInput instanceof HTMLSelectElement) {
+    elements.sectionInput.addEventListener('change', async () => {
+      activeSection = normalizeSection(elements.sectionInput.value) || 'forum';
+
+      if (elements.cancelButton instanceof HTMLAnchorElement) {
+        elements.cancelButton.href = getFeedPathBySection(activeSection);
+      }
+
+      elements.categoryInput.disabled = true;
+      categories = await loadCategoriesBySection(activeSection);
+      categoryRequired = categories.length > 0;
+      populateCategorySelect(elements.categoryInput, categories, null, false);
+      elements.categoryInput.disabled = false;
+
+      const params = new URLSearchParams(window.location.search);
+      params.set('section', activeSection);
+      const nextUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState(null, '', nextUrl);
+    });
   }
 
   if (isEditMode) {
@@ -373,6 +428,10 @@ export async function initializePostForm() {
 
       populateCategorySelect(elements.categoryInput, categories, post.categoryId, true);
       renderExistingImages(elements, post.photos ?? []);
+
+      if (elements.sectionInput instanceof HTMLSelectElement) {
+        elements.sectionInput.value = normalizeSection(post.categorySection) || activeSection;
+      }
     } catch (error) {
       showError(elements.errorBox, error.message || 'Unable to load post for editing.');
       return;
@@ -398,7 +457,7 @@ export async function initializePostForm() {
 
     try {
       if (isEditMode) {
-        await updatePost(postId, { title, body, categoryId });
+        await updatePost(postId, { title, body, categoryId, section: activeSection || 'forum' });
 
         const files = getFilesFromInput(elements.imageInput);
         const photosToRemove = getSelectedPhotosForRemoval(elements.currentImageList);
@@ -422,6 +481,7 @@ export async function initializePostForm() {
           title,
           body,
           categoryId,
+          section: activeSection || 'forum',
           userId: session.user.id
         });
 

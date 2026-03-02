@@ -117,7 +117,7 @@ export function setDatalistOptions(listElement, values) {
   listElement.append(fragment);
 }
 
-export function setCategoryFilterOptions(filterElement, categories, selectedSlug) {
+export function setCategoryFilterOptions(filterElement, categories, selectedSlug, section = '') {
   if (!(filterElement instanceof HTMLSelectElement)) {
     return;
   }
@@ -127,7 +127,7 @@ export function setCategoryFilterOptions(filterElement, categories, selectedSlug
 
   const allOption = document.createElement('option');
   allOption.value = '';
-  allOption.textContent = getAllCategoriesLabel();
+  allOption.textContent = getAllCategoriesLabel(section);
   filterElement.append(allOption);
 
   (categories || []).forEach((category) => {
@@ -159,7 +159,13 @@ export function bindFeedPopstate(onChange) {
 
   popstateBound = true;
   window.addEventListener('popstate', () => {
-    if (!window.location.pathname.endsWith('/index.html') && window.location.pathname !== '/') {
+    const path = window.location.pathname;
+    const isFeedPath = path === '/'
+      || path.endsWith('/index.html')
+      || path.endsWith('/giveaway.html')
+      || path.endsWith('/exchange.html');
+
+    if (!isFeedPath) {
       return;
     }
 

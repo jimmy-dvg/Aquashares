@@ -41,7 +41,9 @@ const feedState = {
     postsWithUiData: null,
     viewer: null,
     categories: null,
-    refreshPromise: null
+    refreshPromise: null,
+    section: '',
+    refreshSection: ''
   },
   toggleInFlightByPostId: new Set(),
   unsubscribeLikesRealtime: null,
@@ -404,7 +406,12 @@ function ensureModalState() {
     }
 
     try {
-      const updated = await updatePost(postId, { title, body, categoryId });
+      const updated = await updatePost(postId, {
+        title,
+        body,
+        categoryId,
+        section: sourcePost.categorySection || 'forum'
+      });
       const previousPosts = feedState.cache.postsWithUiData || [];
       feedState.cache.postsWithUiData = previousPosts.map((post) => {
         if (post.id !== postId) {
@@ -861,7 +868,9 @@ async function buildCommentCountMap(posts) {
 
 
 async function getFeedData(forceRefresh = false, section = '') {
-  if (!forceRefresh && feedState.cache.postsWithUiData && feedState.cache.viewer) {
+  const normalizedSection = (section || 'forum').trim();
+
+  if (!forceRefresh && feedState.cache.postsWithUiData && feedState.cache.viewer && feedState.cache.section === normalizedSection) {
     return {
       postsWithUiData: feedState.cache.postsWithUiData,
       viewer: feedState.cache.viewer,
@@ -869,15 +878,15 @@ async function getFeedData(forceRefresh = false, section = '') {
     };
   }
 
-  if (!forceRefresh && feedState.cache.refreshPromise) {
+  if (!forceRefresh && feedState.cache.refreshPromise && feedState.cache.refreshSection === normalizedSection) {
     return feedState.cache.refreshPromise;
   }
 
   const refreshPromise = (async () => {
     const [posts, viewer, categories] = await Promise.all([
-      getAllPosts(),
+      getAllPosts(50, normalizedSection),
       getViewerState(),
-      getCategories(section).catch(() => [])
+      getCategories(normalizedSection).catch(() => [])
     ]);
 
     const [authorMap, commentCountMap] = await Promise.all([
@@ -895,6 +904,7 @@ async function getFeedData(forceRefresh = false, section = '') {
     feedState.cache.postsWithUiData = postsWithUiData;
     feedState.cache.viewer = viewer;
     feedState.cache.categories = categories;
+    feedState.cache.section = normalizedSection;
 
     return {
       postsWithUiData,
@@ -904,11 +914,13 @@ async function getFeedData(forceRefresh = false, section = '') {
   })();
 
   feedState.cache.refreshPromise = refreshPromise;
+  feedState.cache.refreshSection = normalizedSection;
 
   try {
     return await refreshPromise;
   } finally {
     feedState.cache.refreshPromise = null;
+    feedState.cache.refreshSection = '';
   }
 }
 
@@ -1336,7 +1348,8 @@ export async function loadFeed(options = {}) {
     cleanupLikesRealtime();
 
     const selectedCategorySlugFromQuery = getCategoryFromQuery();
-    const feedSection = (feedContainer.dataset.feedSection || 'forum').trim();
+    const sectionHost = feedContainer.closest('[data-feed-section]');
+    const feedSection = ((sectionHost instanceof HTMLElement ? sectionHost.dataset.feedSection : '') || 'forum').trim();
     const searchFromQuery = getSearchFromQuery();
     const locationFromQuery = getLocationFromQuery();
     const authorFromQuery = getAuthorFromQuery();
@@ -1543,7 +1556,7 @@ export async function loadFeed(options = {}) {
     }
 
     if (categoryFilter) {
-      setCategoryFilterOptions(categoryFilter, categories, selectedCategorySlugFromQuery);
+      setCategoryFilterOptions(categoryFilter, categories, selectedCategorySlugFromQuery, feedSection);
       bindCategoryFilter(categoryFilter, clearFilterButton, (selectedSlug) => {
         setFeedFiltersInQuery({
           category: selectedSlug,
@@ -1622,7 +1635,7 @@ export async function loadFeed(options = {}) {
     }
 
     const filteredPosts = postsWithUiData
-      .filter((post) => (post.categorySection || 'forum') === feedSection)
+      .filter((post) => (post.section || post.categorySection || 'forum') === feedSection)
       .filter((post) => (!effectiveCategorySlug || post.categorySlug === effectiveCategorySlug))
       .filter((post) => matchesFeedSearch(post, normalizedSearchQuery))
       .filter((post) => matchesFeedLocation(post, normalizedLocationQuery))

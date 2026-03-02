@@ -119,13 +119,8 @@ function ensureRequiredNavbarStructure() {
 
     const feedLink = navList.querySelector('a.nav-link[href="/index.html"]');
     const feedItem = feedLink?.closest('li');
-    if (!feedItem) {
-      return;
-    }
-
-    if (feedLink instanceof HTMLAnchorElement) {
-      feedLink.textContent = 'Начало';
-      feedLink.dataset.navHome = 'true';
+    if (feedItem instanceof HTMLLIElement) {
+      feedItem.remove();
     }
 
     let forumItem = navList.querySelector('[data-nav-forum]');
@@ -154,7 +149,7 @@ function ensureRequiredNavbarStructure() {
 
     if (!(forumItem instanceof HTMLLIElement)) {
       forumItem = createNavSectionDropdown('navForum', 'Форум');
-      feedItem.insertAdjacentElement('afterend', forumItem);
+      navList.prepend(forumItem);
     }
 
     let giveawayItem = navList.querySelector('[data-nav-giveaway]');
@@ -170,7 +165,7 @@ function ensureRequiredNavbarStructure() {
     }
 
     if (forumItem.parentElement === navList && giveawayItem.parentElement === navList && exchangeItem.parentElement === navList) {
-      feedItem.insertAdjacentElement('afterend', forumItem);
+      navList.prepend(forumItem);
       forumItem.insertAdjacentElement('afterend', giveawayItem);
       giveawayItem.insertAdjacentElement('afterend', exchangeItem);
     }
@@ -181,8 +176,6 @@ function setActiveNavbarLink() {
   const pathname = normalizeNavPathname(window.location.pathname);
   const currentParams = new URLSearchParams(window.location.search);
   const currentCategory = currentParams.get('category') || '';
-  const hasFeedFilters = ['category', 'q', 'location', 'author', 'date_from', 'date_to', 'near_me', 'radius_km']
-    .some((key) => Boolean((currentParams.get(key) || '').trim()));
   const navLinks = document.querySelectorAll('#mainNavbar .navbar-nav .nav-link[href]');
 
   navLinks.forEach((link) => {
@@ -196,9 +189,7 @@ function setActiveNavbarLink() {
 
     let isActive = false;
 
-    if (link.dataset.navHome === 'true') {
-      isActive = pathname === '/index.html' && !hasFeedFilters;
-    } else if (linkPath === '/index.html') {
+    if (linkPath === '/index.html') {
       isActive = pathname === '/index.html' && linkCategory === currentCategory;
     } else {
       isActive = linkPath === pathname;
@@ -231,7 +222,7 @@ function setActiveNavbarLink() {
     }
   };
 
-  setToggleActive(forumToggle, pathname === '/index.html' && hasFeedFilters);
+  setToggleActive(forumToggle, pathname === '/index.html');
   setToggleActive(giveawayToggle, pathname === '/giveaway.html');
   setToggleActive(exchangeToggle, pathname === '/exchange.html');
 }

@@ -5,9 +5,10 @@ function mapPost(post) {
     id: post.id,
     userId: post.user_id,
     categoryId: post.category_id || null,
+    section: post.section || post.categories?.section || 'forum',
     categorySlug: post.categories?.slug || '',
     categoryName: post.categories?.name || '',
-    categorySection: post.categories?.section || 'forum',
+    categorySection: post.section || post.categories?.section || 'forum',
     title: post.title,
     body: post.body,
     createdAt: post.created_at,
@@ -34,18 +35,18 @@ function mapCategory(category) {
 
 function getPreferredCategoryOrder(section) {
   if (section === 'giveaway') {
-    return ['plants', 'fish', 'inhabitants', 'equipment', 'giveaway', 'other'];
+    return ['fish', 'plants', 'inhabitants', 'equipment', 'foods', 'other'];
   }
 
   if (section === 'exchange') {
-    return ['plants', 'fish', 'inhabitants', 'equipment', 'foods', 'exchange', 'other'];
+    return ['fish', 'plants', 'inhabitants', 'equipment', 'foods', 'exchange', 'other'];
   }
 
   if (section === 'forum') {
     return ['fish', 'plants', 'inhabitants', 'equipment', 'other'];
   }
 
-  return ['fish', 'plants', 'inhabitants', 'equipment', 'foods', 'giveaway', 'exchange', 'other'];
+  return ['fish', 'plants', 'inhabitants', 'equipment', 'foods', 'exchange', 'other'];
 }
 
 function sortCategories(categories, section = '') {
@@ -88,12 +89,19 @@ function throwServiceError(error, fallbackMessage) {
   throw new Error(error?.message || fallbackMessage);
 }
 
-export async function getAllPosts(limit = 50) {
-  const { data, error } = await supabase
+export async function getAllPosts(limit = 50, section = '') {
+  let query = supabase
     .from('posts')
-    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name, section), photos(id, post_id, user_id, storage_path, public_url, created_at)')
+    .select('id, user_id, category_id, section, title, body, created_at, updated_at, categories(slug, name, section), photos(id, post_id, user_id, storage_path, public_url, created_at)')
     .order('created_at', { ascending: false })
     .limit(limit);
+
+  const normalizedSection = (section || '').trim();
+  if (normalizedSection) {
+    query = query.eq('section', normalizedSection);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     throwServiceError(error, 'Failed to load posts.');
@@ -105,7 +113,7 @@ export async function getAllPosts(limit = 50) {
 export async function getPostById(id) {
   const { data, error } = await supabase
     .from('posts')
-    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name, section), photos(id, post_id, user_id, storage_path, public_url, created_at)')
+    .select('id, user_id, category_id, section, title, body, created_at, updated_at, categories(slug, name, section), photos(id, post_id, user_id, storage_path, public_url, created_at)')
     .eq('id', id)
     .limit(1);
 
@@ -127,13 +135,14 @@ export async function createPost(data) {
     title: data.title,
     body: data.body,
     category_id: data.categoryId || null,
-    user_id: data.userId
+    user_id: data.userId,
+    section: data.section || undefined
   };
 
   const { data: result, error } = await supabase
     .from('posts')
     .insert([payload])
-    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name, section)')
+    .select('id, user_id, category_id, section, title, body, created_at, updated_at, categories(slug, name, section)')
     .limit(1);
 
   if (error) {
@@ -152,14 +161,15 @@ export async function updatePost(id, data) {
   const payload = {
     title: data.title,
     body: data.body,
-    category_id: data.categoryId || null
+    category_id: data.categoryId || null,
+    section: data.section || undefined
   };
 
   const { data: result, error } = await supabase
     .from('posts')
     .update(payload)
     .eq('id', id)
-    .select('id, user_id, category_id, title, body, created_at, updated_at, categories(slug, name, section)')
+    .select('id, user_id, category_id, section, title, body, created_at, updated_at, categories(slug, name, section)')
     .limit(1);
 
   if (error) {

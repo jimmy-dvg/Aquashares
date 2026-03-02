@@ -35,7 +35,6 @@
 
         <div class="collapse navbar-collapse" id="mainNavbar">
           <ul class="navbar-nav align-items-lg-center gap-lg-1 mb-2 mb-lg-0 aqua-nav-pages">
-            <li class="nav-item"><a class="nav-link" href="/index.html">Feed</a></li>
             <li class="nav-item dropdown aqua-nav-categories" data-nav-categories>
               <button
                 type="button"
@@ -126,6 +125,21 @@
               <div class="alert alert-danger d-none" role="alert" data-post-form-error></div>
 
               <form data-post-form novalidate>
+                <div class="mb-3">
+                  <label for="post-section" class="form-label">Секция</label>
+                  <select
+                    id="post-section"
+                    name="section"
+                    class="form-select"
+                    data-post-section
+                    required
+                  >
+                    <option value="forum">Форум</option>
+                    <option value="giveaway">Подарявам</option>
+                    <option value="exchange">Разменям</option>
+                  </select>
+                </div>
+
                 <div class="mb-3">
                   <label for="post-title" class="form-label">Title</label>
                   <input
