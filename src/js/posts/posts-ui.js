@@ -1342,7 +1342,9 @@ export async function loadFeed(options = {}) {
     locationList,
     authorList,
     clearFilterButton,
-    filterStatus
+    filterStatus,
+    activeFiltersContainer,
+    filterCountBadges
   } = getUiElements();
 
   if (!feedContainer) {
@@ -1660,6 +1662,66 @@ export async function loadFeed(options = {}) {
       });
     }
 
+    if (activeFiltersContainer instanceof HTMLElement && activeFiltersContainer.dataset.bound !== 'true') {
+      activeFiltersContainer.dataset.bound = 'true';
+      activeFiltersContainer.addEventListener('click', (event) => {
+        const target = event.target instanceof Element
+          ? event.target.closest('[data-feed-filter-chip-remove]')
+          : null;
+
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+
+        const key = (target.dataset.feedFilterChipRemove || '').trim();
+
+        if (key === 'category' && categoryFilter instanceof HTMLSelectElement) {
+          categoryFilter.value = '';
+        }
+
+        if (key === 'photo' && photoFilter instanceof HTMLSelectElement) {
+          photoFilter.value = '';
+        }
+
+        if (key === 'query' && searchInput instanceof HTMLInputElement) {
+          searchInput.value = '';
+        }
+
+        if (key === 'location' && locationFilter instanceof HTMLInputElement) {
+          locationFilter.value = '';
+        }
+
+        if (key === 'author' && authorFilter instanceof HTMLInputElement) {
+          authorFilter.value = '';
+        }
+
+        if (key === 'sort' && sortFilter instanceof HTMLSelectElement) {
+          sortFilter.value = 'newest';
+        }
+
+        if (key === 'near_me') {
+          if (nearbyToggle instanceof HTMLInputElement) {
+            nearbyToggle.checked = false;
+          }
+
+          if (radiusFilter instanceof HTMLSelectElement) {
+            radiusFilter.value = '25';
+          }
+        }
+
+        scheduleFiltersLoadFromInputs({
+          searchInput,
+          categoryFilter,
+          photoFilter,
+          locationFilter,
+          authorFilter,
+          sortFilter,
+          nearbyToggle,
+          radiusFilter
+        });
+      });
+    }
+
     const categorySlugs = new Set(categories.map((category) => category.slug));
     const categoryFromQuery = categorySlugs.has(selectedCategorySlugFromQuery) ? selectedCategorySlugFromQuery : '';
     const effectiveCategorySlug = categoryFromQuery;
@@ -1702,6 +1764,8 @@ export async function loadFeed(options = {}) {
       },
       clearFilterButton,
       filterStatus,
+      activeFiltersContainer,
+      filterCountBadges,
       categories,
       filteredPosts.length,
       postsWithUiData.length
@@ -1740,7 +1804,7 @@ export async function loadFeed(options = {}) {
     attachDeleteHandler(feedContainer, () => loadFeed({ forceRefresh: true }));
     attachLikeHandler(feedContainer, viewer, notificationRoot);
   } catch (error) {
-    showError(errorElement, error.message || 'Unable to load feed right now. Please try again.');
+    showError(errorElement, error.message || 'Неуспешно зареждане на публикациите. Опитай отново.');
   } finally {
     if (searchInput instanceof HTMLInputElement) {
       searchInput.disabled = false;

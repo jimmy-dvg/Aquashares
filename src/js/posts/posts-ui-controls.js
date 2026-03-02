@@ -21,11 +21,13 @@ export function getUiElements() {
     locationList: document.querySelector('[data-feed-location-list]'),
     authorList: document.querySelector('[data-feed-author-list]'),
     clearFilterButton: document.querySelector('[data-feed-clear-filter]'),
-    filterStatus: document.querySelector('[data-feed-filter-status]')
+    filterStatus: document.querySelector('[data-feed-filter-status]'),
+    activeFiltersContainer: document.querySelector('[data-feed-active-filters]'),
+    filterCountBadges: document.querySelectorAll('[data-feed-filter-count]')
   };
 }
 
-export function updateFeedFilterUi(filters, clearFilterButton, filterStatus, categories, filteredCount, totalCount) {
+function buildActiveFilterItems(filters, categories) {
   const query = (filters?.query || '').trim();
   const selectedSlug = filters?.selectedSlug || '';
   const location = (filters?.location || '').trim();
@@ -35,11 +37,118 @@ export function updateFeedFilterUi(filters, clearFilterButton, filterStatus, cat
   const nearMeEnabled = filters?.nearMe === true;
   const radiusKm = Number(filters?.radiusKm || 25);
   const nearMeUnavailable = filters?.nearMeUnavailable === true;
-  const hasFilter = Boolean(selectedSlug || photo || query || location || author || nearMeEnabled || (sort && sort !== 'newest'));
+
+  const items = [];
+
+  if (selectedSlug) {
+    const selectedCategory = (categories || []).find((category) => category.slug === selectedSlug) || null;
+    const categoryName = selectedCategory
+      ? getCategoryDisplayName(selectedCategory.name, selectedCategory.slug)
+      : 'Категория';
+    items.push({
+      key: 'category',
+      label: `Категория: ${categoryName}`
+    });
+  }
+
+  if (photo === 'with') {
+    items.push({ key: 'photo', label: 'Снимки: със снимка' });
+  }
+
+  if (photo === 'without') {
+    items.push({ key: 'photo', label: 'Снимки: без снимка' });
+  }
+
+  if (query) {
+    items.push({ key: 'query', label: `Търсене: ${query}` });
+  }
+
+  if (location) {
+    items.push({ key: 'location', label: `Локация: ${location}` });
+  }
+
+  if (author) {
+    items.push({ key: 'author', label: `Потребител: ${author}` });
+  }
+
+  if (sort && sort !== 'newest') {
+    const sortMap = {
+      oldest: 'Най-стари',
+      most_liked: 'Най-харесвани',
+      most_commented: 'Най-коментирани'
+    };
+    items.push({ key: 'sort', label: `Подреди: ${sortMap[sort] || 'Най-нови'}` });
+  }
+
+  if (nearMeEnabled) {
+    items.push({
+      key: 'near_me',
+      label: nearMeUnavailable
+        ? 'Близо до мен: няма достъп до локация'
+        : `Близо до мен: ${Number.isFinite(radiusKm) ? radiusKm : 25} км`
+    });
+  }
+
+  return items;
+}
+
+function renderActiveFilterChips(container, items) {
+  if (!(container instanceof HTMLElement)) {
+    return;
+  }
+
+  container.replaceChildren();
+
+  if (!items.length) {
+    container.classList.add('d-none');
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  items.forEach((item) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'btn btn-sm aqua-feed-filter-chip';
+    chip.dataset.feedFilterChipRemove = item.key;
+    chip.setAttribute('aria-label', `Премахни филтър: ${item.label}`);
+    chip.innerHTML = `<span>${item.label}</span><i class="bi bi-x-lg" aria-hidden="true"></i>`;
+    fragment.append(chip);
+  });
+
+  container.append(fragment);
+  container.classList.remove('d-none');
+}
+
+export function updateFeedFilterUi(
+  filters,
+  clearFilterButton,
+  filterStatus,
+  activeFiltersContainer,
+  filterCountBadges,
+  categories,
+  filteredCount,
+  totalCount
+) {
+  const activeItems = buildActiveFilterItems(filters, categories);
+  const hasFilter = activeItems.length > 0;
 
   if (clearFilterButton) {
     clearFilterButton.classList.toggle('d-none', !hasFilter);
   }
+
+  if (filterCountBadges) {
+    (Array.isArray(filterCountBadges) ? filterCountBadges : Array.from(filterCountBadges)).forEach((badge) => {
+      if (!(badge instanceof HTMLElement)) {
+        return;
+      }
+
+      badge.textContent = String(activeItems.length);
+      badge.classList.toggle('d-none', activeItems.length < 1);
+    });
+  }
+
+  renderActiveFilterChips(activeFiltersContainer, activeItems);
 
   if (!filterStatus) {
     return;
@@ -51,58 +160,11 @@ export function updateFeedFilterUi(filters, clearFilterButton, filterStatus, cat
     return;
   }
 
-  const labels = [];
-
-  if (selectedSlug) {
-    const selectedCategory = (categories || []).find((category) => category.slug === selectedSlug) || null;
-    const categoryName = selectedCategory
-      ? getCategoryDisplayName(selectedCategory.name, selectedCategory.slug)
-      : 'Категория';
-    labels.push(`Категория: ${categoryName}`);
-  }
-
-  if (photo === 'with') {
-    labels.push('Снимки: със снимка');
-  }
-
-  if (photo === 'without') {
-    labels.push('Снимки: без снимка');
-  }
-
-  if (query) {
-    labels.push(`Търсене: "${query}"`);
-  }
-
-  if (location) {
-    labels.push(`Локация: ${location}`);
-  }
-
-  if (author) {
-    labels.push(`Потребител: ${author}`);
-  }
-
-  if (sort && sort !== 'newest') {
-    const sortMap = {
-      oldest: 'Най-стари',
-      most_liked: 'Най-харесвани',
-      most_commented: 'Най-коментирани'
-    };
-    labels.push(`Подреди: ${sortMap[sort] || 'Най-нови'}`);
-  }
-
-  if (nearMeEnabled) {
-    if (nearMeUnavailable) {
-      labels.push('Близо до мен: няма достъп до локация');
-    } else {
-      labels.push(`Близо до мен: ${Number.isFinite(radiusKm) ? radiusKm : 25} км`);
-    }
-  }
-
   if (typeof filteredCount === 'number' && typeof totalCount === 'number') {
-    labels.push(`${filteredCount}/${totalCount} публикации`);
+    filterStatus.textContent = `Показани ${filteredCount} от ${totalCount} публикации`;
+  } else {
+    filterStatus.textContent = `Активни филтри: ${activeItems.length}`;
   }
-
-  filterStatus.textContent = `Активни филтри: ${labels.join(' • ')}`;
   filterStatus.classList.remove('d-none');
 }
 

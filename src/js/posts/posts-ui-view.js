@@ -61,7 +61,7 @@ export function focusCommentFromQuery() {
   }, 2200);
 }
 
-export function renderEmptyState(container, message = 'Be the first to create a post.') {
+export function renderEmptyState(container, message = 'Бъди първият с нова публикация.') {
   container.replaceChildren();
 
   const emptyColumn = document.createElement('div');
@@ -75,7 +75,7 @@ export function renderEmptyState(container, message = 'Be the first to create a 
 
   const emptyTitle = document.createElement('h2');
   emptyTitle.className = 'h5 card-title';
-  emptyTitle.textContent = 'No posts yet';
+  emptyTitle.textContent = 'Няма публикации';
 
   const emptyText = document.createElement('p');
   emptyText.className = 'card-text text-secondary mb-0';
