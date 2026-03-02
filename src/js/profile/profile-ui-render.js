@@ -66,8 +66,24 @@ export function renderProfileForm(profile, elements) {
     elements.location.value = profile.location || '';
   }
 
-  if (elements.website) {
-    elements.website.value = profile.website || '';
+  if (elements.facebook) {
+    elements.facebook.value = profile.facebookUrl || '';
+  }
+
+  if (elements.x) {
+    elements.x.value = profile.xUrl || '';
+  }
+
+  if (elements.linkedin) {
+    elements.linkedin.value = profile.linkedinUrl || '';
+  }
+
+  if (elements.reddit) {
+    elements.reddit.value = profile.redditUrl || '';
+  }
+
+  if (elements.telegram) {
+    elements.telegram.value = profile.telegramUrl || '';
   }
 
   if (elements.isPublic) {

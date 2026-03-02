@@ -3,6 +3,7 @@ import { cleanupCommentsUi, createCommentsBlock, initializeCommentsUi } from '..
 import { getLikesSummaryByPostIds, subscribeToPostLikes, togglePostLike } from '../reactions/reactions-service.js';
 import { createLikeButton, setLikeButtonState } from '../reactions/reactions-ui.js';
 import { supabase } from '../services/supabase-client.js';
+import { buildPostShareTargets, getConnectedShareNetworks, openSocialLinksSetupModal } from '../utils/social-share.js';
 import { deletePost, getPostById } from './posts-service.js';
 import { showConfirmModal } from '../utils/confirm-modal.js';
 import { renderPost } from './post-detail-view.js';
@@ -112,7 +113,8 @@ async function getViewerState() {
     return {
       userId: null,
       role: null,
-      isAdmin: false
+      isAdmin: false,
+      shareNetworks: []
     };
   }
 
@@ -124,11 +126,33 @@ async function getViewerState() {
     role = 'user';
   }
 
-  return {
+  const viewer = {
     userId: viewerUserId,
     role,
-    isAdmin: role === 'admin'
+    isAdmin: role === 'admin',
+    shareNetworks: []
   };
+
+  try {
+    const { data: socialProfile, error } = await supabase
+      .from('profiles')
+      .select('facebook_url, x_url, linkedin_url, reddit_url, telegram_url')
+      .eq('id', viewerUserId)
+      .maybeSingle();
+
+    if (!error && socialProfile) {
+      viewer.shareNetworks = getConnectedShareNetworks({
+        facebookUrl: socialProfile.facebook_url || '',
+        xUrl: socialProfile.x_url || '',
+        linkedinUrl: socialProfile.linkedin_url || '',
+        redditUrl: socialProfile.reddit_url || '',
+        telegramUrl: socialProfile.telegram_url || ''
+      });
+    }
+  } catch {
+  }
+
+  return viewer;
 }
 
 async function getAuthorData(authorId) {
@@ -254,7 +278,62 @@ function renderPostReactions(elements, post, viewer) {
     isAuthenticated: Boolean(viewer?.userId)
   });
 
-  reactionsBar.append(summary, likeButton);
+  const actionsWrap = document.createElement('div');
+  actionsWrap.className = 'd-inline-flex align-items-center gap-2';
+
+  const shareTargets = buildPostShareTargets(post.id, post.title, viewer?.shareNetworks || []);
+  if (viewer?.userId) {
+    if (shareTargets.length) {
+      const shareDropdown = document.createElement('div');
+      shareDropdown.className = 'dropdown';
+
+      const shareToggle = document.createElement('button');
+      shareToggle.type = 'button';
+      shareToggle.className = 'btn btn-sm btn-outline-secondary dropdown-toggle';
+      shareToggle.setAttribute('data-bs-toggle', 'dropdown');
+      shareToggle.setAttribute('aria-expanded', 'false');
+      shareToggle.innerHTML = '<i class="bi bi-share me-1" aria-hidden="true"></i>Сподели';
+
+      const shareMenu = document.createElement('ul');
+      shareMenu.className = 'dropdown-menu dropdown-menu-end';
+
+      shareTargets.forEach((target) => {
+        const item = document.createElement('li');
+        const link = document.createElement('a');
+        link.className = 'dropdown-item';
+        link.href = target.href;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.innerHTML = `<i class="bi ${target.icon} me-2" aria-hidden="true"></i>${target.label}`;
+        item.append(link);
+        shareMenu.append(item);
+      });
+
+      shareDropdown.append(shareToggle, shareMenu);
+      actionsWrap.append(shareDropdown);
+    } else {
+      const shareSetupButton = document.createElement('button');
+      shareSetupButton.type = 'button';
+      shareSetupButton.className = 'btn btn-sm btn-outline-secondary';
+      shareSetupButton.title = 'Добави социална мрежа, за да активираш споделяне.';
+      shareSetupButton.innerHTML = '<i class="bi bi-share me-1" aria-hidden="true"></i>Сподели';
+      shareSetupButton.addEventListener('click', async () => {
+        await openSocialLinksSetupModal({
+          onSaved: (connectedNetworks) => {
+            post.likeCount = Number(likeButton.dataset.likeCount || post.likeCount || 0);
+            post.likedByViewer = likeButton.dataset.liked === 'true';
+            viewer.shareNetworks = connectedNetworks;
+            renderPostReactions(elements, post, viewer);
+          }
+        });
+      });
+      actionsWrap.append(shareSetupButton);
+    }
+  }
+
+  actionsWrap.append(likeButton);
+
+  reactionsBar.append(summary, actionsWrap);
   elements.reactionsRoot.append(reactionsBar);
 
   let isPending = false;

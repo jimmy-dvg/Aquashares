@@ -59,7 +59,11 @@ function getElements() {
     locationMapStatus: document.querySelector('[data-profile-location-map-status]'),
     locationMapApply: document.querySelector('[data-profile-location-map-apply]'),
     locationMapGeolocate: document.querySelector('[data-profile-location-map-geolocate]'),
-    website: document.querySelector('[data-profile-website]'),
+    facebook: document.querySelector('[data-profile-facebook]'),
+    x: document.querySelector('[data-profile-x]'),
+    linkedin: document.querySelector('[data-profile-linkedin]'),
+    reddit: document.querySelector('[data-profile-reddit]'),
+    telegram: document.querySelector('[data-profile-telegram]'),
     isPublic: document.querySelector('[data-profile-public]'),
     profileSubmit: document.querySelector('[data-profile-submit]'),
     preferencesForm: document.querySelector('[data-profile-preferences-form]'),
@@ -637,8 +641,23 @@ function validateProfileInput(payload) {
     return 'Location must be 80 characters or less.';
   }
 
-  if (payload.website && !/^https?:\/\//i.test(payload.website)) {
-    return 'Website must start with http:// or https://';
+  const socialNetworks = [
+    { key: 'facebookUrl', label: 'Facebook' },
+    { key: 'xUrl', label: 'X' },
+    { key: 'linkedinUrl', label: 'LinkedIn' },
+    { key: 'redditUrl', label: 'Reddit' },
+    { key: 'telegramUrl', label: 'Telegram' }
+  ];
+
+  for (const network of socialNetworks) {
+    const value = (payload[network.key] || '').trim();
+    if (!value) {
+      continue;
+    }
+
+    if (!/^https?:\/\//i.test(value)) {
+      return `${network.label} трябва да започва с http:// или https://`;
+    }
   }
 
   return null;
@@ -660,7 +679,12 @@ async function handleProfileSave(event, elements) {
     location: sanitizeLocation(elements.location?.value || ''),
     locationLat: null,
     locationLng: null,
-    website: elements.website?.value.trim() || '',
+    website: '',
+    facebookUrl: elements.facebook?.value.trim() || '',
+    xUrl: elements.x?.value.trim() || '',
+    linkedinUrl: elements.linkedin?.value.trim() || '',
+    redditUrl: elements.reddit?.value.trim() || '',
+    telegramUrl: elements.telegram?.value.trim() || '',
     isPublic: Boolean(elements.isPublic?.checked),
     avatarUrl: state.profile.avatarUrl || '',
     avatarStoragePath: state.profile.avatarStoragePath || ''

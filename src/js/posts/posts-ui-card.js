@@ -1,6 +1,7 @@
 import { createCommentsBlock } from '../comments/comments-ui.js';
 import { createLikeButton } from '../reactions/reactions-ui.js';
 import { getCategoryDisplayName } from '../utils/category-icons.js';
+import { buildPostShareTargets, openSocialLinksSetupModal } from '../utils/social-share.js';
 
 function formatDate(value) {
   const date = new Date(value);
@@ -214,7 +215,7 @@ function createPostImage(post) {
   return wrapper;
 }
 
-export function renderPostCard(post, canManage = false, isAuthenticated = false) {
+export function renderPostCard(post, canManage = false, isAuthenticated = false, connectedShareNetworks = []) {
   const column = document.createElement('div');
   column.className = 'col-12 col-md-6 col-xl-4';
   column.dataset.postId = post.id;
@@ -370,7 +371,59 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false)
     isAuthenticated
   });
 
-  interactionBar.append(commentsInfo, likeButton);
+  const actionsWrap = document.createElement('div');
+  actionsWrap.className = 'd-inline-flex align-items-center gap-2';
+
+  const shareTargets = buildPostShareTargets(post.id, post.title, connectedShareNetworks);
+  if (isAuthenticated) {
+    if (shareTargets.length) {
+      const shareDropdown = document.createElement('div');
+      shareDropdown.className = 'dropdown';
+
+      const shareToggle = document.createElement('button');
+      shareToggle.type = 'button';
+      shareToggle.className = 'btn btn-sm btn-outline-secondary dropdown-toggle';
+      shareToggle.setAttribute('data-bs-toggle', 'dropdown');
+      shareToggle.setAttribute('aria-expanded', 'false');
+      shareToggle.innerHTML = '<i class="bi bi-share me-1" aria-hidden="true"></i>Сподели';
+
+      const shareMenu = document.createElement('ul');
+      shareMenu.className = 'dropdown-menu dropdown-menu-end';
+
+      shareTargets.forEach((target) => {
+        const item = document.createElement('li');
+        const link = document.createElement('a');
+        link.className = 'dropdown-item';
+        link.href = target.href;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.innerHTML = `<i class="bi ${target.icon} me-2" aria-hidden="true"></i>${target.label}`;
+        item.append(link);
+        shareMenu.append(item);
+      });
+
+      shareDropdown.append(shareToggle, shareMenu);
+      actionsWrap.append(shareDropdown);
+    } else {
+      const shareSetupButton = document.createElement('button');
+      shareSetupButton.type = 'button';
+      shareSetupButton.className = 'btn btn-sm btn-outline-secondary';
+      shareSetupButton.title = 'Добави социална мрежа, за да активираш споделяне.';
+      shareSetupButton.innerHTML = '<i class="bi bi-share me-1" aria-hidden="true"></i>Сподели';
+      shareSetupButton.addEventListener('click', async () => {
+        await openSocialLinksSetupModal({
+          onSaved: () => {
+            window.location.reload();
+          }
+        });
+      });
+      actionsWrap.append(shareSetupButton);
+    }
+  }
+
+  actionsWrap.append(likeButton);
+
+  interactionBar.append(commentsInfo, actionsWrap);
 
   cardBody.append(header, mediaLink, content, interactionBar, createCommentsBlock(post.id, isAuthenticated));
   article.append(cardBody);

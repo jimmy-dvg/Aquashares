@@ -60,6 +60,11 @@ function mapProfile(row) {
     locationLat: Number.isFinite(lat) ? lat : null,
     locationLng: Number.isFinite(lng) ? lng : null,
     website: row.website || '',
+    facebookUrl: row.facebook_url || '',
+    xUrl: row.x_url || '',
+    linkedinUrl: row.linkedin_url || '',
+    redditUrl: row.reddit_url || '',
+    telegramUrl: row.telegram_url || '',
     isPublic: typeof row.is_public === 'boolean' ? row.is_public : true,
     createdAt: row.created_at
   };
@@ -118,7 +123,7 @@ export async function getProfileById(userId) {
   let data = null;
   let error = null;
 
-  const extendedProfileSelect = 'id, username, display_name, avatar_url, avatar_storage_path, bio, location, location_lat, location_lng, website, is_public, created_at';
+  const extendedProfileSelect = 'id, username, display_name, avatar_url, avatar_storage_path, bio, location, location_lat, location_lng, website, facebook_url, x_url, linkedin_url, reddit_url, telegram_url, is_public, created_at';
   const legacyProfileSelect = 'id, username, display_name, avatar_url, bio, created_at';
 
   ({ data, error } = await supabase
@@ -127,7 +132,19 @@ export async function getProfileById(userId) {
     .eq('id', userId)
     .maybeSingle());
 
-  if (error && (isMissingColumn(error, 'avatar_storage_path') || isMissingColumn(error, 'location') || isMissingColumn(error, 'location_lat') || isMissingColumn(error, 'location_lng') || isMissingColumn(error, 'website') || isMissingColumn(error, 'is_public'))) {
+  if (error && (
+    isMissingColumn(error, 'avatar_storage_path')
+    || isMissingColumn(error, 'location')
+    || isMissingColumn(error, 'location_lat')
+    || isMissingColumn(error, 'location_lng')
+    || isMissingColumn(error, 'website')
+    || isMissingColumn(error, 'facebook_url')
+    || isMissingColumn(error, 'x_url')
+    || isMissingColumn(error, 'linkedin_url')
+    || isMissingColumn(error, 'reddit_url')
+    || isMissingColumn(error, 'telegram_url')
+    || isMissingColumn(error, 'is_public')
+  )) {
     ({ data, error } = await supabase
       .from('profiles')
       .select(legacyProfileSelect)
@@ -169,6 +186,11 @@ export async function updateMyProfile(userId, payload) {
     location_lat: payload.locationLat,
     location_lng: payload.locationLng,
     website: payload.website,
+    facebook_url: payload.facebookUrl,
+    x_url: payload.xUrl,
+    linkedin_url: payload.linkedinUrl,
+    reddit_url: payload.redditUrl,
+    telegram_url: payload.telegramUrl,
     is_public: payload.isPublic,
     avatar_url: payload.avatarUrl,
     avatar_storage_path: payload.avatarStoragePath
@@ -181,10 +203,22 @@ export async function updateMyProfile(userId, payload) {
     .from('profiles')
     .update(updatePayload)
     .eq('id', userId)
-    .select('id, username, display_name, avatar_url, avatar_storage_path, bio, location, location_lat, location_lng, website, is_public, created_at')
+    .select('id, username, display_name, avatar_url, avatar_storage_path, bio, location, location_lat, location_lng, website, facebook_url, x_url, linkedin_url, reddit_url, telegram_url, is_public, created_at')
     .single());
 
-  if (error && (isMissingColumn(error, 'avatar_storage_path') || isMissingColumn(error, 'location') || isMissingColumn(error, 'location_lat') || isMissingColumn(error, 'location_lng') || isMissingColumn(error, 'website') || isMissingColumn(error, 'is_public'))) {
+  if (error && (
+    isMissingColumn(error, 'avatar_storage_path')
+    || isMissingColumn(error, 'location')
+    || isMissingColumn(error, 'location_lat')
+    || isMissingColumn(error, 'location_lng')
+    || isMissingColumn(error, 'website')
+    || isMissingColumn(error, 'facebook_url')
+    || isMissingColumn(error, 'x_url')
+    || isMissingColumn(error, 'linkedin_url')
+    || isMissingColumn(error, 'reddit_url')
+    || isMissingColumn(error, 'telegram_url')
+    || isMissingColumn(error, 'is_public')
+  )) {
     updatePayload = {
       username: payload.username,
       display_name: payload.displayName,

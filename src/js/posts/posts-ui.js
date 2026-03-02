@@ -33,6 +33,7 @@ import {
   renderPostCard,
   setFeedFiltersInQuery
 } from './posts-ui-view.js';
+import { getConnectedShareNetworks } from '../utils/social-share.js';
 
 const feedState = {
   loadDebounceTimer: null,
@@ -1051,13 +1052,15 @@ async function getViewerState() {
   if (!session?.user?.id) {
     return {
       userId: null,
-      isAdmin: false
+      isAdmin: false,
+      shareNetworks: []
     };
   }
 
   const viewer = {
     userId: session.user.id,
-    isAdmin: false
+    isAdmin: false,
+    shareNetworks: []
   };
 
   const { data: roleData } = await supabase
@@ -1068,6 +1071,25 @@ async function getViewerState() {
 
   if (roleData?.role === 'admin') {
     viewer.isAdmin = true;
+  }
+
+  try {
+    const { data: socialProfile, error } = await supabase
+      .from('profiles')
+      .select('facebook_url, x_url, linkedin_url, reddit_url, telegram_url')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    if (!error && socialProfile) {
+      viewer.shareNetworks = getConnectedShareNetworks({
+        facebookUrl: socialProfile.facebook_url || '',
+        xUrl: socialProfile.x_url || '',
+        linkedinUrl: socialProfile.linkedin_url || '',
+        redditUrl: socialProfile.reddit_url || '',
+        telegramUrl: socialProfile.telegram_url || ''
+      });
+    }
+  } catch {
   }
 
   return viewer;
@@ -1697,7 +1719,7 @@ export async function loadFeed(options = {}) {
     } else {
       const fragment = document.createDocumentFragment();
       filteredPosts.forEach((post) => {
-        fragment.append(renderPostCard(post, canManagePost(post), Boolean(viewer.userId)));
+        fragment.append(renderPostCard(post, canManagePost(post), Boolean(viewer.userId), viewer.shareNetworks || []));
       });
 
       feedContainer.append(fragment);
