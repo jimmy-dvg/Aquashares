@@ -9,6 +9,7 @@ import { getCategories } from './posts/posts-service.js';
 import { loadFeed } from './posts/posts-ui.js';
 import { initializePostForm } from './posts/post-form.js';
 import { initializeProfilePage } from './profile/profile-ui.js';
+import { getProfileById } from './profile/profile-service.js';
 import { getCategoryDisplayName, getCategoryEmoji } from './utils/category-icons.js';
 import { initializeBulgarianLocalization } from './utils/localization-bg.js';
 
@@ -252,6 +253,138 @@ function toggleTopLevelAccountLinks({ isAuthenticated, isAdmin }) {
   }
 }
 
+function ensureMyPostsDropdownLink(userId) {
+  if (!userId) {
+    return;
+  }
+
+  const dropdownMenus = document.querySelectorAll('.dropdown-menu.dropdown-menu-end');
+  const myPostsHref = `/profile.html?user=${encodeURIComponent(userId)}#my-posts`;
+
+  dropdownMenus.forEach((menu) => {
+    if (!(menu instanceof HTMLUListElement)) {
+      return;
+    }
+
+    const profileLink = menu.querySelector('a.dropdown-item[href="/profile.html"]');
+    if (!(profileLink instanceof HTMLAnchorElement)) {
+      return;
+    }
+
+    const existingMyPosts = menu.querySelector('[data-nav-my-posts]');
+    if (existingMyPosts instanceof HTMLAnchorElement) {
+      existingMyPosts.href = myPostsHref;
+      return;
+    }
+
+    const myPostsItem = document.createElement('li');
+    const myPostsLink = document.createElement('a');
+    myPostsLink.className = 'dropdown-item';
+    myPostsLink.href = myPostsHref;
+    myPostsLink.dataset.navMyPosts = 'true';
+    myPostsLink.textContent = 'Моите публикации';
+    myPostsItem.append(myPostsLink);
+
+    const profileItem = profileLink.closest('li');
+    if (profileItem?.parentElement === menu) {
+      profileItem.insertAdjacentElement('afterend', myPostsItem);
+      return;
+    }
+
+    menu.prepend(myPostsItem);
+  });
+}
+
+function applyIconToDropdownItem(item, iconEmoji) {
+  if (!(item instanceof HTMLElement)) {
+    return;
+  }
+
+  const existingIcon = item.querySelector('[data-nav-item-icon]');
+  if (existingIcon instanceof HTMLElement) {
+    existingIcon.textContent = iconEmoji;
+    return;
+  }
+
+  const icon = document.createElement('span');
+  icon.className = 'aqua-nav-dropdown-item-icon';
+  icon.dataset.navItemIcon = 'true';
+  icon.setAttribute('aria-hidden', 'true');
+  icon.textContent = iconEmoji;
+  item.prepend(icon);
+}
+
+function enhanceAccountDropdownItems() {
+  const dropdownMenus = document.querySelectorAll('.dropdown-menu.dropdown-menu-end');
+
+  dropdownMenus.forEach((menu) => {
+    if (!(menu instanceof HTMLUListElement)) {
+      return;
+    }
+
+    const profileItem = menu.querySelector('a.dropdown-item[href="/profile.html"]');
+    const myPostsItem = menu.querySelector('a.dropdown-item[data-nav-my-posts="true"]');
+    const adminItem = menu.querySelector('a.dropdown-item[href="/admin.html"]');
+    const logoutItem = menu.querySelector('button.dropdown-item[data-nav-logout]');
+
+    applyIconToDropdownItem(profileItem, '👤');
+    applyIconToDropdownItem(myPostsItem, '📝');
+    applyIconToDropdownItem(adminItem, '🛡️');
+    applyIconToDropdownItem(logoutItem, '🚪');
+  });
+}
+
+function updateNavbarUserAvatar(userButton, profile, user) {
+  if (!(userButton instanceof HTMLElement)) {
+    return;
+  }
+
+  const fallbackIcon = userButton.querySelector('.bi-person-circle');
+  const avatarUrl = (profile?.avatarUrl || '').trim();
+  const avatarLabel = profile?.displayName || profile?.username || user?.email || 'Потребител';
+
+  const existingAvatar = userButton.querySelector('[data-nav-user-avatar]');
+
+  if (!avatarUrl) {
+    if (existingAvatar instanceof HTMLElement) {
+      existingAvatar.remove();
+    }
+
+    if (fallbackIcon instanceof HTMLElement) {
+      fallbackIcon.classList.remove('d-none');
+    }
+
+    return;
+  }
+
+  let avatarImage = existingAvatar;
+  if (!(avatarImage instanceof HTMLImageElement)) {
+    avatarImage = document.createElement('img');
+    avatarImage.className = 'aqua-nav-user-avatar rounded-circle';
+    avatarImage.dataset.navUserAvatar = 'true';
+
+    const statusElement = userButton.querySelector('[data-nav-status]');
+    if (statusElement instanceof HTMLElement) {
+      userButton.insertBefore(avatarImage, statusElement);
+    } else {
+      userButton.prepend(avatarImage);
+    }
+  }
+
+  avatarImage.alt = `Аватар на ${avatarLabel}`;
+  avatarImage.src = avatarUrl;
+  avatarImage.onerror = () => {
+    avatarImage.remove();
+    if (fallbackIcon instanceof HTMLElement) {
+      fallbackIcon.classList.remove('d-none');
+    }
+  };
+
+  if (fallbackIcon instanceof HTMLElement) {
+    fallbackIcon.classList.add('d-none');
+  }
+}
+
 async function initializeNavbar() {
   const guestElements = document.querySelectorAll('[data-nav-guest]');
   const authElements = document.querySelectorAll('[data-nav-auth]');
@@ -285,7 +418,10 @@ async function initializeNavbar() {
   toggleElements(guestElements, false);
   toggleElements(authElements, true);
 
-  const role = await getCurrentUserRole(user.id);
+  const [role, profile] = await Promise.all([
+    getCurrentUserRole(user.id),
+    getProfileById(user.id).catch(() => null)
+  ]);
   toggleElements(adminElements, role === 'admin');
   toggleTopLevelAccountLinks({ isAuthenticated: true, isAdmin: role === 'admin' });
 
@@ -296,6 +432,10 @@ async function initializeNavbar() {
   if (userRoleBadge instanceof HTMLElement) {
     userRoleBadge.classList.toggle('d-none', role !== 'admin');
   }
+
+  ensureMyPostsDropdownLink(user.id);
+  enhanceAccountDropdownItems();
+  updateNavbarUserAvatar(userButton, profile, user);
 
   if (userButton instanceof HTMLElement) {
     userButton.setAttribute('aria-label', `Account menu for ${user.email || 'User'}`);
