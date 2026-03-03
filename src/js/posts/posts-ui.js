@@ -43,6 +43,31 @@ import {
   setFeedFiltersInQuery
 } from './posts-ui-view.js';
 import { getConnectedShareNetworks } from '../utils/social-share.js';
+import {
+  buildFilterSuggestions,
+  getFeedData,
+  getViewerCoordinates,
+  matchesFeedAuthor,
+  matchesFeedLocation,
+  matchesFeedPhoto,
+  matchesFeedSearch,
+  matchesNearby,
+  normalizePhotoFilter,
+  normalizeSortOption,
+  normalizeText,
+  reverseGeocodeLocationName,
+  sortPosts
+} from './posts-ui-filter-data.js';
+import {
+  applyLikeStateToQuickView,
+  applyLikeStateToVisibleButtons,
+  attachDeleteHandler as attachDeleteHandlerModule,
+  attachEditHandler as attachEditHandlerModule,
+  attachLikeHandler as attachLikeHandlerModule,
+  attachQuickViewHandler as attachQuickViewHandlerModule,
+  bindLikesRealtime as bindLikesRealtimeModule,
+  updateCachedPostLikeState
+} from './posts-ui-likes-handlers.js';
 
 const feedState = {
   loadDebounceTimer: null,
@@ -532,9 +557,9 @@ async function renderQuickViewBody(container, post, viewer) {
         isAuthenticated: true,
         isPending: false
       });
-      updateCachedPostLikeState(post.id, nextState);
-      applyLikeStateToVisibleButtons(document.querySelector('[data-feed-list]'), viewer, nextState);
-      applyLikeStateToQuickView(nextState, viewer);
+      updateCachedPostLikeState(feedState, post.id, nextState);
+      applyLikeStateToVisibleButtons(document.querySelector('[data-feed-list]'), viewer, nextState, setLikeButtonState);
+      applyLikeStateToQuickView(feedState, nextState, viewer, setLikeButtonState);
     } catch (error) {
       setLikeButtonState(likeButton, {
         ...previousState,
@@ -918,485 +943,6 @@ function scheduleFiltersLoadFromInputs(elements) {
   }, 220);
 }
 
-function normalizeText(value) {
-  return (value || '').toLowerCase().trim();
-}
-
-function toRadians(value) {
-  return (value * Math.PI) / 180;
-}
-
-function getDistanceKm(fromLat, fromLng, toLat, toLng) {
-  const earthRadiusKm = 6371;
-  const dLat = toRadians(toLat - fromLat);
-  const dLng = toRadians(toLng - fromLng);
-
-  const haversine = Math.sin(dLat / 2) ** 2
-    + Math.cos(toRadians(fromLat)) * Math.cos(toRadians(toLat)) * Math.sin(dLng / 2) ** 2;
-
-  const centralAngle = 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
-  return earthRadiusKm * centralAngle;
-}
-
-function parseNullableNumber(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-async function getViewerCoordinates() {
-  const now = Date.now();
-  const maxAgeMs = 5 * 60 * 1000;
-
-  if (feedState.geolocation.coords && (now - feedState.geolocation.resolvedAt) < maxAgeMs) {
-    return feedState.geolocation.coords;
-  }
-
-  if (feedState.geolocation.inFlight) {
-    return feedState.geolocation.inFlight;
-  }
-
-  if (!navigator.geolocation) {
-    return null;
-  }
-
-  feedState.geolocation.inFlight = new Promise((resolve) => {
-    navigator.geolocation.getCurrentPosition((position) => {
-      const nextCoords = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude
-      };
-
-      feedState.geolocation.coords = nextCoords;
-      feedState.geolocation.resolvedAt = Date.now();
-      resolve(nextCoords);
-    }, () => {
-      resolve(null);
-    }, {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 60000
-    });
-  }).finally(() => {
-    feedState.geolocation.inFlight = null;
-  });
-
-  return feedState.geolocation.inFlight;
-}
-
-async function reverseGeocodeLocationName(lat, lng) {
-  const endpoint = new URL('https://nominatim.openstreetmap.org/reverse');
-  endpoint.searchParams.set('lat', String(lat));
-  endpoint.searchParams.set('lon', String(lng));
-  endpoint.searchParams.set('format', 'jsonv2');
-  endpoint.searchParams.set('accept-language', 'bg');
-
-  const response = await fetch(endpoint.toString(), {
-    headers: {
-      Accept: 'application/json'
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error('Неуспешно извличане на локацията.');
-  }
-
-  const payload = await response.json();
-  const address = payload?.address || {};
-
-  const locationName = [
-    address.city,
-    address.town,
-    address.village,
-    address.municipality,
-    address.state,
-    payload?.display_name
-  ].find((value) => (value || '').trim());
-
-  return (locationName || '').replace(/\s+/g, ' ').trim();
-}
-
-function normalizeSortOption(value) {
-  const normalized = (value || '').trim().toLowerCase();
-  if (normalized === 'oldest' || normalized === 'most_liked' || normalized === 'most_commented' || normalized === 'newest') {
-    return normalized;
-  }
-
-  return 'newest';
-}
-
-function matchesFeedSearch(post, searchQuery) {
-  if (!searchQuery) {
-    return true;
-  }
-
-  const haystack = normalizeText([
-    post.title,
-    post.body,
-    post.categoryName,
-    post.author?.username,
-    post.author?.displayName,
-    post.author?.location
-  ].join(' '));
-
-  return haystack.includes(searchQuery);
-}
-
-function matchesFeedLocation(post, locationQuery) {
-  if (!locationQuery) {
-    return true;
-  }
-
-  return normalizeText(post.author?.location || '').includes(locationQuery);
-}
-
-function matchesFeedAuthor(post, authorQuery) {
-  if (!authorQuery) {
-    return true;
-  }
-
-  const authorHaystack = normalizeText([
-    post.author?.username,
-    post.author?.displayName
-  ].join(' '));
-
-  return authorHaystack.includes(authorQuery);
-}
-
-function normalizePhotoFilter(value) {
-  const normalized = (value || '').trim().toLowerCase();
-  return normalized === 'with' || normalized === 'without' ? normalized : '';
-}
-
-function matchesFeedPhoto(post, photoFilter) {
-  if (!photoFilter) {
-    return true;
-  }
-
-  const hasPhotos = Array.isArray(post.photos) && post.photos.length > 0;
-  return photoFilter === 'with' ? hasPhotos : !hasPhotos;
-}
-
-function sortPosts(posts, sortOption = 'newest') {
-  const normalized = normalizeSortOption(sortOption);
-  const items = [...(posts || [])];
-
-  if (normalized === 'oldest') {
-    return items.sort((left, right) => new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime());
-  }
-
-  if (normalized === 'most_liked') {
-    return items.sort((left, right) => {
-      const likeDelta = (right.likeCount || 0) - (left.likeCount || 0);
-      if (likeDelta !== 0) {
-        return likeDelta;
-      }
-
-      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
-    });
-  }
-
-  if (normalized === 'most_commented') {
-    return items.sort((left, right) => {
-      const commentDelta = (right.commentCount || 0) - (left.commentCount || 0);
-      if (commentDelta !== 0) {
-        return commentDelta;
-      }
-
-      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
-    });
-  }
-
-  return items.sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
-}
-
-function matchesNearby(post, centerCoords, radiusKm) {
-  if (!centerCoords) {
-    return true;
-  }
-
-  const lat = parseNullableNumber(post.author?.locationLat);
-  const lng = parseNullableNumber(post.author?.locationLng);
-
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return false;
-  }
-
-  return getDistanceKm(centerCoords.lat, centerCoords.lng, lat, lng) <= radiusKm;
-}
-
-function buildFilterSuggestions(postsWithUiData) {
-  const uniqueLocations = [...new Set(
-    (postsWithUiData || [])
-      .map((post) => (post.author?.location || '').trim())
-      .filter(Boolean)
-  )].sort((left, right) => left.localeCompare(right, 'bg'));
-
-  const uniqueAuthors = [...new Set(
-    (postsWithUiData || [])
-      .map((post) => {
-        if (post.author?.username) {
-          return `@${post.author.username}`;
-        }
-
-        return (post.author?.displayName || '').trim();
-      })
-      .filter(Boolean)
-  )].sort((left, right) => left.localeCompare(right, 'bg'));
-
-  return {
-    locations: uniqueLocations,
-    authors: uniqueAuthors
-  };
-}
-
-
-function mapPostWithUiData(post, authorById, commentCountByPostId, likesSummaryByPostId) {
-  const author = authorById.get(post.userId) || {
-    id: post.userId,
-    username: '',
-    displayName: 'Aquashares User',
-    avatarUrl: '',
-    location: '',
-    role: 'user'
-  };
-
-  const likesSummary = likesSummaryByPostId.get(post.id) || {
-    likeCount: 0,
-    likedByViewer: false
-  };
-
-  return {
-    ...post,
-    author,
-    commentCount: commentCountByPostId.get(post.id) || 0,
-    likeCount: likesSummary.likeCount,
-    likedByViewer: likesSummary.likedByViewer
-  };
-}
-
-async function buildAuthorMap(posts, viewer) {
-  const userIds = [...new Set(posts.map((post) => post.userId).filter(Boolean))];
-  const authorById = new Map();
-
-  if (!userIds.length) {
-    return authorById;
-  }
-
-  const { data: profiles, error } = await supabase
-    .from('profiles')
-    .select('id, username, display_name, avatar_url, location, location_lat, location_lng')
-    .in('id', userIds);
-
-  if (error) {
-    throw new Error(error.message || 'Unable to load post authors.');
-  }
-
-  (profiles ?? []).forEach((profile) => {
-    authorById.set(profile.id, {
-      id: profile.id,
-      username: profile.username || '',
-      displayName: profile.display_name || profile.username || 'Aquashares User',
-      avatarUrl: profile.avatar_url || '',
-      location: (profile.location || '').replace(/\s+/g, ' ').trim(),
-      locationLat: parseNullableNumber(profile.location_lat),
-      locationLng: parseNullableNumber(profile.location_lng),
-      role: 'user'
-    });
-  });
-
-  if (viewer?.isAdmin && viewer?.userId && authorById.has(viewer.userId)) {
-    const author = authorById.get(viewer.userId);
-    authorById.set(viewer.userId, {
-      ...author,
-      role: 'admin'
-    });
-  }
-
-  return authorById;
-}
-
-async function buildCommentCountMap(posts) {
-  const postIds = [...new Set(posts.map((post) => post.id).filter(Boolean))];
-  const counts = new Map();
-
-  if (!postIds.length) {
-    return counts;
-  }
-
-  const { data, error } = await supabase
-    .from('comments')
-    .select('post_id')
-    .in('post_id', postIds);
-
-  if (error) {
-    return counts;
-  }
-
-  (data ?? []).forEach((row) => {
-    const current = counts.get(row.post_id) || 0;
-    counts.set(row.post_id, current + 1);
-  });
-
-  return counts;
-}
-
-
-
-async function getFeedData(forceRefresh = false, section = '') {
-  const normalizedSection = (section || 'forum').trim();
-
-  if (!forceRefresh && feedState.cache.postsWithUiData && feedState.cache.viewer && feedState.cache.section === normalizedSection) {
-    return {
-      postsWithUiData: feedState.cache.postsWithUiData,
-      viewer: feedState.cache.viewer,
-      categories: feedState.cache.categories || []
-    };
-  }
-
-  if (!forceRefresh && feedState.cache.refreshPromise && feedState.cache.refreshSection === normalizedSection) {
-    return feedState.cache.refreshPromise;
-  }
-
-  const refreshPromise = (async () => {
-    const [posts, viewer, categories] = await Promise.all([
-      getAllPosts(50, normalizedSection),
-      getViewerState(),
-      getCategories(normalizedSection).catch(() => [])
-    ]);
-
-    const [authorMap, commentCountMap] = await Promise.all([
-      buildAuthorMap(posts, viewer),
-      buildCommentCountMap(posts)
-    ]);
-
-    const likesSummaryByPostId = await getLikesSummaryByPostIds(
-      posts.map((post) => post.id),
-      viewer.userId
-    ).catch(() => new Map());
-
-    const postsWithUiData = posts.map((post) => mapPostWithUiData(post, authorMap, commentCountMap, likesSummaryByPostId));
-
-    feedState.cache.postsWithUiData = postsWithUiData;
-    feedState.cache.viewer = viewer;
-    feedState.cache.categories = categories;
-    feedState.cache.section = normalizedSection;
-
-    return {
-      postsWithUiData,
-      viewer,
-      categories
-    };
-  })();
-
-  feedState.cache.refreshPromise = refreshPromise;
-  feedState.cache.refreshSection = normalizedSection;
-
-  try {
-    return await refreshPromise;
-  } finally {
-    feedState.cache.refreshPromise = null;
-    feedState.cache.refreshSection = '';
-  }
-}
-
-function updateCachedPostLikeState(postId, likeState) {
-  const posts = feedState.cache.postsWithUiData;
-  if (!posts?.length) {
-    return;
-  }
-
-  const index = posts.findIndex((post) => post.id === postId);
-  if (index < 0) {
-    return;
-  }
-
-  posts[index] = {
-    ...posts[index],
-    likeCount: likeState.likeCount,
-    likedByViewer: likeState.likedByViewer
-  };
-}
-
-async function refreshPostLikeState(postId, viewerUserId) {
-  const likesSummaryByPostId = await getLikesSummaryByPostIds([postId], viewerUserId).catch(() => new Map());
-  const likesSummary = likesSummaryByPostId.get(postId) || {
-    likeCount: 0,
-    likedByViewer: false
-  };
-
-  return {
-    postId,
-    likeCount: likesSummary.likeCount,
-    likedByViewer: likesSummary.likedByViewer
-  };
-}
-
-function applyLikeStateToVisibleButtons(container, viewer, likeState) {
-  if (!container) {
-    return;
-  }
-
-  const buttons = container.querySelectorAll(`[data-action="toggle-like"][data-post-id="${likeState.postId}"]`);
-
-  buttons.forEach((button) => {
-    if (!(button instanceof HTMLButtonElement)) {
-      return;
-    }
-
-    const isPending = button.dataset.pending === 'true';
-
-    setLikeButtonState(button, {
-      ...likeState,
-      isAuthenticated: Boolean(viewer?.userId),
-      isPending
-    });
-  });
-}
-
-function applyLikeStateToQuickView(likeState, viewer) {
-  const modalState = feedState.modalState;
-  if (!modalState || modalState.currentPostId !== likeState.postId) {
-    return;
-  }
-
-  const likeButton = modalState.quickBody?.querySelector('[data-post-quick-like] [data-action="toggle-like"]');
-  if (!(likeButton instanceof HTMLButtonElement)) {
-    return;
-  }
-
-  const isPending = likeButton.dataset.pending === 'true';
-  setLikeButtonState(likeButton, {
-    ...likeState,
-    isAuthenticated: Boolean(viewer?.userId),
-    isPending
-  });
-
-  const summary = modalState.quickBody?.querySelector('[data-post-quick-like-count]');
-  if (summary instanceof HTMLElement) {
-    summary.textContent = `${likeState.likeCount} likes`;
-  }
-}
-
-function bindLikesRealtime(container, viewer, posts) {
-  cleanupLikesRealtime();
-
-  const postIds = (posts || []).map((post) => post.id).filter(Boolean);
-  if (!postIds.length) {
-    return;
-  }
-
-  feedState.unsubscribeLikesRealtime = subscribeToPostLikes(postIds, async (postId) => {
-    try {
-      const nextState = await refreshPostLikeState(postId, viewer?.userId || null);
-      updateCachedPostLikeState(postId, nextState);
-      applyLikeStateToVisibleButtons(container, viewer, nextState);
-      applyLikeStateToQuickView(nextState, viewer);
-    } catch {
-    }
-  });
-}
-
-
 async function getViewerState() {
   const { data } = await supabase.auth.getSession();
   const session = data?.session;
@@ -1453,224 +999,42 @@ async function getViewerState() {
 }
 
 export function attachEditHandler(container) {
-  if (!container || container.dataset.editBound === 'true') {
-    return;
-  }
-
-  container.dataset.editBound = 'true';
-  container.addEventListener('click', async (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) {
-      return;
-    }
-
-    const editButton = target.closest('[data-action="edit-post"]');
-    if (!(editButton instanceof HTMLButtonElement)) {
-      return;
-    }
-
-    const postId = editButton.dataset.postId;
-    if (!postId) {
-      return;
-    }
-
-    const post = getPostFromCache(postId);
-    if (!post || !getPostManageState(post)) {
-      return;
-    }
-
-    openEditModal(post);
+  attachEditHandlerModule({
+    container,
+    getPostFromCache,
+    getPostManageState,
+    openEditModal
   });
 }
 
 export function attachQuickViewHandler(container) {
-  if (!container || container.dataset.quickViewBound === 'true') {
-    return;
-  }
-
-  container.dataset.quickViewBound = 'true';
-
-  container.addEventListener('click', (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) {
-      return;
-    }
-
-    const quickViewTrigger = target.closest('[data-action="open-post-quick-view"]');
-    if (!(quickViewTrigger instanceof HTMLElement)) {
-      return;
-    }
-
-    if (target.closest('[data-action="toggle-like"], [data-action="delete-post"], [data-action="edit-post"], [data-comments-list], .dropdown-menu, .dropdown-toggle, a:not([data-action="open-post-quick-view"]), button:not([data-action="open-post-quick-view"]), input, textarea, select, label')) {
-      return;
-    }
-
-    if (quickViewTrigger instanceof HTMLAnchorElement) {
-      event.preventDefault();
-    }
-
-    const postId = quickViewTrigger.dataset.postId || quickViewTrigger.closest('[data-post-id]')?.dataset.postId;
-    if (!postId) {
-      return;
-    }
-
-    const post = getPostFromCache(postId);
-    if (!post) {
-      return;
-    }
-
-    void openQuickViewModal(post);
-  });
-
-  if (feedState.quickViewKeyBound) {
-    return;
-  }
-
-  feedState.quickViewKeyBound = true;
-  container.addEventListener('keydown', (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) {
-      return;
-    }
-
-    if (target.dataset.action !== 'open-post-quick-view') {
-      return;
-    }
-
-    if (event.key !== 'Enter' && event.key !== ' ') {
-      return;
-    }
-
-    event.preventDefault();
-    const postId = target.dataset.postId;
-    if (!postId) {
-      return;
-    }
-
-    const post = getPostFromCache(postId);
-    if (!post) {
-      return;
-    }
-
-    void openQuickViewModal(post);
+  attachQuickViewHandlerModule({
+    container,
+    feedState,
+    getPostFromCache,
+    openQuickViewModal
   });
 }
 
 export function attachDeleteHandler(container, afterDelete) {
-  if (!container || container.dataset.deleteBound === 'true') {
-    return;
-  }
-
-  container.dataset.deleteBound = 'true';
-  container.addEventListener('click', async (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) {
-      return;
-    }
-
-    const deleteButton = target.closest('[data-action="delete-post"]');
-    if (!(deleteButton instanceof HTMLButtonElement)) {
-      return;
-    }
-
-    const postId = deleteButton.dataset.postId;
-    if (!postId) {
-      return;
-    }
-
-    const isConfirmed = await showConfirmModal({
-      title: 'Delete post',
-      message: 'Delete this post? This action cannot be undone.',
-      confirmLabel: 'Delete',
-      confirmButtonClass: 'btn-danger'
-    });
-
-    if (!isConfirmed) {
-      return;
-    }
-
-    deleteButton.disabled = true;
-
-    try {
-      await deletePost(postId);
-      await afterDelete();
-    } catch (error) {
-      const notificationRoot = document.querySelector('[data-feed-notifications]');
-      if (notificationRoot) {
-        notificationRoot.replaceChildren(createNotification(error.message || 'Unable to delete post.'));
-      }
-    } finally {
-      deleteButton.disabled = false;
-    }
+  attachDeleteHandlerModule({
+    container,
+    showConfirmModal,
+    deletePost,
+    createNotification,
+    afterDelete
   });
 }
 
 export function attachLikeHandler(container, viewer, notificationRoot) {
-  if (!container || container.dataset.likeBound === 'true') {
-    return;
-  }
-
-  container.dataset.likeBound = 'true';
-  container.addEventListener('click', async (event) => {
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) {
-      return;
-    }
-
-    const likeButton = target.closest('[data-action="toggle-like"]');
-    if (!(likeButton instanceof HTMLButtonElement)) {
-      return;
-    }
-
-    const postId = likeButton.dataset.postId;
-    if (!postId || !viewer?.userId) {
-      return;
-    }
-
-    if (feedState.toggleInFlightByPostId.has(postId)) {
-      return;
-    }
-
-    const previousState = {
-      postId,
-      likeCount: Number(likeButton.dataset.likeCount || '0'),
-      likedByViewer: likeButton.dataset.liked === 'true'
-    };
-
-    const optimisticState = {
-      ...previousState,
-      likedByViewer: !previousState.likedByViewer,
-      likeCount: Math.max(0, previousState.likeCount + (previousState.likedByViewer ? -1 : 1))
-    };
-
-    feedState.toggleInFlightByPostId.add(postId);
-    setLikeButtonState(likeButton, {
-      ...optimisticState,
-      isAuthenticated: true,
-      isPending: true
-    });
-
-    try {
-      const nextState = await togglePostLike(postId, viewer.userId);
-      setLikeButtonState(likeButton, {
-        ...nextState,
-        isAuthenticated: true,
-        isPending: false
-      });
-      updateCachedPostLikeState(postId, nextState);
-    } catch (error) {
-      setLikeButtonState(likeButton, {
-        ...previousState,
-        isAuthenticated: true,
-        isPending: false
-      });
-
-      if (notificationRoot) {
-        notificationRoot.replaceChildren(createNotification(error.message || 'Unable to update like.'));
-      }
-    } finally {
-      feedState.toggleInFlightByPostId.delete(postId);
-    }
+  attachLikeHandlerModule({
+    feedState,
+    container,
+    viewer,
+    notificationRoot,
+    togglePostLike,
+    setLikeButtonState,
+    createNotification
   });
 }
 
@@ -1790,7 +1154,16 @@ export async function loadFeed(options = {}) {
       radiusFilter.value = String(radiusKmFromQuery);
     }
 
-    const { postsWithUiData, viewer, categories } = await getFeedData(forceRefresh, feedSection);
+    const { postsWithUiData, viewer, categories } = await getFeedData({
+      feedState,
+      forceRefresh,
+      section: feedSection,
+      supabase,
+      getAllPosts,
+      getCategories,
+      getViewerState,
+      getLikesSummaryByPostIds
+    });
 
     if (searchInput instanceof HTMLInputElement && searchInput.dataset.bound !== 'true') {
       searchInput.dataset.bound = 'true';
@@ -1835,7 +1208,7 @@ export async function loadFeed(options = {}) {
         }
 
         try {
-          const coords = await getViewerCoordinates();
+          const coords = await getViewerCoordinates(feedState);
           if (!coords) {
             if (notificationRoot) {
               notificationRoot.replaceChildren(createNotification('Нужен е достъп до локация, за да използваш тази функция.', 'warning'));
@@ -2091,7 +1464,7 @@ export async function loadFeed(options = {}) {
       setFeedFiltersInQuery({ category: '' });
     }
 
-    const viewerCoords = nearMeFromQuery ? await getViewerCoordinates() : null;
+    const viewerCoords = nearMeFromQuery ? await getViewerCoordinates(feedState) : null;
     const nearMeUnavailable = nearMeFromQuery && !viewerCoords;
 
     if (nearMeUnavailable && notificationRoot) {
@@ -2153,7 +1526,16 @@ export async function loadFeed(options = {}) {
 
       feedContainer.append(fragment);
       await initializeCommentsUi(feedContainer, viewer.userId);
-      bindLikesRealtime(feedContainer, viewer, filteredPosts);
+      bindLikesRealtimeModule({
+        feedState,
+        container: feedContainer,
+        viewer,
+        posts: filteredPosts,
+        cleanupLikesRealtime,
+        subscribeToPostLikes,
+        getLikesSummaryByPostIds,
+        setLikeButtonState
+      });
       focusPostFromHash();
       focusCommentFromQuery();
     }

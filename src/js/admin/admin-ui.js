@@ -20,6 +20,7 @@ import {
   renderUsersTable,
   setVisible
 } from './admin-ui-render.js';
+import { createAdminFilters } from './admin-ui-filters.js';
 
 const adminState = {
   posts: [],
@@ -119,13 +120,12 @@ function setCategoryFilterInQuery(categorySlug) {
 
   const query = params.toString();
   const nextUrl = query ? `${window.location.pathname}?${query}${window.location.hash}` : `${window.location.pathname}${window.location.hash}`;
-
   const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
   if (currentUrl !== nextUrl) {
     window.history.pushState(null, '', nextUrl);
   }
 }
-
 
 function getElements() {
   return {
@@ -173,281 +173,6 @@ function getElements() {
   };
 }
 
-function normalizeText(value) {
-  return (value || '').toLowerCase().trim();
-}
-
-function updateUsersFilterUi(elements, filteredCount, totalCount) {
-  const query = elements.usersSearchInput instanceof HTMLInputElement
-    ? normalizeText(elements.usersSearchInput.value)
-    : '';
-  const role = elements.usersRoleFilter instanceof HTMLSelectElement
-    ? (elements.usersRoleFilter.value || '')
-    : '';
-
-  const hasFilter = Boolean(query || role);
-
-  if (elements.usersClearFilter) {
-    elements.usersClearFilter.classList.toggle('d-none', !hasFilter);
-  }
-
-  if (!elements.usersFilterStatus) {
-    return;
-  }
-
-  if (!hasFilter) {
-    elements.usersFilterStatus.textContent = '';
-    elements.usersFilterStatus.classList.add('d-none');
-    return;
-  }
-
-  const labels = [];
-  if (query) {
-    labels.push(`query: "${query}"`);
-  }
-  if (role) {
-    labels.push(`role: ${role}`);
-  }
-
-  elements.usersFilterStatus.textContent = `Showing ${filteredCount}/${totalCount} users (${labels.join(', ')})`;
-  elements.usersFilterStatus.classList.remove('d-none');
-}
-
-function renderFilteredUsers(elements) {
-  const query = elements.usersSearchInput instanceof HTMLInputElement
-    ? normalizeText(elements.usersSearchInput.value)
-    : '';
-  const role = elements.usersRoleFilter instanceof HTMLSelectElement
-    ? (elements.usersRoleFilter.value || '')
-    : '';
-
-  const filteredUsers = adminState.users.filter((user) => {
-    if (role && user.role !== role) {
-      return false;
-    }
-
-    if (!query) {
-      return true;
-    }
-
-    const haystack = normalizeText(`${user.username} ${user.displayName} ${user.email}`);
-    return haystack.includes(query);
-  });
-
-  renderUsersTable(filteredUsers, elements);
-  updateUsersFilterUi(elements, filteredUsers.length, adminState.users.length);
-}
-
-function attachUsersFilterHandler(elements) {
-  if (adminState.usersFilterBound) {
-    return;
-  }
-
-  const canBindSearch = elements.usersSearchInput instanceof HTMLInputElement;
-  const canBindRole = elements.usersRoleFilter instanceof HTMLSelectElement;
-
-  if (!canBindSearch || !canBindRole) {
-    return;
-  }
-
-  adminState.usersFilterBound = true;
-
-  elements.usersSearchInput.addEventListener('input', () => {
-    renderFilteredUsers(elements);
-  });
-
-  elements.usersRoleFilter.addEventListener('change', () => {
-    renderFilteredUsers(elements);
-  });
-
-  if (elements.usersClearFilter && elements.usersClearFilter.dataset.bound !== 'true') {
-    elements.usersClearFilter.dataset.bound = 'true';
-    elements.usersClearFilter.addEventListener('click', () => {
-      elements.usersSearchInput.value = '';
-      elements.usersRoleFilter.value = '';
-      renderFilteredUsers(elements);
-    });
-  }
-}
-
-function updateCommentsFilterUi(elements, filteredCount, totalCount) {
-  const query = elements.commentsSearchInput instanceof HTMLInputElement
-    ? normalizeText(elements.commentsSearchInput.value)
-    : '';
-
-  if (elements.commentsClearFilter) {
-    elements.commentsClearFilter.classList.toggle('d-none', !query);
-  }
-
-  if (!elements.commentsFilterStatus) {
-    return;
-  }
-
-  if (!query) {
-    elements.commentsFilterStatus.textContent = '';
-    elements.commentsFilterStatus.classList.add('d-none');
-    return;
-  }
-
-  elements.commentsFilterStatus.textContent = `Showing ${filteredCount}/${totalCount} comments for "${query}"`;
-  elements.commentsFilterStatus.classList.remove('d-none');
-}
-
-function renderFilteredComments(elements) {
-  const query = elements.commentsSearchInput instanceof HTMLInputElement
-    ? normalizeText(elements.commentsSearchInput.value)
-    : '';
-
-  const filteredComments = adminState.comments.filter((comment) => {
-    if (!query) {
-      return true;
-    }
-
-    const haystack = normalizeText(`${comment.postTitle} ${comment.authorUsername} ${comment.authorEmail} ${comment.body}`);
-    return haystack.includes(query);
-  });
-
-  renderCommentsTable(filteredComments, elements);
-  updateCommentsFilterUi(elements, filteredComments.length, adminState.comments.length);
-}
-
-function attachCommentsFilterHandler(elements) {
-  if (adminState.commentsFilterBound) {
-    return;
-  }
-
-  if (!(elements.commentsSearchInput instanceof HTMLInputElement)) {
-    return;
-  }
-
-  adminState.commentsFilterBound = true;
-
-  elements.commentsSearchInput.addEventListener('input', () => {
-    renderFilteredComments(elements);
-  });
-
-  if (elements.commentsClearFilter && elements.commentsClearFilter.dataset.bound !== 'true') {
-    elements.commentsClearFilter.dataset.bound = 'true';
-    elements.commentsClearFilter.addEventListener('click', () => {
-      elements.commentsSearchInput.value = '';
-      renderFilteredComments(elements);
-    });
-  }
-}
-
-function updateAdminNotificationsFilterUi(elements, filteredCount, totalCount) {
-  const query = elements.adminNotificationsSearchInput instanceof HTMLInputElement
-    ? normalizeText(elements.adminNotificationsSearchInput.value)
-    : '';
-  const status = elements.adminNotificationsStatusFilter instanceof HTMLSelectElement
-    ? (elements.adminNotificationsStatusFilter.value || '')
-    : '';
-  const severity = elements.adminNotificationsSeverityFilter instanceof HTMLSelectElement
-    ? (elements.adminNotificationsSeverityFilter.value || '')
-    : '';
-
-  const hasFilter = Boolean(query || status || severity);
-
-  if (elements.adminNotificationsClearFilter) {
-    elements.adminNotificationsClearFilter.classList.toggle('d-none', !hasFilter);
-  }
-
-  if (!elements.adminNotificationsFilterStatus) {
-    return;
-  }
-
-  if (!hasFilter) {
-    elements.adminNotificationsFilterStatus.textContent = '';
-    elements.adminNotificationsFilterStatus.classList.add('d-none');
-    return;
-  }
-
-  const labels = [];
-  if (query) {
-    labels.push(`query: "${query}"`);
-  }
-  if (status) {
-    labels.push(`status: ${status}`);
-  }
-  if (severity) {
-    labels.push(`severity: ${severity}`);
-  }
-
-  elements.adminNotificationsFilterStatus.textContent = `Showing ${filteredCount}/${totalCount} notifications (${labels.join(', ')})`;
-  elements.adminNotificationsFilterStatus.classList.remove('d-none');
-}
-
-function renderFilteredAdminNotifications(elements, currentAdminId) {
-  const query = elements.adminNotificationsSearchInput instanceof HTMLInputElement
-    ? normalizeText(elements.adminNotificationsSearchInput.value)
-    : '';
-  const status = elements.adminNotificationsStatusFilter instanceof HTMLSelectElement
-    ? (elements.adminNotificationsStatusFilter.value || '')
-    : '';
-  const severity = elements.adminNotificationsSeverityFilter instanceof HTMLSelectElement
-    ? (elements.adminNotificationsSeverityFilter.value || '')
-    : '';
-
-  const filteredNotifications = adminState.adminNotifications.filter((notification) => {
-    if (status && notification.status !== status) {
-      return false;
-    }
-
-    if (severity && notification.severity !== severity) {
-      return false;
-    }
-
-    if (!query) {
-      return true;
-    }
-
-    const haystack = normalizeText(`${notification.title} ${notification.message} ${notification.sourceType} ${notification.referenceType}`);
-    return haystack.includes(query);
-  });
-
-  renderAdminNotifications(filteredNotifications, elements, currentAdminId);
-  updateAdminNotificationsFilterUi(elements, filteredNotifications.length, adminState.adminNotifications.length);
-}
-
-function attachAdminNotificationsFilterHandler(elements, currentAdminId) {
-  if (adminState.adminNotificationsFilterBound) {
-    return;
-  }
-
-  const canBindSearch = elements.adminNotificationsSearchInput instanceof HTMLInputElement;
-  const canBindStatus = elements.adminNotificationsStatusFilter instanceof HTMLSelectElement;
-  const canBindSeverity = elements.adminNotificationsSeverityFilter instanceof HTMLSelectElement;
-
-  if (!canBindSearch || !canBindStatus || !canBindSeverity) {
-    return;
-  }
-
-  adminState.adminNotificationsFilterBound = true;
-
-  elements.adminNotificationsSearchInput.addEventListener('input', () => {
-    renderFilteredAdminNotifications(elements, currentAdminId);
-  });
-
-  elements.adminNotificationsStatusFilter.addEventListener('change', () => {
-    renderFilteredAdminNotifications(elements, currentAdminId);
-  });
-
-  elements.adminNotificationsSeverityFilter.addEventListener('change', () => {
-    renderFilteredAdminNotifications(elements, currentAdminId);
-  });
-
-  if (elements.adminNotificationsClearFilter && elements.adminNotificationsClearFilter.dataset.bound !== 'true') {
-    elements.adminNotificationsClearFilter.dataset.bound = 'true';
-    elements.adminNotificationsClearFilter.addEventListener('click', () => {
-      elements.adminNotificationsSearchInput.value = '';
-      elements.adminNotificationsStatusFilter.value = '';
-      elements.adminNotificationsSeverityFilter.value = '';
-      renderFilteredAdminNotifications(elements, currentAdminId);
-    });
-  }
-}
-
-
 function showFeedback(elements, message, type = 'danger') {
   if (!elements.feedback) {
     return;
@@ -486,176 +211,41 @@ function setRefreshingState(elements, isRefreshing) {
     elements.lastUpdatedIcon.classList.toggle('aqua-spin', isRefreshing);
   }
 
-  if (isRefreshing) {
-    target.textContent = 'Refreshing...';
-  }
+  target.textContent = isRefreshing ? 'Refreshing...' : target.textContent;
 }
 
+function setControlDisabled(elements, disabled) {
+  const controls = [
+    elements.usersSearchInput,
+    elements.usersRoleFilter,
+    elements.usersClearFilter,
+    elements.postsSearchInput,
+    elements.postsCategoryFilter,
+    elements.postsClearFilter,
+    elements.commentsSearchInput,
+    elements.commentsClearFilter,
+    elements.adminNotificationsSearchInput,
+    elements.adminNotificationsStatusFilter,
+    elements.adminNotificationsSeverityFilter,
+    elements.adminNotificationsClearFilter
+  ];
 
-function setPostsFilterOptions(posts, elements) {
-  if (!(elements.postsCategoryFilter instanceof HTMLSelectElement)) {
-    return;
-  }
-
-  const queryValue = getCategoryFilterFromQuery();
-  const previousValue = queryValue || elements.postsCategoryFilter.value || '';
-  elements.postsCategoryFilter.replaceChildren();
-
-  const allOption = document.createElement('option');
-  allOption.value = '';
-  allOption.textContent = 'All Categories';
-  elements.postsCategoryFilter.append(allOption);
-
-  const categoryMap = new Map();
-  posts.forEach((post) => {
-    const slug = post.categorySlug || 'uncategorized';
-    const name = post.categoryName || 'Uncategorized';
-    if (!categoryMap.has(slug)) {
-      categoryMap.set(slug, name);
+  controls.forEach((control) => {
+    if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLButtonElement) {
+      control.disabled = disabled;
     }
-  });
-
-  [...categoryMap.entries()].sort((a, b) => a[1].localeCompare(b[1])).forEach(([slug, name]) => {
-    const option = document.createElement('option');
-    option.value = slug;
-    option.textContent = name;
-    elements.postsCategoryFilter.append(option);
-  });
-
-  const hasPrevious = [...elements.postsCategoryFilter.options].some((option) => option.value === previousValue);
-  elements.postsCategoryFilter.value = hasPrevious ? previousValue : '';
-
-  if (queryValue && !hasPrevious) {
-    setCategoryFilterInQuery('');
-  }
-}
-
-function updateAdminPostsFilterUi(elements) {
-  const query = elements.postsSearchInput instanceof HTMLInputElement
-    ? normalizeText(elements.postsSearchInput.value)
-    : '';
-  const selectedCategory = elements.postsCategoryFilter instanceof HTMLSelectElement
-    ? elements.postsCategoryFilter.value
-    : '';
-
-  if (elements.postsClearFilter) {
-    elements.postsClearFilter.classList.toggle('d-none', !(selectedCategory || query));
-  }
-
-  if (!elements.postsFilterStatus) {
-    return;
-  }
-
-  if (!selectedCategory) {
-    if (!query) {
-      elements.postsFilterStatus.textContent = '';
-      elements.postsFilterStatus.classList.add('d-none');
-      return;
-    }
-  }
-
-  const labels = [];
-
-  if (selectedCategory) {
-    const selectedOption = elements.postsCategoryFilter?.selectedOptions?.[0];
-    const label = selectedOption?.textContent?.trim() || 'Selected category';
-    labels.push(`category: ${label}`);
-  }
-
-  if (query) {
-    labels.push(`query: "${query}"`);
-  }
-
-  elements.postsFilterStatus.textContent = `Filtering by ${labels.join(', ')}`;
-  elements.postsFilterStatus.classList.remove('d-none');
-}
-
-function renderFilteredPosts(elements) {
-  const query = elements.postsSearchInput instanceof HTMLInputElement
-    ? normalizeText(elements.postsSearchInput.value)
-    : '';
-  const selectedCategory = elements.postsCategoryFilter instanceof HTMLSelectElement
-    ? elements.postsCategoryFilter.value
-    : '';
-
-  const filteredPosts = adminState.posts.filter((post) => {
-    if (selectedCategory && (post.categorySlug || 'uncategorized') !== selectedCategory) {
-      return false;
-    }
-
-    if (!query) {
-      return true;
-    }
-
-    const haystack = normalizeText(`${post.title} ${post.body} ${post.authorUsername} ${post.authorEmail} ${post.categoryName}`);
-    return haystack.includes(query);
-  });
-
-  renderPostsTable(filteredPosts, elements);
-  updateAdminPostsFilterUi(elements);
-
-  if (elements.postsFilterStatus) {
-    const baseText = elements.postsFilterStatus.textContent || '';
-    if (baseText) {
-      elements.postsFilterStatus.textContent = `${baseText} • ${filteredPosts.length}/${adminState.posts.length} posts`;
-    }
-  }
-}
-
-function attachPostsFilterHandler(elements) {
-  const canBindCategory = elements.postsCategoryFilter instanceof HTMLSelectElement;
-  const canBindSearch = elements.postsSearchInput instanceof HTMLInputElement;
-
-  if (adminState.postsFilterBound || !canBindCategory || !canBindSearch) {
-    return;
-  }
-
-  adminState.postsFilterBound = true;
-  elements.postsSearchInput.addEventListener('input', () => {
-    renderFilteredPosts(elements);
-  });
-
-  elements.postsCategoryFilter.addEventListener('change', () => {
-    setCategoryFilterInQuery(elements.postsCategoryFilter.value || '');
-    renderFilteredPosts(elements);
-  });
-
-  if (elements.postsClearFilter && elements.postsClearFilter.dataset.bound !== 'true') {
-    elements.postsClearFilter.dataset.bound = 'true';
-    elements.postsClearFilter.addEventListener('click', () => {
-      if (elements.postsSearchInput instanceof HTMLInputElement) {
-        elements.postsSearchInput.value = '';
-      }
-      elements.postsCategoryFilter.value = '';
-      setCategoryFilterInQuery('');
-      renderFilteredPosts(elements);
-    });
-  }
-}
-
-function attachPopstateHandler(elements) {
-  if (adminState.popstateBound) {
-    return;
-  }
-
-  adminState.popstateBound = true;
-  window.addEventListener('popstate', () => {
-    if (!(elements.postsCategoryFilter instanceof HTMLSelectElement)) {
-      return;
-    }
-
-    const nextCategory = getCategoryFilterFromQuery();
-    const hasOption = [...elements.postsCategoryFilter.options].some((option) => option.value === nextCategory);
-    elements.postsCategoryFilter.value = hasOption ? nextCategory : '';
-    renderFilteredPosts(elements);
   });
 }
 
-
+function setLoadingVisible(elements, isVisible) {
+  setVisible(elements.usersLoading, isVisible);
+  setVisible(elements.postsLoading, isVisible);
+  setVisible(elements.commentsLoading, isVisible);
+  setVisible(elements.adminNotificationsLoading, isVisible);
+}
 
 export async function loadDashboard() {
   const elements = getElements();
-
   if (!elements.pageRoot) {
     return;
   }
@@ -666,52 +256,24 @@ export async function loadDashboard() {
   }
 
   const confirmController = createConfirmationController(elements);
+  const filters = createAdminFilters({
+    adminState,
+    elements,
+    renderUsersTable,
+    renderPostsTable,
+    renderCommentsTable,
+    renderAdminNotifications,
+    getCategoryFilterFromQuery,
+    setCategoryFilterInQuery
+  });
 
   const refreshDashboard = async (options = {}) => {
     const forceRefresh = options.forceRefresh === true;
 
     clearFeedback(elements);
     setRefreshingState(elements, true);
-    if (elements.usersSearchInput instanceof HTMLInputElement) {
-      elements.usersSearchInput.disabled = true;
-    }
-    if (elements.usersRoleFilter instanceof HTMLSelectElement) {
-      elements.usersRoleFilter.disabled = true;
-    }
-    if (elements.usersClearFilter instanceof HTMLButtonElement) {
-      elements.usersClearFilter.disabled = true;
-    }
-    if (elements.postsSearchInput instanceof HTMLInputElement) {
-      elements.postsSearchInput.disabled = true;
-    }
-    if (elements.postsCategoryFilter instanceof HTMLSelectElement) {
-      elements.postsCategoryFilter.disabled = true;
-    }
-    if (elements.postsClearFilter instanceof HTMLButtonElement) {
-      elements.postsClearFilter.disabled = true;
-    }
-    if (elements.commentsSearchInput instanceof HTMLInputElement) {
-      elements.commentsSearchInput.disabled = true;
-    }
-    if (elements.commentsClearFilter instanceof HTMLButtonElement) {
-      elements.commentsClearFilter.disabled = true;
-    }
-    if (elements.adminNotificationsSearchInput instanceof HTMLInputElement) {
-      elements.adminNotificationsSearchInput.disabled = true;
-    }
-    if (elements.adminNotificationsStatusFilter instanceof HTMLSelectElement) {
-      elements.adminNotificationsStatusFilter.disabled = true;
-    }
-    if (elements.adminNotificationsSeverityFilter instanceof HTMLSelectElement) {
-      elements.adminNotificationsSeverityFilter.disabled = true;
-    }
-    if (elements.adminNotificationsClearFilter instanceof HTMLButtonElement) {
-      elements.adminNotificationsClearFilter.disabled = true;
-    }
-    setVisible(elements.usersLoading, true);
-    setVisible(elements.postsLoading, true);
-    setVisible(elements.commentsLoading, true);
-    setVisible(elements.adminNotificationsLoading, true);
+    setControlDisabled(elements, true);
+    setLoadingVisible(elements, true);
 
     try {
       const { users, posts, comments, adminNotifications } = await getDashboardData(forceRefresh);
@@ -721,65 +283,27 @@ export async function loadDashboard() {
       adminState.comments = comments;
       adminState.adminNotifications = adminNotifications;
 
-      renderFilteredUsers(elements);
-      setPostsFilterOptions(posts, elements);
-      renderFilteredPosts(elements);
-      renderFilteredComments(elements);
-      renderFilteredAdminNotifications(elements, adminSession.user.id);
+      filters.setPostsFilterOptions(posts);
+      filters.renderFilteredUsers();
+      filters.renderFilteredPosts();
+      filters.renderFilteredComments();
+      filters.renderFilteredAdminNotifications(adminSession.user.id);
       setLastUpdated(elements);
     } catch (error) {
       showFeedback(elements, error.message || 'Unable to load admin dashboard.');
     } finally {
-      setVisible(elements.usersLoading, false);
-      setVisible(elements.postsLoading, false);
-      setVisible(elements.commentsLoading, false);
-      setVisible(elements.adminNotificationsLoading, false);
-      if (elements.usersSearchInput instanceof HTMLInputElement) {
-        elements.usersSearchInput.disabled = false;
-      }
-      if (elements.usersRoleFilter instanceof HTMLSelectElement) {
-        elements.usersRoleFilter.disabled = false;
-      }
-      if (elements.usersClearFilter instanceof HTMLButtonElement) {
-        elements.usersClearFilter.disabled = false;
-      }
-      if (elements.postsCategoryFilter instanceof HTMLSelectElement) {
-        elements.postsCategoryFilter.disabled = false;
-      }
-      if (elements.postsSearchInput instanceof HTMLInputElement) {
-        elements.postsSearchInput.disabled = false;
-      }
-      if (elements.postsClearFilter instanceof HTMLButtonElement) {
-        elements.postsClearFilter.disabled = false;
-      }
-      if (elements.commentsSearchInput instanceof HTMLInputElement) {
-        elements.commentsSearchInput.disabled = false;
-      }
-      if (elements.commentsClearFilter instanceof HTMLButtonElement) {
-        elements.commentsClearFilter.disabled = false;
-      }
-      if (elements.adminNotificationsSearchInput instanceof HTMLInputElement) {
-        elements.adminNotificationsSearchInput.disabled = false;
-      }
-      if (elements.adminNotificationsStatusFilter instanceof HTMLSelectElement) {
-        elements.adminNotificationsStatusFilter.disabled = false;
-      }
-      if (elements.adminNotificationsSeverityFilter instanceof HTMLSelectElement) {
-        elements.adminNotificationsSeverityFilter.disabled = false;
-      }
-      if (elements.adminNotificationsClearFilter instanceof HTMLButtonElement) {
-        elements.adminNotificationsClearFilter.disabled = false;
-      }
+      setLoadingVisible(elements, false);
+      setControlDisabled(elements, false);
       setRefreshingState(elements, false);
     }
   };
 
   attachRoleChangeHandlers(elements, refreshDashboard, showFeedback);
-  attachUsersFilterHandler(elements);
-  attachPostsFilterHandler(elements);
-  attachCommentsFilterHandler(elements);
-  attachAdminNotificationsFilterHandler(elements, adminSession.user.id);
-  attachPopstateHandler(elements);
+  filters.attachUsersFilterHandler();
+  filters.attachPostsFilterHandler();
+  filters.attachCommentsFilterHandler();
+  filters.attachAdminNotificationsFilterHandler(adminSession.user.id);
+  filters.attachPopstateHandler();
   attachDeleteHandlers(elements, confirmController, refreshDashboard, showFeedback);
   attachAdminNotificationHandlers(elements, adminSession.user.id, refreshDashboard, showFeedback);
 
