@@ -1,15 +1,20 @@
 import { requireAuth } from '../auth/auth-guard.js';
 import {
   createPost,
-  createPhotoRecord,
-  deletePhotoRecord,
   deletePost,
   getCategories,
   getPostById,
   updatePost
 } from './posts-service.js';
-import { deletePostImage, getPublicUrl, uploadPostImage } from '../services/storage-service.js';
 import { getScopedCategoryDisplayName } from '../utils/category-icons.js';
+import {
+  getFilesFromInputs,
+  getSelectedPhotosForRemoval,
+  removePhoto,
+  renderExistingModalImages,
+  rollbackPhoto,
+  uploadAndCreatePhoto
+} from './posts-ui-edit-utils.js';
 
 function getElements() {
   return {
@@ -200,140 +205,6 @@ function setLoadingState(loadingBox, isLoading) {
   loadingBox.classList.add('d-none');
 }
 
-function getFilesFromInputs(...inputElements) {
-  return inputElements.flatMap((inputElement) => {
-    if (!(inputElement instanceof HTMLInputElement) || !inputElement.files?.length) {
-      return [];
-    }
-
-    return [...inputElement.files];
-  });
-}
-
-function renderExistingImages(elements, photos) {
-  if (!elements.currentImageSection || !elements.currentImageList) {
-    return;
-  }
-
-  elements.currentImageList.replaceChildren();
-
-  if (!photos.length) {
-    elements.currentImageSection.classList.add('d-none');
-    return;
-  }
-
-  const fragment = document.createDocumentFragment();
-
-  photos.forEach((photo) => {
-    const col = document.createElement('div');
-    col.className = 'col-12 col-sm-6';
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'border rounded p-2 h-100';
-
-    const image = document.createElement('img');
-    image.src = photo.publicUrl;
-    image.alt = 'Current post image';
-    image.className = 'img-fluid rounded mb-2';
-    image.style.maxHeight = '220px';
-    image.style.objectFit = 'cover';
-
-    const formCheck = document.createElement('div');
-    formCheck.className = 'form-check';
-
-    const checkbox = document.createElement('input');
-    checkbox.className = 'form-check-input';
-    checkbox.type = 'checkbox';
-    checkbox.id = `remove-photo-${photo.id}`;
-    checkbox.dataset.removePhoto = 'true';
-    checkbox.dataset.photoId = photo.id;
-    checkbox.dataset.photoPath = photo.storagePath;
-
-    const label = document.createElement('label');
-    label.className = 'form-check-label';
-    label.setAttribute('for', checkbox.id);
-    label.textContent = 'Delete this image';
-
-    formCheck.append(checkbox, label);
-    wrapper.append(image, formCheck);
-    col.append(wrapper);
-    fragment.append(col);
-  });
-
-  elements.currentImageList.append(fragment);
-  elements.currentImageSection.classList.remove('d-none');
-}
-
-function getSelectedPhotosForRemoval(currentImageList) {
-  if (!(currentImageList instanceof HTMLElement)) {
-    return [];
-  }
-
-  const checkedInputs = currentImageList.querySelectorAll('[data-remove-photo="true"]:checked');
-
-  return [...checkedInputs]
-    .map((input) => {
-      if (!(input instanceof HTMLInputElement)) {
-        return null;
-      }
-
-      const photoId = input.dataset.photoId;
-      const storagePath = input.dataset.photoPath;
-
-      if (!photoId || !storagePath) {
-        return null;
-      }
-
-      return {
-        id: photoId,
-        storagePath
-      };
-    })
-    .filter(Boolean);
-}
-
-async function removePhoto(photo) {
-  await deletePhotoRecord(photo.id);
-  await deletePostImage(photo.storagePath);
-}
-
-async function uploadAndCreatePhoto(file, userId, postId) {
-  const storagePath = await uploadPostImage(file, userId, postId);
-  const publicUrl = getPublicUrl(storagePath);
-
-  const createdPhoto = await createPhotoRecord({
-    postId,
-    userId,
-    storagePath,
-    publicUrl
-  });
-
-  return {
-    ...createdPhoto,
-    storagePath
-  };
-}
-
-async function rollbackPhoto(photo) {
-  if (!photo) {
-    return;
-  }
-
-  if (photo.id) {
-    try {
-      await deletePhotoRecord(photo.id);
-    } catch {
-    }
-  }
-
-  if (photo.storagePath) {
-    try {
-      await deletePostImage(photo.storagePath);
-    } catch {
-    }
-  }
-}
-
 export async function initializePostForm() {
   const elements = getElements();
 
@@ -419,7 +290,7 @@ export async function initializePostForm() {
       }
 
       populateCategorySelect(elements.categoryInput, categories, post.categoryId, true);
-      renderExistingImages(elements, post.photos ?? []);
+      renderExistingModalImages(elements.currentImageSection, elements.currentImageList, post.photos ?? []);
 
       if (elements.sectionInput instanceof HTMLSelectElement) {
         elements.sectionInput.value = normalizeSection(post.categorySection) || activeSection;
