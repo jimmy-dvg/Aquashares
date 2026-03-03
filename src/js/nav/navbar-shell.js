@@ -1,6 +1,9 @@
 const NAVBAR_SHELL = `
 <div class="container">
-  <a class="navbar-brand fw-semibold" href="/index.html">Aquashares</a>
+  <a class="navbar-brand fw-semibold" href="/index.html" aria-label="Aquashares начало">
+    <span class="aqua-brand-icon" aria-hidden="true"><i class="bi bi-water"></i></span>
+    <span class="aqua-brand-text">Aquashares</span>
+  </a>
   <button
     class="navbar-toggler"
     type="button"

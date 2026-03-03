@@ -164,6 +164,19 @@ small {
 
 body {
   background-color: var(--bs-gray-100);
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(var(--bs-info-rgb), 0.28) 0%, rgba(var(--bs-info-rgb), 0) 38%),
+    radial-gradient(circle at 88% 10%, rgba(var(--bs-primary-rgb), 0.22) 0%, rgba(var(--bs-primary-rgb), 0) 35%),
+    radial-gradient(circle at 78% 84%, rgba(var(--bs-success-rgb), 0.2) 0%, rgba(var(--bs-success-rgb), 0) 34%),
+    radial-gradient(circle at 48% 92%, rgba(var(--bs-info-rgb), 0.14) 0%, rgba(var(--bs-info-rgb), 0) 32%),
+    linear-gradient(
+      180deg,
+      rgba(var(--bs-info-rgb), 0.14) 0%,
+      rgba(var(--bs-primary-rgb), 0.08) 24%,
+      rgba(var(--bs-body-bg-rgb), 0.9) 55%,
+      rgba(var(--bs-body-bg-rgb), 1) 100%
+    );
+  background-attachment: fixed;
 }
 
 .navbar {
@@ -175,7 +188,30 @@ body {
 }
 
 .navbar .navbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   letter-spacing: 0.01em;
+}
+
+.aqua-brand-icon {
+  width: 1.85rem;
+  height: 1.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: linear-gradient(
+    160deg,
+    rgba(var(--bs-primary-rgb), 0.18) 0%,
+    rgba(var(--bs-info-rgb), 0.22) 52%,
+    rgba(var(--bs-success-rgb), 0.16) 100%
+  );
+  color: var(--bs-primary-text-emphasis);
+}
+
+.aqua-brand-text {
+  line-height: 1;
 }
 
 .navbar .nav-link.active {
