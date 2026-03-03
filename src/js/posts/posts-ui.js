@@ -2,11 +2,19 @@ import { supabase } from '../services/supabase-client.js';
 import { cleanupCommentsUi, createCommentsBlock, initializeCommentsUi } from '../comments/comments-ui.js';
 import { getLikesSummaryByPostIds, subscribeToPostLikes, togglePostLike } from '../reactions/reactions-service.js';
 import { createLikeButton, setLikeButtonState } from '../reactions/reactions-ui.js';
-import { deletePost, getAllPosts, getCategories, updatePost } from './posts-service.js';
+import {
+  createPhotoRecord,
+  deletePhotoRecord,
+  deletePost,
+  getAllPosts,
+  getCategories,
+  updatePost
+} from './posts-service.js';
 import { showConfirmModal } from '../utils/confirm-modal.js';
 import { renderGallery } from './post-detail-view.js';
 import { getCategoryDisplayName, getScopedCategoryDisplayName } from '../utils/category-icons.js';
 import { getConnectedSocialProviderKeysFromUser } from '../auth/social-auth.js';
+import { deletePostImage, getPublicUrl, uploadPostImage } from '../services/storage-service.js';
 import {
   bindCategoryFilter,
   bindFeedPopstate,
@@ -123,6 +131,138 @@ function validatePostEditInput(title, body, categoryId, categories) {
   }
 
   return null;
+}
+
+function getFilesFromInput(inputElement) {
+  if (!(inputElement instanceof HTMLInputElement) || !inputElement.files?.length) {
+    return [];
+  }
+
+  return [...inputElement.files];
+}
+
+function renderExistingModalImages(imageSection, imageList, photos) {
+  if (!(imageSection instanceof HTMLElement) || !(imageList instanceof HTMLElement)) {
+    return;
+  }
+
+  imageList.replaceChildren();
+
+  if (!photos.length) {
+    imageSection.classList.add('d-none');
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+
+  photos.forEach((photo) => {
+    const col = document.createElement('div');
+    col.className = 'col-12 col-sm-6';
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'border rounded p-2 h-100';
+
+    const image = document.createElement('img');
+    image.src = photo.publicUrl;
+    image.alt = 'Текуща снимка към публикацията';
+    image.className = 'img-fluid rounded mb-2';
+    image.style.maxHeight = '180px';
+    image.style.objectFit = 'cover';
+
+    const formCheck = document.createElement('div');
+    formCheck.className = 'form-check';
+
+    const checkbox = document.createElement('input');
+    checkbox.className = 'form-check-input';
+    checkbox.type = 'checkbox';
+    checkbox.id = `modal-remove-photo-${photo.id}`;
+    checkbox.dataset.removePhoto = 'true';
+    checkbox.dataset.photoId = photo.id;
+    checkbox.dataset.photoPath = photo.storagePath;
+
+    const label = document.createElement('label');
+    label.className = 'form-check-label';
+    label.setAttribute('for', checkbox.id);
+    label.textContent = 'Премахни тази снимка';
+
+    formCheck.append(checkbox, label);
+    wrapper.append(image, formCheck);
+    col.append(wrapper);
+    fragment.append(col);
+  });
+
+  imageList.append(fragment);
+  imageSection.classList.remove('d-none');
+}
+
+function getSelectedPhotosForRemoval(currentImageList) {
+  if (!(currentImageList instanceof HTMLElement)) {
+    return [];
+  }
+
+  const checkedInputs = currentImageList.querySelectorAll('[data-remove-photo="true"]:checked');
+
+  return [...checkedInputs]
+    .map((input) => {
+      if (!(input instanceof HTMLInputElement)) {
+        return null;
+      }
+
+      const photoId = input.dataset.photoId;
+      const storagePath = input.dataset.photoPath;
+
+      if (!photoId || !storagePath) {
+        return null;
+      }
+
+      return {
+        id: photoId,
+        storagePath
+      };
+    })
+    .filter(Boolean);
+}
+
+async function removePhoto(photo) {
+  await deletePhotoRecord(photo.id);
+  await deletePostImage(photo.storagePath);
+}
+
+async function uploadAndCreatePhoto(file, userId, postId) {
+  const storagePath = await uploadPostImage(file, userId, postId);
+  const publicUrl = getPublicUrl(storagePath);
+
+  const createdPhoto = await createPhotoRecord({
+    postId,
+    userId,
+    storagePath,
+    publicUrl
+  });
+
+  return {
+    ...createdPhoto,
+    storagePath
+  };
+}
+
+async function rollbackPhoto(photo) {
+  if (!photo) {
+    return;
+  }
+
+  if (photo.id) {
+    try {
+      await deletePhotoRecord(photo.id);
+    } catch {
+    }
+  }
+
+  if (photo.storagePath) {
+    try {
+      await deletePostImage(photo.storagePath);
+    } catch {
+    }
+  }
 }
 
 function forceCloseModal(modalElement) {
@@ -326,6 +466,15 @@ function ensureModalState() {
               <label class="form-label" for="post-edit-body">Content</label>
               <textarea id="post-edit-body" class="form-control" rows="6" maxlength="5000" required data-post-edit-body></textarea>
             </div>
+            <div>
+              <label class="form-label" for="post-edit-image">Post Images</label>
+              <input id="post-edit-image" type="file" class="form-control" accept="image/*" multiple data-post-edit-image />
+              <div class="form-text">Optional. You can upload multiple images. Maximum file size per image: 5MB.</div>
+            </div>
+            <section class="d-none" data-post-edit-current-image-section>
+              <h3 class="h6 mb-2">Current Images</h3>
+              <div class="row g-2" data-post-edit-current-image-list></div>
+            </section>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -356,6 +505,9 @@ function ensureModalState() {
     editTitle: editModal.querySelector('[data-post-edit-title]'),
     editCategory: editModal.querySelector('[data-post-edit-category]'),
     editBody: editModal.querySelector('[data-post-edit-body]'),
+    editImage: editModal.querySelector('[data-post-edit-image]'),
+    editCurrentImageSection: editModal.querySelector('[data-post-edit-current-image-section]'),
+    editCurrentImageList: editModal.querySelector('[data-post-edit-current-image-list]'),
     editSubmit: editModal.querySelector('[data-post-edit-submit]'),
     currentPostId: null,
     saveInProgress: false
@@ -386,6 +538,7 @@ function ensureModalState() {
     const title = modalState.editTitle instanceof HTMLInputElement ? modalState.editTitle.value.trim() : '';
     const body = modalState.editBody instanceof HTMLTextAreaElement ? modalState.editBody.value.trim() : '';
     const categoryId = modalState.editCategory instanceof HTMLSelectElement ? modalState.editCategory.value || null : null;
+    const viewerUserId = feedState.cache.viewer?.userId || null;
     const validationError = validatePostEditInput(title, body, categoryId, feedState.cache.categories || []);
 
     if (validationError) {
@@ -401,6 +554,14 @@ function ensureModalState() {
       modalState.editError.classList.add('d-none');
     }
 
+    if (!viewerUserId) {
+      if (modalState.editError) {
+        modalState.editError.textContent = 'Трябва да сте влезли, за да редактирате публикация.';
+        modalState.editError.classList.remove('d-none');
+      }
+      return;
+    }
+
     modalState.saveInProgress = true;
     if (modalState.editSubmit instanceof HTMLButtonElement) {
       modalState.editSubmit.disabled = true;
@@ -414,6 +575,29 @@ function ensureModalState() {
         categoryId,
         section: sourcePost.categorySection || 'forum'
       });
+
+      const files = getFilesFromInput(modalState.editImage);
+      const photosToRemove = getSelectedPhotosForRemoval(modalState.editCurrentImageList);
+      const newlyCreatedPhotos = [];
+
+      try {
+        for (const file of files) {
+          const createdPhoto = await uploadAndCreatePhoto(file, viewerUserId, postId);
+          newlyCreatedPhotos.push(createdPhoto);
+        }
+      } catch (uploadError) {
+        await Promise.all(newlyCreatedPhotos.map((photo) => rollbackPhoto(photo)));
+        throw uploadError;
+      }
+
+      for (const photo of photosToRemove) {
+        await removePhoto(photo);
+      }
+
+      const removedIds = new Set(photosToRemove.map((photo) => photo.id));
+      const remainingPhotos = (sourcePost.photos || []).filter((photo) => !removedIds.has(photo.id));
+      const nextPhotos = [...remainingPhotos, ...newlyCreatedPhotos];
+
       const previousPosts = feedState.cache.postsWithUiData || [];
       feedState.cache.postsWithUiData = previousPosts.map((post) => {
         if (post.id !== postId) {
@@ -422,7 +606,8 @@ function ensureModalState() {
 
         return {
           ...post,
-          ...updated
+          ...updated,
+          photos: nextPhotos
         };
       });
 
@@ -499,6 +684,10 @@ function openEditModal(post) {
     modalState.editBody.value = post.body || '';
   }
 
+  if (modalState.editImage instanceof HTMLInputElement) {
+    modalState.editImage.value = '';
+  }
+
   if (modalState.editCategory instanceof HTMLSelectElement) {
     const categories = feedState.cache.categories || [];
     modalState.editCategory.replaceChildren();
@@ -517,6 +706,8 @@ function openEditModal(post) {
 
     modalState.editCategory.value = post.categoryId || '';
   }
+
+  renderExistingModalImages(modalState.editCurrentImageSection, modalState.editCurrentImageList, post.photos || []);
 
   modalState.editModalApi?.show();
 }
