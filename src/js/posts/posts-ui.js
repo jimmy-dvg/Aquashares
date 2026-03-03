@@ -347,7 +347,7 @@ function initializeStickyFilterDock() {
 
   const onScroll = () => {
     const dock = feedState.filterDock;
-    if (!dock || !bar.classList.contains('is-panel-open')) {
+    if (!dock) {
       if (dock) {
         dock.lastScrollY = window.scrollY;
       }
@@ -357,6 +357,10 @@ function initializeStickyFilterDock() {
     const currentY = window.scrollY;
     const scrollingDown = currentY > (dock.lastScrollY + 4);
     dock.lastScrollY = currentY;
+
+    if (!bar.classList.contains('is-panel-open')) {
+      return;
+    }
 
     if (!dock.shouldAutoCloseOnScroll || !scrollingDown) {
       return;
@@ -371,6 +375,10 @@ function initializeStickyFilterDock() {
 
     const nextOpen = !bar.classList.contains('is-panel-open');
     setPanelOpen(nextOpen);
+
+    if (feedState.filterDock) {
+      feedState.filterDock.shouldAutoCloseOnScroll = false;
+    }
   };
 
   const onKeyDown = (event) => {
