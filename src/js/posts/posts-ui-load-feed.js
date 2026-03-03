@@ -50,6 +50,7 @@ export async function loadFeedController(options = {}, deps) {
     bindLikesRealtimeModule,
     subscribeToPostLikes,
     setLikeButtonState,
+    renderFeedSkeleton,
     focusPostFromHash,
     focusCommentFromQuery,
     attachEditHandler,
@@ -97,6 +98,7 @@ export async function loadFeedController(options = {}, deps) {
   });
 
   setLoadingState(true, loadingElement);
+  renderFeedSkeleton(feedContainer);
   if (searchInput instanceof HTMLInputElement) {
     searchInput.disabled = true;
   }

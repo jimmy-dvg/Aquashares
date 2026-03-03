@@ -3,6 +3,7 @@ import { initializeLoginForm } from './auth/login.js';
 import { initializeLogout } from './auth/logout.js';
 import { initializeRegisterForm } from './auth/register.js';
 import { initializeChatPage } from './chat/chat-ui.js';
+import { hydrateNavbarShell } from './nav/navbar-shell.js';
 import { initializeNavbar, initializeTooltips } from './nav/navbar-ui.js';
 import { cleanupNotifications, initializeNotifications } from './notifications/notifications-ui.js';
 import { initializePostDetailPage } from './posts/post-detail.js';
@@ -24,6 +25,7 @@ async function enforcePageAccess() {
 }
 
 async function bootstrap() {
+  hydrateNavbarShell();
   initializeBulgarianLocalization();
   initializeTooltips();
   await enforcePageAccess();

@@ -257,10 +257,12 @@ export function setLoadingState(isLoading, loadingElement) {
   }
 
   if (isLoading) {
+    loadingElement.classList.add('aqua-skeleton-line');
     loadingElement.classList.remove('d-none');
     return;
   }
 
+  loadingElement.classList.remove('aqua-skeleton-line');
   loadingElement.classList.add('d-none');
 }
 

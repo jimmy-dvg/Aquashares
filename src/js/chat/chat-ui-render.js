@@ -42,7 +42,7 @@ function sameDate(a, b) {
 
 function renderConversationPreviewText(conversation) {
   if (!conversation.latestMessage?.body) {
-    return 'No messages yet.';
+    return 'Все още няма съобщения.';
   }
 
   return conversation.latestMessage.body.length > 60
@@ -60,7 +60,7 @@ export function renderUserSearchResults(users, elements) {
   if (!users.length) {
     const empty = document.createElement('div');
     empty.className = 'small text-secondary px-2 py-2';
-    empty.textContent = 'No users found.';
+    empty.textContent = 'Няма намерени потребители.';
     elements.userSearchResults.append(empty);
     return;
   }
@@ -112,7 +112,7 @@ export function renderConversationList(conversations, activeConversationId, elem
   if (!conversations.length) {
     const empty = document.createElement('div');
     empty.className = 'small text-secondary px-2 py-2';
-    empty.textContent = 'Start a conversation from search.';
+    empty.textContent = 'Започни разговор от търсенето.';
     elements.conversationList.append(empty);
     return;
   }
@@ -191,13 +191,13 @@ export function renderChatHeader(conversation, elements) {
   }
 
   if (!conversation) {
-    elements.chatHeaderTitle.textContent = 'Select a chat';
-    elements.chatHeaderMeta.textContent = 'Search users to start messaging.';
+    elements.chatHeaderTitle.textContent = 'Избери чат';
+    elements.chatHeaderMeta.textContent = 'Потърси потребител, за да започнеш съобщения.';
     return;
   }
 
   elements.chatHeaderTitle.textContent = conversation.title;
-  elements.chatHeaderMeta.textContent = conversation.peer?.displayName || 'Direct conversation';
+  elements.chatHeaderMeta.textContent = conversation.peer?.displayName || 'Директен разговор';
 }
 
 export function renderMessages(messages, currentUserId, elements) {
@@ -210,7 +210,7 @@ export function renderMessages(messages, currentUserId, elements) {
   if (!messages.length) {
     const empty = document.createElement('div');
     empty.className = 'text-secondary small chat-empty-state';
-    empty.textContent = 'No messages yet. Say hello 👋';
+    empty.textContent = 'Все още няма съобщения. Кажи „Здрасти“ 👋';
     elements.messagesList.append(empty);
     return;
   }
@@ -267,7 +267,7 @@ export function renderMessages(messages, currentUserId, elements) {
 
       const seen = document.createElement('span');
       seen.className = 'small text-secondary';
-      seen.textContent = readByOthers.length ? 'Seen' : 'Sent';
+      seen.textContent = readByOthers.length ? 'Прочетено' : 'Изпратено';
       footer.append(seen);
     }
 
@@ -295,10 +295,27 @@ export function setLoadingState(isLoading, elements) {
   }
 
   if (isLoading) {
+    elements.loading.classList.add('aqua-skeleton-line');
     elements.loading.classList.remove('d-none');
+
+    if (elements.messagesList instanceof HTMLElement) {
+      elements.messagesList.replaceChildren();
+      const skeletonWrap = document.createElement('div');
+      skeletonWrap.className = 'aqua-skeleton-chat w-100';
+
+      for (let i = 0; i < 6; i += 1) {
+        const line = document.createElement('div');
+        line.className = 'aqua-skeleton-line';
+        line.style.width = `${70 + ((i % 3) * 10)}%`;
+        skeletonWrap.append(line);
+      }
+
+      elements.messagesList.append(skeletonWrap);
+    }
     return;
   }
 
+  elements.loading.classList.remove('aqua-skeleton-line');
   elements.loading.classList.add('d-none');
 }
 

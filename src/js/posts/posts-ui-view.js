@@ -87,6 +87,44 @@ export function renderEmptyState(container, message = 'Бъди първият �
   container.append(emptyColumn);
 }
 
+export function renderFeedSkeleton(container, cardsCount = 6) {
+  if (!(container instanceof HTMLElement)) {
+    return;
+  }
+
+  container.replaceChildren();
+  const fragment = document.createDocumentFragment();
+
+  for (let index = 0; index < cardsCount; index += 1) {
+    const col = document.createElement('div');
+    col.className = 'col-12 col-md-6 col-xl-4';
+
+    const card = document.createElement('div');
+    card.className = 'aqua-skeleton-card';
+
+    const media = document.createElement('div');
+    media.className = 'aqua-skeleton-block aqua-skeleton-card-media';
+
+    const titleLine = document.createElement('div');
+    titleLine.className = 'aqua-skeleton-line';
+    titleLine.style.width = '68%';
+
+    const bodyLineOne = document.createElement('div');
+    bodyLineOne.className = 'aqua-skeleton-line';
+    bodyLineOne.style.width = '94%';
+
+    const bodyLineTwo = document.createElement('div');
+    bodyLineTwo.className = 'aqua-skeleton-line';
+    bodyLineTwo.style.width = '76%';
+
+    card.append(media, titleLine, bodyLineOne, bodyLineTwo);
+    col.append(card);
+    fragment.append(col);
+  }
+
+  container.append(fragment);
+}
+
 export function getCategoryFromQuery() {
   const params = new URLSearchParams(window.location.search);
   const value = params.get('category');

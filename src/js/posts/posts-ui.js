@@ -36,6 +36,7 @@ import {
   getRadiusKmFromQuery,
   getSearchFromQuery,
   renderEmptyState,
+  renderFeedSkeleton,
   renderPostCard,
   setFeedFiltersInQuery
 } from './posts-ui-view.js';
@@ -361,6 +362,7 @@ export async function loadFeed(options = {}) {
     matchesFeedAuthor,
     matchesNearby,
     renderEmptyState,
+    renderFeedSkeleton,
     renderPostCard,
     initializeCommentsUi,
     bindLikesRealtimeModule,

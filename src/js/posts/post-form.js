@@ -96,23 +96,23 @@ function clearError(errorBox) {
 
 function validateForm(title, body, categoryId, categoryRequired) {
   if (!title || title.length < 3) {
-    return 'Title must be at least 3 characters long.';
+    return 'Заглавието трябва да е поне 3 символа.';
   }
 
   if (title.length > 120) {
-    return 'Title must be 120 characters or less.';
+    return 'Заглавието трябва да е до 120 символа.';
   }
 
   if (!body || body.length < 10) {
-    return 'Post content must be at least 10 characters long.';
+    return 'Съдържанието трябва да е поне 10 символа.';
   }
 
   if (body.length > 5000) {
-    return 'Post content must be 5000 characters or less.';
+    return 'Съдържанието трябва да е до 5000 символа.';
   }
 
   if (categoryRequired && !categoryId) {
-    return 'Please select a category.';
+    return 'Моля, избери категория.';
   }
 
   return null;
@@ -153,7 +153,7 @@ function populateCategorySelect(selectElement, categories, selectedCategoryId = 
 
   const placeholderOption = document.createElement('option');
   placeholderOption.value = '';
-  placeholderOption.textContent = categories.length ? 'Select category' : 'Uncategorized';
+  placeholderOption.textContent = categories.length ? 'Избери категория' : 'Без категория';
   selectElement.append(placeholderOption);
 
   categories.forEach((category) => {
@@ -185,11 +185,11 @@ function setSubmittingState(submitButton, isSubmitting, isEditMode) {
 
   submitButton.disabled = isSubmitting;
   if (isSubmitting) {
-    submitButton.textContent = isEditMode ? 'Saving...' : 'Publishing...';
+    submitButton.textContent = isEditMode ? 'Запазване...' : 'Публикуване...';
     return;
   }
 
-  submitButton.textContent = isEditMode ? 'Save Changes' : 'Publish Post';
+  submitButton.textContent = isEditMode ? 'Запази промените' : 'Публикувай';
 }
 
 function setLoadingState(loadingBox, isLoading) {
@@ -231,7 +231,7 @@ export async function initializePostForm() {
         activeSection = normalizeSection(editingPost.categorySection) || 'forum';
       }
     } catch (error) {
-      showError(elements.errorBox, error.message || 'Unable to load post for editing.');
+      showError(elements.errorBox, error.message || 'Неуспешно зареждане на публикацията за редакция.');
       return;
     }
   }
@@ -282,11 +282,11 @@ export async function initializePostForm() {
       elements.bodyInput.value = post.body;
 
       if (elements.heading) {
-        elements.heading.textContent = 'Edit Post';
+        elements.heading.textContent = 'Редакция на публикация';
       }
 
       if (elements.submitButton) {
-        elements.submitButton.textContent = 'Save Changes';
+        elements.submitButton.textContent = 'Запази промените';
       }
 
       populateCategorySelect(elements.categoryInput, categories, post.categoryId, true);
@@ -296,7 +296,7 @@ export async function initializePostForm() {
         elements.sectionInput.value = normalizeSection(post.categorySection) || activeSection;
       }
     } catch (error) {
-      showError(elements.errorBox, error.message || 'Unable to load post for editing.');
+      showError(elements.errorBox, error.message || 'Неуспешно зареждане на публикацията за редакция.');
       return;
     }
   }
@@ -370,7 +370,7 @@ export async function initializePostForm() {
 
       window.location.assign(getFeedPathBySection(activeSection));
     } catch (error) {
-      showError(elements.errorBox, error.message || 'Unable to save post.');
+      showError(elements.errorBox, error.message || 'Неуспешно запазване на публикацията.');
       setSubmittingState(elements.submitButton, false, isEditMode);
       setLoadingState(elements.loadingBox, false);
     }

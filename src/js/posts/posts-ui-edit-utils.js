@@ -1,3 +1,6 @@
+import { deletePostImage, getPublicUrl, uploadPostImage } from '../services/storage-service.js';
+import { createPhotoRecord, deletePhotoRecord } from './posts-service.js';
+
 export function validatePostEditInput(title, body, categoryId, categories) {
   if (!title || title.length < 3) {
     return 'Title must be at least 3 characters long.';
@@ -87,31 +90,46 @@ export function getSelectedPhotosForRemoval(currentImageList) {
   }).filter(Boolean);
 }
 
-export async function removePhoto(photo, deletePhotoRecord, deletePostImage) {
-  await deletePhotoRecord(photo.id);
-  await deletePostImage(photo.storagePath);
+export async function removePhoto(
+  photo,
+  deletePhotoRecordFn = deletePhotoRecord,
+  deletePostImageFn = deletePostImage
+) {
+  await deletePhotoRecordFn(photo.id);
+  await deletePostImageFn(photo.storagePath);
 }
 
-export async function uploadAndCreatePhoto(file, userId, postId, uploadPostImage, getPublicUrl, createPhotoRecord) {
-  const storagePath = await uploadPostImage(file, userId, postId);
-  const publicUrl = getPublicUrl(storagePath);
-  const createdPhoto = await createPhotoRecord({ postId, userId, storagePath, publicUrl });
+export async function uploadAndCreatePhoto(
+  file,
+  userId,
+  postId,
+  uploadPostImageFn = uploadPostImage,
+  getPublicUrlFn = getPublicUrl,
+  createPhotoRecordFn = createPhotoRecord
+) {
+  const storagePath = await uploadPostImageFn(file, userId, postId);
+  const publicUrl = getPublicUrlFn(storagePath);
+  const createdPhoto = await createPhotoRecordFn({ postId, userId, storagePath, publicUrl });
   return { ...createdPhoto, storagePath };
 }
 
-export async function rollbackPhoto(photo, deletePhotoRecord, deletePostImage) {
+export async function rollbackPhoto(
+  photo,
+  deletePhotoRecordFn = deletePhotoRecord,
+  deletePostImageFn = deletePostImage
+) {
   if (!photo) {
     return;
   }
   if (photo.id) {
     try {
-      await deletePhotoRecord(photo.id);
+      await deletePhotoRecordFn(photo.id);
     } catch {
     }
   }
   if (photo.storagePath) {
     try {
-      await deletePostImage(photo.storagePath);
+      await deletePostImageFn(photo.storagePath);
     } catch {
     }
   }

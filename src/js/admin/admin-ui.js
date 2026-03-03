@@ -198,7 +198,7 @@ function setLastUpdated(elements, date = new Date()) {
     return;
   }
 
-  target.textContent = `Last updated: ${formatDate(date.toISOString())}`;
+  target.textContent = `Последно обновяване: ${formatDate(date.toISOString())}`;
 }
 
 function setRefreshingState(elements, isRefreshing) {
@@ -211,7 +211,7 @@ function setRefreshingState(elements, isRefreshing) {
     elements.lastUpdatedIcon.classList.toggle('aqua-spin', isRefreshing);
   }
 
-  target.textContent = isRefreshing ? 'Refreshing...' : target.textContent;
+  target.textContent = isRefreshing ? 'Обновяване...' : target.textContent;
 }
 
 function setControlDisabled(elements, disabled) {
@@ -238,6 +238,12 @@ function setControlDisabled(elements, disabled) {
 }
 
 function setLoadingVisible(elements, isVisible) {
+  [elements.usersLoading, elements.postsLoading, elements.commentsLoading, elements.adminNotificationsLoading].forEach((node) => {
+    if (node instanceof HTMLElement) {
+      node.classList.toggle('aqua-skeleton-line', isVisible);
+    }
+  });
+
   setVisible(elements.usersLoading, isVisible);
   setVisible(elements.postsLoading, isVisible);
   setVisible(elements.commentsLoading, isVisible);
@@ -290,7 +296,7 @@ export async function loadDashboard() {
       filters.renderFilteredAdminNotifications(adminSession.user.id);
       setLastUpdated(elements);
     } catch (error) {
-      showFeedback(elements, error.message || 'Unable to load admin dashboard.');
+      showFeedback(elements, error.message || 'Неуспешно зареждане на админ панела.');
     } finally {
       setLoadingVisible(elements, false);
       setControlDisabled(elements, false);

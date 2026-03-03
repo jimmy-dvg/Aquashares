@@ -54,24 +54,24 @@ function setSubmittingState(submitButton, isSubmitting) {
   }
 
   submitButton.disabled = isSubmitting;
-  submitButton.textContent = isSubmitting ? 'Creating account...' : 'Register';
+  submitButton.textContent = isSubmitting ? 'Създаване...' : 'Регистрация';
 }
 
 function validate(email, password, username) {
   if (!email || !email.includes('@')) {
-    return 'Enter a valid email address.';
+    return 'Въведи валиден имейл адрес.';
   }
 
   if (!password || password.length < 6) {
-    return 'Password must be at least 6 characters long.';
+    return 'Паролата трябва да е поне 6 символа.';
   }
 
   if (!username || username.length < 3) {
-    return 'Username must be at least 3 characters long.';
+    return 'Потребителското име трябва да е поне 3 символа.';
   }
 
   if (username.length > 30) {
-    return 'Username must be 30 characters or less.';
+    return 'Потребителското име трябва да е до 30 символа.';
   }
 
   return null;
@@ -89,7 +89,7 @@ async function ensureProfileAndRole(userId, username) {
     ], { onConflict: 'id' });
 
   if (profileError) {
-    throw new Error(profileError.message || 'Unable to create profile.');
+    throw new Error(profileError.message || 'Неуспешно създаване на профил.');
   }
 
   const { error: roleInsertError } = await supabase
@@ -112,11 +112,11 @@ async function ensureProfileAndRole(userId, username) {
     .maybeSingle();
 
   if (roleReadError) {
-    throw new Error(roleInsertError.message || 'Unable to assign default role.');
+    throw new Error(roleInsertError.message || 'Неуспешно задаване на роля по подразбиране.');
   }
 
   if (!existingRole?.role) {
-    throw new Error(roleInsertError.message || 'Unable to assign default role.');
+    throw new Error(roleInsertError.message || 'Неуспешно задаване на роля по подразбиране.');
   }
 }
 
@@ -151,23 +151,23 @@ export function initializeRegisterForm() {
       });
 
       if (error) {
-        throw new Error(error.message || 'Unable to register user.');
+        throw new Error(error.message || 'Неуспешна регистрация.');
       }
 
       if (!data.user?.id) {
-        throw new Error('Unable to create account.');
+        throw new Error('Неуспешно създаване на акаунт.');
       }
 
       if (data.session) {
         await ensureProfileAndRole(data.user.id, username);
       }
 
-      showSuccess(elements.successBox, 'Registration successful. Redirecting to login...');
+      showSuccess(elements.successBox, 'Успешна регистрация. Пренасочване към вход...');
       window.setTimeout(() => {
         window.location.assign('/login.html');
       }, 1200);
     } catch (error) {
-      showError(elements.errorBox, error.message || 'Unable to register user.');
+      showError(elements.errorBox, error.message || 'Неуспешна регистрация.');
       setSubmittingState(elements.submitButton, false);
     }
   });

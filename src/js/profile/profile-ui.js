@@ -109,6 +109,7 @@ function setLoading(isLoading, elements) {
     return;
   }
 
+  elements.loading.classList.toggle('aqua-skeleton-line', isLoading);
   elements.loading.classList.toggle('d-none', !isLoading);
 }
 
@@ -133,19 +134,19 @@ function clearFeedback(elements) {
 
 function validateProfileInput(payload) {
   if (!payload.displayName || payload.displayName.length < 2) {
-    return 'Display name must be at least 2 characters.';
+    return 'Показваното име трябва да е поне 2 символа.';
   }
 
   if (!payload.username || !/^[a-zA-Z0-9_]{3,30}$/.test(payload.username)) {
-    return 'Username must be 3-30 characters and use only letters, numbers, and underscores.';
+    return 'Потребителското име трябва да е 3-30 символа и да съдържа само букви, цифри и _.';
   }
 
   if (payload.bio.length > 300) {
-    return 'Bio must be 300 characters or less.';
+    return 'Биографията трябва да е до 300 символа.';
   }
 
   if (payload.location.length > 80) {
-    return 'Location must be 80 characters or less.';
+    return 'Локацията трябва да е до 80 символа.';
   }
 
   const socialNetworks = [
@@ -213,7 +214,7 @@ async function handleProfileSave(event, elements) {
 
   if (elements.profileSubmit) {
     elements.profileSubmit.disabled = true;
-    elements.profileSubmit.textContent = 'Saving...';
+    elements.profileSubmit.textContent = 'Запазване...';
   }
 
   try {
@@ -236,7 +237,7 @@ async function handleProfileSave(event, elements) {
       commentCount: Number(elements.statComments?.textContent || '0')
     }, elements);
 
-    showFeedback(elements, 'Profile updated successfully.');
+    showFeedback(elements, 'Профилът е обновен успешно.');
     if (elements.avatarInput) {
       elements.avatarInput.value = '';
     }
@@ -249,11 +250,11 @@ async function handleProfileSave(event, elements) {
       }
     }
 
-    showFeedback(elements, error.message || 'Unable to update profile.', 'danger');
+    showFeedback(elements, error.message || 'Неуспешно обновяване на профила.', 'danger');
   } finally {
     if (elements.profileSubmit) {
       elements.profileSubmit.disabled = false;
-      elements.profileSubmit.textContent = 'Save Profile';
+      elements.profileSubmit.textContent = 'Запази профила';
     }
   }
 }
@@ -276,18 +277,18 @@ async function handlePreferencesSave(event, elements) {
 
   if (elements.preferencesSubmit) {
     elements.preferencesSubmit.disabled = true;
-    elements.preferencesSubmit.textContent = 'Saving...';
+    elements.preferencesSubmit.textContent = 'Запазване...';
   }
 
   try {
     await updateMyProfilePreferences(state.user.id, payload);
-    showFeedback(elements, 'Preferences saved.');
+    showFeedback(elements, 'Предпочитанията са запазени.');
   } catch (error) {
-    showFeedback(elements, error.message || 'Unable to save preferences.', 'danger');
+    showFeedback(elements, error.message || 'Неуспешно запазване на предпочитанията.', 'danger');
   } finally {
     if (elements.preferencesSubmit) {
       elements.preferencesSubmit.disabled = false;
-      elements.preferencesSubmit.textContent = 'Save Preferences';
+      elements.preferencesSubmit.textContent = 'Запази предпочитанията';
     }
   }
 }
@@ -401,7 +402,7 @@ export async function initializeProfilePage() {
 
     bindEvents(elements);
   } catch (error) {
-    showFeedback(elements, error.message || 'Unable to load profile.', 'danger');
+    showFeedback(elements, error.message || 'Неуспешно зареждане на профила.', 'danger');
   } finally {
     setLoading(false, elements);
   }

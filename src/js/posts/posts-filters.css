@@ -121,29 +121,29 @@
 
 .aqua-feed-filter-grid .input-group-sm > .input-group-text,
 .aqua-feed-filter-grid .input-group-sm > .form-control,
-.aquafeed-filter-grid .input-group-sm > .btn,
-.aquafeed-filter-grid .input-group-sm > .form-select {
+.aqua-feed-filter-grid .input-group-sm > .btn,
+.aqua-feed-filter-grid .input-group-sm > .form-select {
   min-height: 2.35rem;
 }
 
-.aquafeed-filter-grid .form-control:focus,
-.aquafeed-filter-grid .form-select:focus {
+.aqua-feed-filter-grid .form-control:focus,
+.aqua-feed-filter-grid .form-select:focus {
   border-color: rgba(var(--bs-primary-rgb), 0.45);
   box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.12);
 }
 
-.aquafeed-filter-actions {
+.aqua-feed-filter-actions {
   display: inline-flex;
   gap: 0.5rem;
   align-items: center;
   flex-wrap: wrap;
 }
 
-.aquafeed-filter-actions [data-feed-clear-filter] {
+.aqua-feed-filter-actions [data-feed-clear-filter] {
   align-items: center;
 }
 
-.aquafeed-filter-actions .btn {
+.aqua-feed-filter-actions .btn {
   min-height: 2.1rem;
 }
 
@@ -165,17 +165,17 @@
   font-variant-numeric: tabular-nums;
 }
 
-.aquafeed-nearby-controls {
+.aqua-feed-nearby-controls {
   min-height: 2.35rem;
 }
 
-.aquafeed-active-filters {
+.aqua-feed-active-filters {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
 }
 
-.aquafeed-filter-chip {
+.aqua-feed-filter-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -185,57 +185,57 @@
   border-radius: 999px;
 }
 
-.aquafeed-filter-chip:hover,
-.aquafeed-filter-chip:focus-visible {
+.aqua-feed-filter-chip:hover,
+.aqua-feed-filter-chip:focus-visible {
   border-color: rgba(var(--bs-primary-rgb), 0.55);
   background-color: rgba(var(--bs-primary-rgb), 0.15);
 }
 
-.aquafeed-filter-chip i {
+.aqua-feed-filter-chip i {
   font-size: 0.7rem;
 }
 
 @media (max-width: 991.98px) {
-  .aquafeed-filter-bar {
+  .aqua-feed-filter-bar {
     top: var(--aqua-navbar-height, 74px);
   }
 
-  .aquafeed-filter-grid-primary {
+  .aqua-feed-filter-grid-primary {
     grid-template-columns: repeat(2, minmax(160px, 1fr));
   }
 
-  .aquafeed-filter-grid-primary .aquafeed-filter-field-lg {
+  .aqua-feed-filter-grid-primary .aqua-feed-filter-field-lg {
     grid-column: 1 / -1;
   }
 
-  .aquafeed-filter-field-lg {
+  .aqua-feed-filter-field-lg {
     grid-column: span 1;
   }
 }
 
 @media (max-width: 767.98px) {
-  .aquafeed-filter-bar {
+  .aqua-feed-filter-bar {
     top: var(--aqua-navbar-height, 74px);
     padding: 0.5rem 0.6rem;
   }
 
-  .aquafeed-filter-bar.is-panel-open .aquafeed-filter-panel {
+  .aqua-feed-filter-bar.is-panel-open .aqua-feed-filter-panel {
     max-height: 82vh;
     overflow-y: auto;
     padding-right: 0.1rem;
   }
 
-  .aquafeed-filter-grid-primary,
-  .aquafeed-filter-grid-advanced {
+  .aqua-feed-filter-grid-primary,
+  .aqua-feed-filter-grid-advanced {
     grid-template-columns: 1fr;
   }
 
-  .aquafeed-filter-actions {
+  .aqua-feed-filter-actions {
     width: 100%;
     justify-content: flex-start;
   }
 
-  .aquafeed-filter-actions .btn {
+  .aqua-feed-filter-actions .btn {
     flex: 1 1 auto;
     min-height: 2.35rem;
   }

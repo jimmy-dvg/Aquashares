@@ -42,10 +42,10 @@ function formatRelativeTime(value) {
 
 function getRoleLabel(author) {
   if (author.role === 'admin') {
-    return 'Admin';
+    return 'Админ';
   }
 
-  return 'User';
+  return 'Потребител';
 }
 
 function getCategoryLabel(post) {
@@ -80,7 +80,7 @@ function createAvatar(author) {
   avatar.width = 40;
   avatar.height = 40;
   avatar.loading = 'lazy';
-  avatar.alt = `${author.displayName} avatar`;
+  avatar.alt = `Аватар на ${author.displayName}`;
   avatar.src = author.avatarUrl || '/assets/avatars/default-avatar.svg';
 
   avatar.addEventListener('error', () => {
@@ -107,7 +107,7 @@ function createPostImage(post) {
 
     const text = document.createElement('span');
     text.className = 'small';
-    text.textContent = 'No image';
+    text.textContent = 'Няма изображение';
 
     placeholder.append(icon, text);
     wrapper.append(placeholder);
@@ -145,7 +145,7 @@ function createPostImage(post) {
 
     const text = document.createElement('span');
     text.className = 'small';
-    text.textContent = 'Image unavailable';
+    text.textContent = 'Изображението липсва';
 
     placeholder.append(icon, text);
     wrapper.append(placeholder);
@@ -227,7 +227,7 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false,
   article.dataset.postId = post.id;
   article.tabIndex = 0;
   article.setAttribute('role', 'button');
-  article.setAttribute('aria-label', `Open post: ${post.title}`);
+  article.setAttribute('aria-label', `Отвори публикация: ${post.title}`);
 
   const cardBody = document.createElement('div');
   cardBody.className = 'card-body d-flex flex-column gap-3';
@@ -279,7 +279,7 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false,
     toggleButton.className = 'btn btn-sm btn-outline-secondary';
     toggleButton.setAttribute('data-bs-toggle', 'dropdown');
     toggleButton.setAttribute('aria-expanded', 'false');
-    toggleButton.setAttribute('aria-label', 'Post actions');
+    toggleButton.setAttribute('aria-label', 'Действия за публикацията');
 
     const dotsIcon = document.createElement('i');
     dotsIcon.className = 'bi bi-three-dots-vertical';
@@ -295,7 +295,7 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false,
     editButton.className = 'dropdown-item';
     editButton.dataset.action = 'edit-post';
     editButton.dataset.postId = post.id;
-    editButton.textContent = 'Edit Post';
+    editButton.textContent = 'Редактирай';
     editItemWrap.append(editButton);
 
     const deleteItemWrap = document.createElement('li');
@@ -304,7 +304,7 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false,
     deleteButton.className = 'dropdown-item text-danger';
     deleteButton.dataset.action = 'delete-post';
     deleteButton.dataset.postId = post.id;
-    deleteButton.textContent = 'Delete Post';
+    deleteButton.textContent = 'Изтрий';
     deleteItemWrap.append(deleteButton);
 
     menu.append(editItemWrap, deleteItemWrap);
@@ -361,7 +361,7 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false,
   commentsIcon.setAttribute('aria-hidden', 'true');
 
   const commentsText = document.createElement('span');
-  commentsText.textContent = `${post.commentCount} comments`;
+  commentsText.textContent = `${post.commentCount} коментара`;
   commentsInfo.append(commentsIcon, commentsText);
 
   const likeButton = createLikeButton({

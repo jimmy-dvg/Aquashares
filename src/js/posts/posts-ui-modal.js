@@ -64,10 +64,10 @@ export function createPostsModalController(deps) {
     stats.className = 'd-flex flex-wrap gap-2 pt-2';
     const likesBadge = document.createElement('span');
     likesBadge.className = 'badge rounded-pill text-bg-light border';
-    likesBadge.textContent = `${post.likeCount || 0} likes`;
+    likesBadge.textContent = `${post.likeCount || 0} харесвания`;
     const commentsBadge = document.createElement('span');
     commentsBadge.className = 'badge rounded-pill text-bg-light border';
-    commentsBadge.textContent = `${post.commentCount || 0} comments`;
+    commentsBadge.textContent = `${post.commentCount || 0} коментара`;
     stats.append(likesBadge, commentsBadge);
     detailsCol.append(category, title, author, body, stats);
     const reactionsBar = document.createElement('div');
@@ -76,7 +76,7 @@ export function createPostsModalController(deps) {
     const likesSummary = document.createElement('div');
     likesSummary.className = 'small text-secondary';
     likesSummary.dataset.postQuickLikeCount = 'true';
-    likesSummary.textContent = `${post.likeCount || 0} likes`;
+    likesSummary.textContent = `${post.likeCount || 0} харесвания`;
     const likeButton = createLikeButton({ postId: post.id, likeCount: post.likeCount || 0, likedByViewer: post.likedByViewer === true, isAuthenticated: Boolean(viewer?.userId) });
     let likePending = false;
     likeButton.addEventListener('click', async () => {
@@ -87,7 +87,7 @@ export function createPostsModalController(deps) {
       const optimisticState = { ...previousState, likedByViewer: !previousState.likedByViewer, likeCount: Math.max(0, previousState.likeCount + (previousState.likedByViewer ? -1 : 1)) };
       likePending = true;
       setLikeButtonState(likeButton, { ...optimisticState, isAuthenticated: true, isPending: true });
-      likesSummary.textContent = `${optimisticState.likeCount} likes`;
+      likesSummary.textContent = `${optimisticState.likeCount} харесвания`;
       try {
         const nextState = await togglePostLike(post.id, viewer.userId);
         setLikeButtonState(likeButton, { ...nextState, isAuthenticated: true, isPending: false });
@@ -96,10 +96,10 @@ export function createPostsModalController(deps) {
         applyLikeStateToQuickView(feedState, nextState, viewer, setLikeButtonState);
       } catch (error) {
         setLikeButtonState(likeButton, { ...previousState, isAuthenticated: true, isPending: false });
-        likesSummary.textContent = `${previousState.likeCount} likes`;
+        likesSummary.textContent = `${previousState.likeCount} харесвания`;
         const notificationRoot = document.querySelector('[data-feed-notifications]');
         if (notificationRoot) {
-          notificationRoot.replaceChildren(createNotification(error.message || 'Unable to update like.'));
+          notificationRoot.replaceChildren(createNotification(error.message || 'Неуспешно обновяване на харесването.'));
         }
       } finally {
         likePending = false;
@@ -123,12 +123,12 @@ export function createPostsModalController(deps) {
     quickViewModal.className = 'modal fade';
     quickViewModal.tabIndex = -1;
     quickViewModal.setAttribute('aria-hidden', 'true');
-    quickViewModal.innerHTML = `<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content aqua-post-modal"><div class="modal-header"><h2 class="modal-title fs-5" data-post-quick-title>Post preview</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body" data-post-quick-body></div><div class="modal-footer"><a class="btn btn-outline-secondary" href="/index.html" data-post-open-detail>Open detail page</a><button type="button" class="btn btn-primary d-none" data-post-open-edit>Edit post</button></div></div></div>`;
+    quickViewModal.innerHTML = `<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content aqua-post-modal"><div class="modal-header"><h2 class="modal-title fs-5" data-post-quick-title>Преглед на публикация</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Затвори"></button></div><div class="modal-body" data-post-quick-body></div><div class="modal-footer"><a class="btn btn-outline-secondary" href="/index.html" data-post-open-detail>Отвори детайли</a><button type="button" class="btn btn-primary d-none" data-post-open-edit>Редактирай</button></div></div></div>`;
     const editModal = document.createElement('div');
     editModal.className = 'modal fade';
     editModal.tabIndex = -1;
     editModal.setAttribute('aria-hidden', 'true');
-    editModal.innerHTML = `<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content aqua-post-modal"><div class="modal-header"><h2 class="modal-title fs-5">Edit post</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><form data-post-edit-form><div class="modal-body d-flex flex-column gap-3"><div class="alert alert-danger d-none mb-0" role="alert" data-post-edit-error></div><div><label class="form-label" for="post-edit-title">Title</label><input id="post-edit-title" type="text" class="form-control" maxlength="120" required data-post-edit-title /></div><div><label class="form-label" for="post-edit-category">Category</label><select id="post-edit-category" class="form-select" data-post-edit-category></select></div><div><label class="form-label" for="post-edit-body">Content</label><textarea id="post-edit-body" class="form-control" rows="6" maxlength="5000" required data-post-edit-body></textarea></div><div><label class="form-label" for="post-edit-image">Post Images</label><input id="post-edit-image" type="file" class="form-control" accept="image/*" capture="environment" multiple data-post-edit-image /></div><div><label class="form-label" for="post-edit-image-camera">Снимка от камера</label><input id="post-edit-image-camera" type="file" class="form-control" accept="image/*" capture="environment" data-post-edit-image-camera /></div><section class="d-none" data-post-edit-current-image-section><h3 class="h6 mb-2">Current Images</h3><div class="row g-2" data-post-edit-current-image-list></div></section></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary" data-post-edit-submit>Save changes</button></div></form></div></div>`;
+    editModal.innerHTML = `<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content aqua-post-modal"><div class="modal-header"><h2 class="modal-title fs-5">Редакция на публикация</h2><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Затвори"></button></div><form data-post-edit-form><div class="modal-body d-flex flex-column gap-3"><div class="alert alert-danger d-none mb-0" role="alert" data-post-edit-error></div><div><label class="form-label" for="post-edit-title">Заглавие</label><input id="post-edit-title" type="text" class="form-control" maxlength="120" required data-post-edit-title /></div><div><label class="form-label" for="post-edit-category">Категория</label><select id="post-edit-category" class="form-select" data-post-edit-category></select></div><div><label class="form-label" for="post-edit-body">Съдържание</label><textarea id="post-edit-body" class="form-control" rows="6" maxlength="5000" required data-post-edit-body></textarea></div><div><label class="form-label" for="post-edit-image">Снимки към публикацията</label><input id="post-edit-image" type="file" class="form-control" accept="image/*" capture="environment" multiple data-post-edit-image /></div><div><label class="form-label" for="post-edit-image-camera">Снимка от камера</label><input id="post-edit-image-camera" type="file" class="form-control" accept="image/*" capture="environment" data-post-edit-image-camera /></div><section class="d-none" data-post-edit-current-image-section><h3 class="h6 mb-2">Текущи снимки</h3><div class="row g-2" data-post-edit-current-image-list></div></section></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отказ</button><button type="submit" class="btn btn-primary" data-post-edit-submit>Запази промените</button></div></form></div></div>`;
     document.body.append(quickViewModal, editModal);
     const modalApi = globalThis.bootstrap?.Modal;
     const modalState = {
@@ -195,7 +195,7 @@ export function createPostsModalController(deps) {
       modalState.saveInProgress = true;
       if (modalState.editSubmit instanceof HTMLButtonElement) {
         modalState.editSubmit.disabled = true;
-        modalState.editSubmit.textContent = 'Saving...';
+        modalState.editSubmit.textContent = 'Запазване...';
       }
       try {
         const updated = await updatePost(postId, { title, body, categoryId, section: sourcePost.categorySection || 'forum' });
@@ -226,19 +226,19 @@ export function createPostsModalController(deps) {
         }, 220);
         const notificationRoot = document.querySelector('[data-feed-notifications]');
         if (notificationRoot) {
-          notificationRoot.replaceChildren(createNotification('Post updated successfully.', 'success'));
+          notificationRoot.replaceChildren(createNotification('Публикацията е обновена успешно.', 'success'));
         }
         scheduleFeedLoad({ forceRefresh: true });
       } catch (error) {
         if (modalState.editError) {
-          modalState.editError.textContent = error.message || 'Unable to save post changes.';
+          modalState.editError.textContent = error.message || 'Неуспешно запазване на промените.';
           modalState.editError.classList.remove('d-none');
         }
       } finally {
         modalState.saveInProgress = false;
         if (modalState.editSubmit instanceof HTMLButtonElement) {
           modalState.editSubmit.disabled = false;
-          modalState.editSubmit.textContent = 'Save changes';
+          modalState.editSubmit.textContent = 'Запази промените';
         }
       }
     });

@@ -36,7 +36,7 @@ function setSubmittingState(submitButton, isSubmitting) {
   }
 
   submitButton.disabled = isSubmitting;
-  submitButton.textContent = isSubmitting ? 'Signing in...' : 'Login';
+  submitButton.textContent = isSubmitting ? 'Влизане...' : 'Вход';
 }
 
 function setSocialSubmittingState(button, isSubmitting) {
@@ -59,11 +59,11 @@ function setSocialSubmittingState(button, isSubmitting) {
 
 function validate(email, password) {
   if (!email || !email.includes('@')) {
-    return 'Enter a valid email address.';
+    return 'Въведи валиден имейл адрес.';
   }
 
   if (!password || password.length < 6) {
-    return 'Password must be at least 6 characters long.';
+    return 'Паролата трябва да е поне 6 символа.';
   }
 
   return null;
@@ -95,12 +95,12 @@ export function initializeLoginForm() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
-        throw new Error(error.message || 'Unable to sign in.');
+        throw new Error(error.message || 'Неуспешен вход.');
       }
 
       window.location.assign('/index.html');
     } catch (error) {
-      showError(elements.errorBox, error.message || 'Unable to sign in.');
+      showError(elements.errorBox, error.message || 'Неуспешен вход.');
       setSubmittingState(elements.submitButton, false);
     }
   });

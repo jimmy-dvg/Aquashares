@@ -209,7 +209,7 @@ function bindUserSearch(elements) {
       try {
         await handleUserSearch(value, elements);
       } catch (error) {
-        showFeedback(error.message || 'Unable to search users.', 'danger', elements);
+        showFeedback(error.message || 'Неуспешно търсене на потребители.', 'danger', elements);
       }
     }, 220);
   });
@@ -239,7 +239,7 @@ function bindUserSearch(elements) {
         elements.messageInput.focus();
       }
     } catch (error) {
-      showFeedback(error.message || 'Unable to open chat.', 'danger', elements);
+      showFeedback(error.message || 'Неуспешно отваряне на чат.', 'danger', elements);
     }
   });
 }
@@ -271,7 +271,7 @@ function bindConversationList(elements) {
       clearFeedback(elements);
       await activateConversation(conversationId, elements);
     } catch (error) {
-      showFeedback(error.message || 'Unable to load conversation.', 'danger', elements);
+      showFeedback(error.message || 'Неуспешно зареждане на разговора.', 'danger', elements);
     }
   });
 }
@@ -297,7 +297,7 @@ function bindComposer(elements) {
     }
 
     if (body.length > 4000) {
-      showFeedback('Message is too long. Maximum 4000 characters.', 'danger', elements);
+      showFeedback('Съобщението е твърде дълго. Максимум 4000 символа.', 'danger', elements);
       return;
     }
 
@@ -313,7 +313,7 @@ function bindComposer(elements) {
         elements.messageInput.focus();
       }
     } catch (error) {
-      showFeedback(error.message || 'Unable to send message.', 'danger', elements);
+      showFeedback(error.message || 'Неуспешно изпращане на съобщение.', 'danger', elements);
     } finally {
       setComposerState(Boolean(state.activeConversationId), elements);
     }
@@ -325,6 +325,10 @@ export async function initializeChatPage() {
 
   if (!elements.root) {
     return;
+  }
+
+  if (elements.messageSubmit instanceof HTMLButtonElement && !elements.messageSubmit.getAttribute('aria-label')) {
+    elements.messageSubmit.setAttribute('aria-label', 'Изпрати съобщение');
   }
 
   setLoadingState(true, elements);
@@ -359,7 +363,7 @@ export async function initializeChatPage() {
       renderMessages([], state.user.id, elements);
     }
   } catch (error) {
-    showFeedback(error.message || 'Unable to initialize chat.', 'danger', elements);
+    showFeedback(error.message || 'Неуспешно инициализиране на чата.', 'danger', elements);
   } finally {
     setLoadingState(false, elements);
   }
