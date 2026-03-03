@@ -107,6 +107,24 @@
   box-shadow: 0 0.5rem 1.2rem rgba(var(--bs-dark-rgb), 0.12);
 }
 
+.tab-content > .tab-pane.aqua-admin-pane {
+  min-height: 34rem;
+}
+
+.aqua-admin-notifications-shell {
+  min-height: 26rem;
+}
+
+.aqua-admin-table-shell {
+  min-height: 24rem;
+}
+
+.aqua-admin-loading-slot {
+  min-height: 1.5rem;
+  display: flex;
+  align-items: center;
+}
+
 @keyframes aquaSpin {
   from {
     transform: rotate(0deg);
@@ -139,5 +157,9 @@
   [data-admin-notifications-status-filter],
   [data-admin-notifications-severity-filter] {
     min-width: 0;
+  }
+
+  .tab-content > .tab-pane.aqua-admin-pane {
+    min-height: 28rem;
   }
 }

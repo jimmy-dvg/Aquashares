@@ -81,7 +81,7 @@ function createDeleteButton(action, id) {
   button.className = 'btn btn-sm btn-outline-danger';
   button.dataset.action = action;
   button.dataset.id = id;
-  button.textContent = 'Delete';
+  button.textContent = 'Изтрий';
   return button;
 }
 
@@ -103,7 +103,7 @@ export function renderUsersTable(users, elements) {
   elements.usersBody.replaceChildren();
 
   if (!users.length) {
-    elements.usersBody.append(createEmptyRow('No users found.', 5));
+    elements.usersBody.append(createEmptyRow('Няма намерени потребители.', 5));
     setVisible(elements.usersEmpty, true);
     return;
   }
@@ -139,7 +139,7 @@ export function renderPostsTable(posts, elements) {
   elements.postsBody.replaceChildren();
 
   if (!posts.length) {
-    elements.postsBody.append(createEmptyRow('No posts found.', 7));
+    elements.postsBody.append(createEmptyRow('Няма намерени публикации.', 7));
     setVisible(elements.postsEmpty, true);
     return;
   }
@@ -152,7 +152,7 @@ export function renderPostsTable(posts, elements) {
 
     row.append(
       createCell(post.title),
-      createCell(post.categoryName || 'Uncategorized'),
+      createCell(post.categoryName || 'Без категория'),
       createCell(formatUserHandle(post.authorUsername)),
       createCell(post.authorEmail),
       createCell(post.body.length > 120 ? `${post.body.slice(0, 120)}...` : post.body),
@@ -162,8 +162,8 @@ export function renderPostsTable(posts, elements) {
     const actionsCell = document.createElement('td');
     actionsCell.className = 'd-flex flex-wrap gap-2';
     actionsCell.append(
-      createActionButton('Preview', 'preview-post', post.id, 'btn-outline-secondary'),
-      createActionButton('Edit', 'edit-post', post.id, 'btn-outline-primary'),
+      createActionButton('Преглед', 'preview-post', post.id, 'btn-outline-secondary'),
+      createActionButton('Редактирай', 'edit-post', post.id, 'btn-outline-primary'),
       createDeleteButton('delete-post', post.id)
     );
     row.append(actionsCell);
@@ -189,7 +189,7 @@ export function renderCommentsTable(comments, elements) {
   elements.commentsBody.replaceChildren();
 
   if (!comments.length) {
-    elements.commentsBody.append(createEmptyRow('No comments found.', 6));
+    elements.commentsBody.append(createEmptyRow('Няма намерени коментари.', 6));
     setVisible(elements.commentsEmpty, true);
     return;
   }
@@ -257,14 +257,14 @@ function getReferenceHref(notification) {
 
 function getAssigneeLabel(notification, currentAdminId) {
   if (!notification.assigneeId) {
-    return 'Unassigned';
+    return 'Неназначено';
   }
 
   if (notification.assigneeId === currentAdminId) {
-    return 'Assigned to you';
+    return 'Назначено на теб';
   }
 
-  return 'Assigned';
+  return 'Назначено';
 }
 
 export function renderAdminNotifications(notifications, elements, currentAdminId) {
@@ -295,15 +295,15 @@ export function renderAdminNotifications(notifications, elements, currentAdminId
 
     const statusBadge = document.createElement('span');
     statusBadge.className = `badge ${notification.status === 'resolved' ? 'text-bg-success' : 'text-bg-dark'}`;
-    statusBadge.textContent = notification.status === 'resolved' ? 'Resolved' : 'Open';
+    statusBadge.textContent = notification.status === 'resolved' ? 'Решено' : 'Отворено';
 
     const occurrences = document.createElement('span');
     occurrences.className = 'badge text-bg-light border';
-    occurrences.textContent = `${notification.occurrenceCount || 1} events`;
+    occurrences.textContent = `${notification.occurrenceCount || 1} събития`;
 
     const seenAt = document.createElement('span');
     seenAt.className = 'small text-secondary ms-auto';
-    seenAt.textContent = `Last: ${formatDate(notification.lastSeenAt || notification.createdAt)}`;
+    seenAt.textContent = `Последно: ${formatDate(notification.lastSeenAt || notification.createdAt)}`;
 
     top.append(severityBadge, statusBadge, occurrences, seenAt);
 
@@ -317,7 +317,7 @@ export function renderAdminNotifications(notifications, elements, currentAdminId
 
     const meta = document.createElement('div');
     meta.className = 'small text-secondary mb-2';
-    meta.textContent = `${getAssigneeLabel(notification, currentAdminId)} • Created: ${formatDate(notification.createdAt)}`;
+    meta.textContent = `${getAssigneeLabel(notification, currentAdminId)} • Създадено: ${formatDate(notification.createdAt)}`;
 
     const actions = document.createElement('div');
     actions.className = 'd-flex flex-wrap gap-2';
@@ -325,14 +325,14 @@ export function renderAdminNotifications(notifications, elements, currentAdminId
     const openButton = document.createElement('a');
     openButton.className = 'btn btn-sm btn-outline-primary';
     openButton.href = getReferenceHref(notification);
-    openButton.textContent = 'Open target';
+    openButton.textContent = 'Отвори целта';
 
     const assignButton = document.createElement('button');
     assignButton.type = 'button';
     assignButton.className = 'btn btn-sm btn-outline-secondary';
     assignButton.dataset.action = 'assign-admin-notification';
     assignButton.dataset.id = notification.id;
-    assignButton.textContent = 'Assign to me';
+    assignButton.textContent = 'Назначи на мен';
     assignButton.disabled = notification.status === 'resolved'
       || (notification.assigneeId === currentAdminId && notification.status === 'open');
 
@@ -341,7 +341,7 @@ export function renderAdminNotifications(notifications, elements, currentAdminId
     resolveButton.className = 'btn btn-sm btn-success';
     resolveButton.dataset.action = 'resolve-admin-notification';
     resolveButton.dataset.id = notification.id;
-    resolveButton.textContent = 'Resolve';
+    resolveButton.textContent = 'Маркирай като решено';
     resolveButton.disabled = notification.status === 'resolved';
 
     actions.append(openButton, assignButton, resolveButton);

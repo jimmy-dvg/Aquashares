@@ -6,6 +6,7 @@ import { cleanupNotifications, initializeNotifications } from './notifications/n
 import { initializeBulgarianLocalization } from './utils/localization-bg.js';
 
 let formA11yObserver = null;
+let generatedFieldIdCounter = 0;
 
 function getCurrentPath() {
   if (window.location.pathname === '/') {
@@ -22,11 +23,42 @@ function isFeedPath(pathname = getCurrentPath()) {
     || pathname === '/wanted.html';
 }
 
-function ensureFormFieldAccessibility() {
-  const fields = document.querySelectorAll('input, select, textarea');
+function getA11yEligibleFields() {
+  return document.querySelectorAll(
+    'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]), select, textarea'
+  );
+}
 
-  fields.forEach((field, index) => {
-    const fallbackId = `aqua-field-${index + 1}`;
+function generateUniqueFieldId() {
+  generatedFieldIdCounter += 1;
+  let candidate = `aqua-field-${generatedFieldIdCounter}`;
+
+  while (document.getElementById(candidate)) {
+    generatedFieldIdCounter += 1;
+    candidate = `aqua-field-${generatedFieldIdCounter}`;
+  }
+
+  return candidate;
+}
+
+function cleanupStaleGeneratedLabels() {
+  const generatedLabels = document.querySelectorAll('label[data-a11y-generated="true"][for]');
+
+  generatedLabels.forEach((label) => {
+    const targetId = label.getAttribute('for');
+    if (!targetId || !document.getElementById(targetId)) {
+      label.remove();
+    }
+  });
+}
+
+function ensureFormFieldAccessibility() {
+  cleanupStaleGeneratedLabels();
+
+  const fields = getA11yEligibleFields();
+
+  fields.forEach((field) => {
+    const fallbackId = field.id || generateUniqueFieldId();
 
     if (!field.id) {
       field.id = fallbackId;

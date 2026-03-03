@@ -252,15 +252,20 @@ function setControlDisabled(elements, disabled) {
 
 function setLoadingVisible(elements, isVisible) {
   [elements.usersLoading, elements.postsLoading, elements.commentsLoading, elements.adminNotificationsLoading].forEach((node) => {
-    if (node instanceof HTMLElement) {
-      node.classList.toggle('aqua-skeleton-line', isVisible);
+    if (!(node instanceof HTMLElement)) {
+      return;
     }
-  });
 
-  setVisible(elements.usersLoading, isVisible);
-  setVisible(elements.postsLoading, isVisible);
-  setVisible(elements.commentsLoading, isVisible);
-  setVisible(elements.adminNotificationsLoading, isVisible);
+    node.classList.toggle('aqua-skeleton-line', isVisible);
+
+    if (node.classList.contains('aqua-admin-loading-slot')) {
+      node.classList.toggle('invisible', !isVisible);
+      node.setAttribute('aria-hidden', isVisible ? 'false' : 'true');
+      return;
+    }
+
+    setVisible(node, isVisible);
+  });
 }
 
 export async function loadDashboard() {

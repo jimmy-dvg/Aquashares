@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Aquashares - Admin</title>
+    <title>Aquashares - Админ</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -28,7 +28,7 @@
           data-bs-target="#mainNavbar"
           aria-controls="mainNavbar"
           aria-expanded="false"
-          aria-label="Toggle navigation"
+          aria-label="Превключи навигацията"
         >
           <span class="navbar-toggler-icon"></span>
         </button>
@@ -43,22 +43,22 @@
                 aria-expanded="false"
                 data-nav-forum-toggle
               >
-                Categories
+                Категории
               </button>
               <ul class="dropdown-menu" data-nav-forum-menu>
-                <li><a class="dropdown-item" href="/index.html">All Categories</a></li>
+                <li><a class="dropdown-item" href="/index.html">Всички категории</a></li>
               </ul>
             </li>
-            <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/post-create.html">Create Post</a></li>
-            <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/chat.html">Chat</a></li>
-            <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/profile.html">Profile</a></li>
-            <li class="nav-item d-none" data-nav-admin><a class="nav-link" href="/admin.html">Admin</a></li>
+            <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/post-create.html">Създай публикация</a></li>
+            <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/chat.html">Чат</a></li>
+            <li class="nav-item d-none" data-nav-auth><a class="nav-link" href="/profile.html">Профил</a></li>
+            <li class="nav-item d-none" data-nav-admin><a class="nav-link" href="/admin.html">Админ</a></li>
           </ul>
 
           <form class="aqua-nav-search my-2 my-lg-0 mx-lg-3" role="search" data-nav-search-form>
             <div class="input-group input-group-sm">
               <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
-              <input type="search" class="form-control" name="q" placeholder="Search posts..." aria-label="Search posts" data-nav-search-input />
+              <input type="search" class="form-control" name="q" placeholder="Търси публикации..." aria-label="Търси публикации" data-nav-search-input />
             </div>
           </form>
 
@@ -70,18 +70,18 @@
                   class="btn btn-outline-secondary btn-sm position-relative aqua-nav-icon-btn"
                   data-bs-toggle="dropdown"
                   aria-expanded="false"
-                  aria-label="Notifications"
+                  aria-label="Известия"
                 >
                   <i class="bi bi-bell-fill" aria-hidden="true"></i>
                   <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger d-none" data-notifications-badge>0</span>
                 </button>
                 <div class="dropdown-menu dropdown-menu-end p-0 aqua-notifications-menu">
                   <div class="d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
-                    <strong class="small">Notifications</strong>
-                    <button type="button" class="btn btn-link btn-sm p-0" data-notifications-mark-all>Mark all read</button>
+                    <strong class="small">Известия</strong>
+                    <button type="button" class="btn btn-link btn-sm p-0" data-notifications-mark-all>Маркирай всички</button>
                   </div>
                   <div class="list-group list-group-flush" data-notifications-list></div>
-                  <div class="px-3 py-2 text-secondary small" data-notifications-empty>No notifications yet.</div>
+                  <div class="px-3 py-2 text-secondary small" data-notifications-empty>Няма известия.</div>
                 </div>
               </div>
 
@@ -94,21 +94,21 @@
                   data-nav-user-button
                 >
                   <i class="bi bi-person-circle" aria-hidden="true"></i>
-                  <span data-nav-status>User</span>
-                  <span class="badge text-bg-warning d-none" data-nav-user-role>Admin</span>
+                  <span data-nav-status>Потребител</span>
+                  <span class="badge text-bg-warning d-none" data-nav-user-role>Админ</span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                  <li><a class="dropdown-item" href="/profile.html">Profile</a></li>
-                  <li class="d-none" data-nav-admin><a class="dropdown-item" href="/admin.html">Admin Panel</a></li>
+                  <li><a class="dropdown-item" href="/profile.html">Профил</a></li>
+                  <li class="d-none" data-nav-admin><a class="dropdown-item" href="/admin.html">Админ панел</a></li>
                   <li><hr class="dropdown-divider" /></li>
-                  <li><button type="button" class="dropdown-item text-danger" data-nav-logout>Logout</button></li>
+                  <li><button type="button" class="dropdown-item text-danger" data-nav-logout>Изход</button></li>
                 </ul>
               </div>
             </div>
 
             <div class="d-flex align-items-center gap-2" data-nav-guest>
-              <a class="btn btn-outline-secondary btn-sm" href="/login.html">Login</a>
-              <a class="btn btn-primary btn-sm" href="/register.html">Register</a>
+              <a class="btn btn-outline-secondary btn-sm" href="/login.html">Вход</a>
+              <a class="btn btn-primary btn-sm" href="/register.html">Регистрация</a>
             </div>
           </div>
         </div>
@@ -117,10 +117,10 @@
 
     <main class="container page-content">
       <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <h1 class="h3 mb-0">Admin Panel</h1>
+        <h1 class="h3 mb-0">Админ панел</h1>
         <div class="text-secondary small d-inline-flex align-items-center gap-1" data-admin-last-updated>
           <i class="bi bi-arrow-clockwise" aria-hidden="true" data-admin-last-updated-icon></i>
-          <span data-admin-last-updated-text>Last updated: —</span>
+          <span data-admin-last-updated-text>Последно обновяване: —</span>
         </div>
       </div>
 
@@ -129,182 +129,182 @@
       <div data-admin-page>
         <ul class="nav nav-tabs mb-3" role="tablist">
           <li class="nav-item" role="presentation">
-            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#admin-notifications-tab" type="button" role="tab">Notifications</button>
+            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#admin-notifications-tab" type="button" role="tab">Известия</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#users-tab" type="button" role="tab">Users</button>
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#users-tab" type="button" role="tab">Потребители</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#posts-tab" type="button" role="tab">Posts</button>
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#posts-tab" type="button" role="tab">Публикации</button>
           </li>
           <li class="nav-item" role="presentation">
-            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#comments-tab" type="button" role="tab">Comments</button>
+            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#comments-tab" type="button" role="tab">Коментари</button>
           </li>
         </ul>
 
         <div class="tab-content">
-          <section class="tab-pane fade show active" id="admin-notifications-tab" role="tabpanel">
+          <section class="tab-pane fade show active aqua-admin-pane" id="admin-notifications-tab" role="tabpanel">
             <div class="aqua-admin-filter-bar mb-2">
               <div class="aqua-admin-filter-grid aqua-admin-filter-grid--notifications">
                 <div class="aqua-admin-filter-field aqua-admin-filter-field-lg">
-                  <label class="form-label form-label-sm mb-1">Search</label>
+                  <label class="form-label form-label-sm mb-1">Търсене</label>
                   <div class="input-group input-group-sm">
                     <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
                     <input
                       type="search"
                       class="form-control"
-                      placeholder="Search notifications..."
-                      aria-label="Search admin notifications"
+                      placeholder="Търси известия..."
+                      aria-label="Търси админ известия"
                       data-admin-notifications-search
                     />
                   </div>
                 </div>
                 <div class="aqua-admin-filter-field">
-                  <label class="form-label form-label-sm mb-1">Status</label>
-                  <select class="form-select form-select-sm" data-admin-notifications-status-filter aria-label="Filter notifications by status">
-                    <option value="">All Statuses</option>
-                    <option value="open">Open</option>
-                    <option value="resolved">Resolved</option>
+                  <label class="form-label form-label-sm mb-1">Статус</label>
+                  <select class="form-select form-select-sm" data-admin-notifications-status-filter aria-label="Филтър по статус">
+                    <option value="">Всички статуси</option>
+                    <option value="open">Отворени</option>
+                    <option value="resolved">Решени</option>
                   </select>
                 </div>
                 <div class="aqua-admin-filter-field">
-                  <label class="form-label form-label-sm mb-1">Severity</label>
-                  <select class="form-select form-select-sm" data-admin-notifications-severity-filter aria-label="Filter notifications by severity">
-                    <option value="">All Severities</option>
-                    <option value="critical">Critical</option>
-                    <option value="high">High</option>
-                    <option value="medium">Medium</option>
-                    <option value="low">Low</option>
+                  <label class="form-label form-label-sm mb-1">Приоритет</label>
+                  <select class="form-select form-select-sm" data-admin-notifications-severity-filter aria-label="Филтър по приоритет">
+                    <option value="">Всички нива</option>
+                    <option value="critical">Критичен</option>
+                    <option value="high">Висок</option>
+                    <option value="medium">Среден</option>
+                    <option value="low">Нисък</option>
                   </select>
                 </div>
                 <div class="aqua-admin-filter-actions">
                   <button type="button" class="btn btn-outline-secondary btn-sm d-none" data-admin-notifications-clear-filter>
                     <i class="bi bi-x-circle" aria-hidden="true"></i>
-                    Clear
+                    Изчисти
                   </button>
                 </div>
               </div>
             </div>
             <div class="small text-secondary mb-2 d-none aqua-admin-filter-status" data-admin-notifications-filter-status></div>
-            <div class="text-secondary mb-2" data-admin-notifications-loading>Loading admin notifications...</div>
-            <div data-admin-notifications-list></div>
-            <div class="text-secondary d-none" data-admin-notifications-empty>No admin notifications yet.</div>
+            <div class="text-secondary mb-2 aqua-admin-loading-slot" data-admin-notifications-loading>Зареждане на админ известия...</div>
+            <div class="aqua-admin-notifications-shell" data-admin-notifications-list></div>
+            <div class="text-secondary d-none" data-admin-notifications-empty>Все още няма админ известия.</div>
           </section>
 
-          <section class="tab-pane fade" id="users-tab" role="tabpanel">
+          <section class="tab-pane fade aqua-admin-pane" id="users-tab" role="tabpanel">
             <div class="aqua-admin-filter-bar mb-2">
               <div class="aqua-admin-filter-grid aqua-admin-filter-grid--users">
                 <div class="aqua-admin-filter-field aqua-admin-filter-field-lg">
-                  <label class="form-label form-label-sm mb-1">Search</label>
+                  <label class="form-label form-label-sm mb-1">Търсене</label>
                   <div class="input-group input-group-sm">
                     <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
                     <input
                       type="search"
                       class="form-control"
-                      placeholder="Search by username, display name or email..."
-                      aria-label="Search users"
+                      placeholder="Търси по потребителско име, име или имейл..."
+                      aria-label="Търсене на потребители"
                       data-admin-users-search
                     />
                   </div>
                 </div>
                 <div class="aqua-admin-filter-field">
-                  <label class="form-label form-label-sm mb-1">Role</label>
-                  <select class="form-select form-select-sm" data-admin-users-role-filter aria-label="Filter users by role">
-                    <option value="">All Roles</option>
-                    <option value="admin">Admin</option>
-                    <option value="user">User</option>
+                  <label class="form-label form-label-sm mb-1">Роля</label>
+                  <select class="form-select form-select-sm" data-admin-users-role-filter aria-label="Филтър по роля">
+                    <option value="">Всички роли</option>
+                    <option value="admin">Админ</option>
+                    <option value="user">Потребител</option>
                   </select>
                 </div>
                 <div class="aqua-admin-filter-actions">
                   <button type="button" class="btn btn-outline-secondary btn-sm d-none" data-admin-users-clear-filter>
                     <i class="bi bi-x-circle" aria-hidden="true"></i>
-                    Clear
+                    Изчисти
                   </button>
                 </div>
               </div>
             </div>
             <div class="small text-secondary mb-2 d-none aqua-admin-filter-status" data-admin-users-filter-status></div>
-            <div class="text-secondary mb-2" data-users-loading>Loading users...</div>
-            <div class="table-responsive">
+            <div class="text-secondary mb-2 aqua-admin-loading-slot" data-users-loading>Зареждане на потребители...</div>
+            <div class="table-responsive aqua-admin-table-shell">
               <table class="table table-striped align-middle">
                 <thead>
                   <tr>
-                    <th>Username</th>
-                    <th>Display Name</th>
-                    <th>User name and email</th>
-                    <th>Created</th>
-                    <th>Role</th>
+                    <th>Потребителско име</th>
+                    <th>Показвано име</th>
+                    <th>Потребител и имейл</th>
+                    <th>Създаден</th>
+                    <th>Роля</th>
                   </tr>
                 </thead>
                 <tbody data-users-body></tbody>
               </table>
             </div>
-            <div class="text-secondary d-none" data-users-empty>No users available.</div>
+            <div class="text-secondary d-none" data-users-empty>Няма налични потребители.</div>
           </section>
 
-          <section class="tab-pane fade" id="posts-tab" role="tabpanel">
+          <section class="tab-pane fade aqua-admin-pane" id="posts-tab" role="tabpanel">
             <div class="aqua-admin-filter-bar mb-2">
               <div class="aqua-admin-filter-grid aqua-admin-filter-grid--posts">
                 <div class="aqua-admin-filter-field aqua-admin-filter-field-lg">
-                  <label class="form-label form-label-sm mb-1">Search</label>
+                  <label class="form-label form-label-sm mb-1">Търсене</label>
                   <div class="input-group input-group-sm">
                     <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
                     <input
                       type="search"
                       class="form-control"
-                      placeholder="Search by title, content, username or email..."
-                      aria-label="Search admin posts"
+                      placeholder="Търси по заглавие, съдържание, потребител или имейл..."
+                      aria-label="Търсене в публикациите"
                       data-admin-posts-search
                     />
                   </div>
                 </div>
                 <div class="aqua-admin-filter-field">
-                  <label class="form-label form-label-sm mb-1">Category</label>
-                  <select class="form-select form-select-sm" data-admin-posts-category-filter aria-label="Filter admin posts by category">
-                    <option value="">All Categories</option>
+                  <label class="form-label form-label-sm mb-1">Категория</label>
+                  <select class="form-select form-select-sm" data-admin-posts-category-filter aria-label="Филтър по категория">
+                    <option value="">Всички категории</option>
                   </select>
                 </div>
                 <div class="aqua-admin-filter-actions">
                   <button type="button" class="btn btn-outline-secondary btn-sm d-none" data-admin-posts-clear-filter>
                     <i class="bi bi-x-circle" aria-hidden="true"></i>
-                    Clear
+                    Изчисти
                   </button>
                 </div>
               </div>
             </div>
             <div class="small text-secondary mb-2 d-none aqua-admin-filter-status" data-admin-posts-filter-status></div>
-            <div class="text-secondary mb-2" data-posts-loading>Loading posts...</div>
-            <div class="table-responsive">
+            <div class="text-secondary mb-2 aqua-admin-loading-slot" data-posts-loading>Зареждане на публикации...</div>
+            <div class="table-responsive aqua-admin-table-shell">
               <table class="table table-striped align-middle">
                 <thead>
                   <tr>
-                    <th>Title</th>
-                    <th>Category</th>
-                    <th>Username</th>
-                    <th>Email</th>
-                    <th>Content</th>
-                    <th>Created</th>
-                    <th>Actions</th>
+                    <th>Заглавие</th>
+                    <th>Категория</th>
+                    <th>Потребител</th>
+                    <th>Имейл</th>
+                    <th>Съдържание</th>
+                    <th>Създадена</th>
+                    <th>Действия</th>
                   </tr>
                 </thead>
                 <tbody data-posts-body></tbody>
               </table>
             </div>
-            <div class="text-secondary d-none" data-posts-empty>No posts available.</div>
+            <div class="text-secondary d-none" data-posts-empty>Няма налични публикации.</div>
           </section>
 
-          <section class="tab-pane fade" id="comments-tab" role="tabpanel">
+          <section class="tab-pane fade aqua-admin-pane" id="comments-tab" role="tabpanel">
             <div class="aqua-admin-filter-bar mb-2">
               <div class="aqua-admin-filter-grid aqua-admin-filter-grid--comments">
                 <div class="aqua-admin-filter-field aqua-admin-filter-field-lg">
-                  <label class="form-label form-label-sm mb-1">Search</label>
+                  <label class="form-label form-label-sm mb-1">Търсене</label>
                   <div class="input-group input-group-sm">
                     <span class="input-group-text"><i class="bi bi-search" aria-hidden="true"></i></span>
                     <input
                       type="search"
                       class="form-control"
-                      placeholder="Search by post, user or comment text..."
-                      aria-label="Search comments"
+                      placeholder="Търси по публикация, потребител или текст на коментар..."
+                      aria-label="Търсене в коментарите"
                       data-admin-comments-search
                     />
                   </div>
@@ -312,28 +312,28 @@
                 <div class="aqua-admin-filter-actions">
                   <button type="button" class="btn btn-outline-secondary btn-sm d-none" data-admin-comments-clear-filter>
                     <i class="bi bi-x-circle" aria-hidden="true"></i>
-                    Clear
+                    Изчисти
                   </button>
                 </div>
               </div>
             </div>
             <div class="small text-secondary mb-2 d-none aqua-admin-filter-status" data-admin-comments-filter-status></div>
-            <div class="text-secondary mb-2" data-comments-loading>Loading comments...</div>
-            <div class="table-responsive">
+            <div class="text-secondary mb-2 aqua-admin-loading-slot" data-comments-loading>Зареждане на коментари...</div>
+            <div class="table-responsive aqua-admin-table-shell">
               <table class="table table-striped align-middle">
                 <thead>
                   <tr>
-                    <th>Post Title</th>
-                    <th>User name and email</th>
-                    <th>Comment</th>
-                    <th>Created</th>
-                    <th>Actions</th>
+                    <th>Заглавие на публикация</th>
+                    <th>Потребител и имейл</th>
+                    <th>Коментар</th>
+                    <th>Създаден</th>
+                    <th>Действия</th>
                   </tr>
                 </thead>
                 <tbody data-comments-body></tbody>
               </table>
             </div>
-            <div class="text-secondary d-none" data-comments-empty>No comments available.</div>
+            <div class="text-secondary d-none" data-comments-empty>Няма налични коментари.</div>
           </section>
         </div>
       </div>
@@ -343,15 +343,15 @@
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" data-confirm-title>Confirm action</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <h5 class="modal-title" data-confirm-title>Потвърди действие</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Затвори"></button>
           </div>
           <div class="modal-body">
-            <p class="mb-0" data-confirm-text>Are you sure?</p>
+            <p class="mb-0" data-confirm-text>Сигурни ли сте?</p>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-danger" data-confirm-action>Confirm</button>
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отказ</button>
+            <button type="button" class="btn btn-danger" data-confirm-action>Потвърди</button>
           </div>
         </div>
       </div>
@@ -361,15 +361,15 @@
       <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" data-preview-title>Post Preview</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <h5 class="modal-title" data-preview-title>Преглед на публикация</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Затвори"></button>
           </div>
           <div class="modal-body">
             <p class="text-secondary small mb-2" data-preview-meta></p>
             <p class="mb-0" data-preview-body></p>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Затвори</button>
           </div>
         </div>
       </div>

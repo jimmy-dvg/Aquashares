@@ -38,13 +38,13 @@ export function createAdminFilters({
 
     const labels = [];
     if (query) {
-      labels.push(`query: "${query}"`);
+      labels.push(`търсене: "${query}"`);
     }
     if (role) {
-      labels.push(`role: ${role}`);
+      labels.push(`роля: ${role}`);
     }
 
-    elements.usersFilterStatus.textContent = `Showing ${filteredCount}/${totalCount} users (${labels.join(', ')})`;
+    elements.usersFilterStatus.textContent = `Показани ${filteredCount}/${totalCount} потребители (${labels.join(', ')})`;
     elements.usersFilterStatus.classList.remove('d-none');
   }
 
@@ -119,7 +119,7 @@ export function createAdminFilters({
       return;
     }
 
-    elements.commentsFilterStatus.textContent = `Showing ${filteredCount}/${totalCount} comments for "${query}"`;
+    elements.commentsFilterStatus.textContent = `Показани ${filteredCount}/${totalCount} коментари за „${query}“`;
     elements.commentsFilterStatus.classList.remove('d-none');
   }
 
@@ -192,16 +192,16 @@ export function createAdminFilters({
 
     const labels = [];
     if (query) {
-      labels.push(`query: "${query}"`);
+      labels.push(`търсене: "${query}"`);
     }
     if (status) {
-      labels.push(`status: ${status}`);
+      labels.push(`статус: ${status}`);
     }
     if (severity) {
-      labels.push(`severity: ${severity}`);
+      labels.push(`приоритет: ${severity}`);
     }
 
-    elements.adminNotificationsFilterStatus.textContent = `Showing ${filteredCount}/${totalCount} notifications (${labels.join(', ')})`;
+    elements.adminNotificationsFilterStatus.textContent = `Показани ${filteredCount}/${totalCount} известия (${labels.join(', ')})`;
     elements.adminNotificationsFilterStatus.classList.remove('d-none');
   }
 
