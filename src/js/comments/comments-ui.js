@@ -9,6 +9,7 @@ import { showCommentActionModal, showCommentErrorDialog } from './comments-actio
 
 const realtimeSubscriptions = new Map();
 const pollingIntervals = new Map();
+const COMMENTS_PREVIEW_COUNT = 3;
 const commentsState = {
   viewerUserId: null
 };
@@ -149,6 +150,10 @@ function renderCommentList(comments, listElement) {
 
   if (!comments.length) {
     listElement.append(createEmptyCommentItem());
+    listElement.classList.remove('aqua-comments-scroll-preview');
+    listElement.removeAttribute('data-comments-overflow');
+    listElement.style.maxHeight = '';
+    listElement.scrollTop = 0;
     return;
   }
 
@@ -158,6 +163,26 @@ function renderCommentList(comments, listElement) {
   });
 
   listElement.append(fragment);
+
+  const renderedItems = [...listElement.querySelectorAll('article[data-comment-id]')];
+  if (renderedItems.length <= COMMENTS_PREVIEW_COUNT) {
+    listElement.classList.remove('aqua-comments-scroll-preview');
+    listElement.removeAttribute('data-comments-overflow');
+    listElement.style.maxHeight = '';
+    listElement.scrollTop = 0;
+    return;
+  }
+
+  const previewItems = renderedItems.slice(-COMMENTS_PREVIEW_COUNT);
+  const computed = window.getComputedStyle(listElement);
+  const listGap = Number.parseFloat(computed.rowGap || computed.gap || '0') || 0;
+  const previewHeight = previewItems.reduce((total, item) => total + item.getBoundingClientRect().height, 0)
+    + listGap * Math.max(0, previewItems.length - 1);
+
+  listElement.classList.add('aqua-comments-scroll-preview');
+  listElement.dataset.commentsOverflow = 'true';
+  listElement.style.maxHeight = `${Math.ceil(previewHeight)}px`;
+  listElement.scrollTop = listElement.scrollHeight;
 }
 
 async function loadPostComments(postId, listElement) {
@@ -340,7 +365,7 @@ export async function initializeCommentsUi(container, userId) {
 
 export function createCommentsBlock(postId, isAuthenticated) {
   const section = document.createElement('section');
-  section.className = 'mt-3 pt-3 border-top';
+  section.className = 'mt-3 pt-3 border-top aqua-comments-section';
 
   const title = document.createElement('h3');
   title.className = 'h6 mb-2';

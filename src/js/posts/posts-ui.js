@@ -527,6 +527,11 @@ async function renderQuickViewBody(container, post, viewer) {
 
     try {
       const nextState = await togglePostLike(post.id, viewer.userId);
+      setLikeButtonState(likeButton, {
+        ...nextState,
+        isAuthenticated: true,
+        isPending: false
+      });
       updateCachedPostLikeState(post.id, nextState);
       applyLikeStateToVisibleButtons(document.querySelector('[data-feed-list]'), viewer, nextState);
       applyLikeStateToQuickView(nextState, viewer);
@@ -2194,4 +2199,117 @@ export async function loadFeed(options = {}) {
     });
     setLoadingState(false, loadingElement);
   }
+}
+
+// ...existing code...
+import { fetchPostsPage } from './posts-service.js';
+
+const PAGE_SIZE = 10;
+let currentOffset = 0;
+let isLoadingPage = false;
+let hasMorePosts = true;
+let feedObserver = null;
+
+function ensureFeedSentinel() {
+  let sentinel = document.getElementById('feed-sentinel');
+  if (sentinel) return sentinel;
+
+  sentinel = document.createElement('div');
+  sentinel.id = 'feed-sentinel';
+  sentinel.className = 'feed-sentinel py-3 text-center text-muted';
+  sentinel.textContent = 'Зареждане...';
+
+  const feedContainer = document.getElementById('posts-container');
+  feedContainer?.insertAdjacentElement('afterend', sentinel);
+
+  return sentinel;
+}
+
+function getActiveFilters() {
+  return {
+    searchText: document.getElementById('filter-search')?.value?.trim() || '',
+    category: document.getElementById('filter-category')?.value || 'all',
+    username: document.getElementById('filter-user')?.value?.trim() || '',
+    location: document.getElementById('filter-location')?.value?.trim() || ''
+  };
+}
+
+async function loadNextPostsPage({ reset = false } = {}) {
+  if (isLoadingPage) return;
+  if (!hasMorePosts && !reset) return;
+
+  const feedContainer = document.getElementById('posts-container');
+  if (!feedContainer) return;
+
+  if (reset) {
+    currentOffset = 0;
+    hasMorePosts = true;
+    feedContainer.innerHTML = '';
+  }
+
+  isLoadingPage = true;
+
+  try {
+    const page = await fetchPostsPage({
+      offset: currentOffset,
+      limit: PAGE_SIZE,
+      filters: getActiveFilters()
+    });
+
+    if (page.length === 0 && currentOffset === 0) {
+      feedContainer.innerHTML = '<p class="text-muted mb-0">Няма намерени публикации.</p>';
+      hasMorePosts = false;
+      return;
+    }
+
+    page.forEach((post) => {
+      const card = renderPostCard(post); // използвай съществуващата ти функция
+      feedContainer.appendChild(card);
+    });
+
+    currentOffset += page.length;
+    hasMorePosts = page.length === PAGE_SIZE;
+  } catch (error) {
+    showErrorNotification(error.message || 'Възникна грешка при зареждане.'); // съществуваща функция
+    hasMorePosts = false;
+  } finally {
+    isLoadingPage = false;
+    const sentinel = ensureFeedSentinel();
+    sentinel.style.display = hasMorePosts ? 'block' : 'none';
+  }
+}
+
+function setupInfiniteScroll() {
+  const sentinel = ensureFeedSentinel();
+
+  if (feedObserver) {
+    feedObserver.disconnect();
+  }
+
+  feedObserver = new IntersectionObserver(
+    (entries) => {
+      const entry = entries[0];
+      if (entry.isIntersecting) {
+        loadNextPostsPage();
+      }
+    },
+    { root: null, rootMargin: '300px 0px', threshold: 0.01 }
+  );
+
+  feedObserver.observe(sentinel);
+}
+
+export async function initPostsFeed() {
+  setupInfiniteScroll();
+  await loadNextPostsPage({ reset: true });
+
+  const filterForm = document.getElementById('filters-form');
+  filterForm?.addEventListener('change', async () => {
+    await loadNextPostsPage({ reset: true });
+  });
+
+  filterForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    await loadNextPostsPage({ reset: true });
+  });
 }

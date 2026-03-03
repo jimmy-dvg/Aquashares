@@ -1,5 +1,31 @@
 import { supabase } from '../services/supabase-client.js';
 
+const POSTS_PAGE_SIZE = 10;
+
+function applyPostFilters(query, filters = {}) {
+  let nextQuery = query;
+
+  if (filters.searchText) {
+    nextQuery = nextQuery.or(
+      `title.ilike.%${filters.searchText}%,content.ilike.%${filters.searchText}%`
+    );
+  }
+
+  if (filters.category && filters.category !== 'all') {
+    nextQuery = nextQuery.eq('category', filters.category);
+  }
+
+  if (filters.username) {
+    nextQuery = nextQuery.ilike('author_username', `%${filters.username}%`);
+  }
+
+  if (filters.location) {
+    nextQuery = nextQuery.ilike('location', `%${filters.location}%`);
+  }
+
+  return nextQuery;
+}
+
 function mapPost(post) {
   return {
     id: post.id,
@@ -259,4 +285,33 @@ export async function getCategories(section = '') {
   }
 
   return sortCategories((data ?? []).map(mapCategory), normalizedSection);
+}
+
+export async function fetchPostsPage({ offset = 0, limit = POSTS_PAGE_SIZE, filters = {} } = {}) {
+  try {
+    let query = supabase
+      .from('posts')
+      .select(`
+        id,
+        user_id,
+        title,
+        content,
+        category,
+        location,
+        created_at,
+        author_username,
+        photos:photos(id, photo_url)
+      `)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    query = applyPostFilters(query, filters);
+
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return data ?? [];
+  } catch {
+    throw new Error('Грешка при зареждане на публикациите.');
+  }
 }
