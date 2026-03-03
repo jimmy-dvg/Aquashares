@@ -47,9 +47,10 @@ export function renderExistingModalImages(imageSection, imageList, photos) {
     const image = document.createElement('img');
     image.src = photo.publicUrl;
     image.alt = 'Текуща снимка към публикацията';
-    image.className = 'img-fluid rounded mb-2';
-    image.style.maxHeight = '180px';
-    image.style.objectFit = 'cover';
+    image.className = 'img-fluid rounded mb-2 bg-body-tertiary';
+    image.style.width = '100%';
+    image.style.maxHeight = '220px';
+    image.style.objectFit = 'contain';
     const formCheck = document.createElement('div');
     formCheck.className = 'form-check';
     const checkbox = document.createElement('input');

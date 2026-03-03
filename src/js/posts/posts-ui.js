@@ -105,6 +105,35 @@ const feedState = {
   }
 };
 
+const FEED_IMAGE_FIT_STORAGE_KEY = 'aqua.feed.imageFit';
+
+function normalizeFeedImageFitMode(value) {
+  return value === 'contain' ? 'contain' : 'cover';
+}
+
+function applyFeedImageFitMode(value, controlElement = null) {
+  let nextValue = normalizeFeedImageFitMode(value);
+
+  if (!value) {
+    try {
+      nextValue = normalizeFeedImageFitMode(localStorage.getItem(FEED_IMAGE_FIT_STORAGE_KEY) || 'cover');
+    } catch {
+      nextValue = 'cover';
+    }
+  }
+
+  if (controlElement instanceof HTMLSelectElement && controlElement.value !== nextValue) {
+    controlElement.value = nextValue;
+  }
+
+  document.body.dataset.feedImageFit = nextValue;
+
+  try {
+    localStorage.setItem(FEED_IMAGE_FIT_STORAGE_KEY, nextValue);
+  } catch {
+  }
+}
+
 function getFeedPath(pathname = window.location.pathname) {
   if (pathname === '/') {
     return '/index.html';
@@ -352,6 +381,7 @@ export async function loadFeed(options = {}) {
     setCategoryFilterOptions,
     bindCategoryFilter,
     setFeedFiltersInQuery,
+    applyFeedImageFitMode,
     buildFilterSuggestions,
     setDatalistOptions,
     updateFeedFilterUi,

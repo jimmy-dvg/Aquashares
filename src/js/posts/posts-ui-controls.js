@@ -12,6 +12,7 @@ export function getUiElements() {
     searchInput: document.querySelector('[data-feed-search]'),
     categoryFilter: document.querySelector('[data-feed-category-filter]'),
     photoFilter: document.querySelector('[data-feed-photo-filter]'),
+    imageFitFilter: document.querySelector('[data-feed-image-fit]'),
     locationFilter: document.querySelector('[data-feed-location-filter]'),
     useMyLocationButton: document.querySelector('[data-feed-use-my-location]'),
     authorFilter: document.querySelector('[data-feed-author-filter]'),

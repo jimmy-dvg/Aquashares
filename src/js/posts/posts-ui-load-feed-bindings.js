@@ -3,6 +3,7 @@ export function bindFeedFilterControls(params) {
     searchInput,
     categoryFilter,
     photoFilter,
+    imageFitFilter,
     locationFilter,
     useMyLocationButton,
     authorFilter,
@@ -22,8 +23,16 @@ export function bindFeedFilterControls(params) {
     setCategoryFilterOptions,
     bindCategoryFilter,
     setFeedFiltersInQuery,
-    scheduleFeedLoad
+    scheduleFeedLoad,
+    applyFeedImageFitMode
   } = params;
+
+  if (typeof applyFeedImageFitMode === 'function') {
+    const initialMode = imageFitFilter instanceof HTMLSelectElement
+      ? (imageFitFilter.value || '')
+      : '';
+    applyFeedImageFitMode(initialMode, imageFitFilter);
+  }
 
   if (searchInput instanceof HTMLInputElement && searchInput.dataset.bound !== 'true') {
     searchInput.dataset.bound = 'true';
@@ -200,6 +209,15 @@ export function bindFeedFilterControls(params) {
         nearbyToggle,
         radiusFilter
       });
+    });
+  }
+
+  if (imageFitFilter instanceof HTMLSelectElement && imageFitFilter.dataset.bound !== 'true') {
+    imageFitFilter.dataset.bound = 'true';
+    imageFitFilter.addEventListener('change', () => {
+      if (typeof applyFeedImageFitMode === 'function') {
+        applyFeedImageFitMode(imageFitFilter.value, imageFitFilter);
+      }
     });
   }
 

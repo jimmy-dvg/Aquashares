@@ -103,6 +103,16 @@
   z-index: 2;
 }
 
+.aqua-post-modal [data-post-edit-form] .modal-footer {
+  position: static;
+}
+
+.aqua-post-edit-modal-body {
+  max-height: min(68vh, 560px);
+  overflow-y: auto;
+  padding-bottom: 0.5rem;
+}
+
 .aqua-post-modal-comments {
   margin-top: 1rem;
 }
