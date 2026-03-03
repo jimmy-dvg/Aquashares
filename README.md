@@ -172,6 +172,13 @@ supabase db push
 - Email: `demo@aquashares.com`
 - Password: `demo123`
 
+## Live deployment (Netlify)
+
+- Production URL: https://aquashares-jimmy-dvg.netlify.app
+- Платформа: Netlify
+- Последна верификация: 2026-03-03
+- Smoke test: основните страници (`/`, `/index.html`, `/login.html`, `/register.html`, `/post-create.html`, `/profile.html`, `/admin.html`, `/chat.html`, `/giveaway.html`, `/exchange.html`, `/wanted.html`) връщат HTTP 200
+
 ## Production / Deployment checklist
 
 - [ ] Валиден `VITE_SUPABASE_URL`
