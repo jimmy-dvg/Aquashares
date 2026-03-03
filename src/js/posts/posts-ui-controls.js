@@ -20,7 +20,7 @@ export function getUiElements() {
     radiusFilter: document.querySelector('[data-feed-radius-filter]'),
     locationList: document.querySelector('[data-feed-location-list]'),
     authorList: document.querySelector('[data-feed-author-list]'),
-    clearFilterButton: document.querySelector('[data-feed-clear-filter]'),
+    clearFilterButtons: document.querySelectorAll('[data-feed-clear-filter]'),
     filterStatus: document.querySelector('[data-feed-filter-status]'),
     activeFiltersContainer: document.querySelector('[data-feed-active-filters]'),
     filterCountBadges: document.querySelectorAll('[data-feed-filter-count]')
@@ -122,7 +122,7 @@ function renderActiveFilterChips(container, items) {
 
 export function updateFeedFilterUi(
   filters,
-  clearFilterButton,
+  clearFilterButtons,
   filterStatus,
   activeFiltersContainer,
   filterCountBadges,
@@ -133,9 +133,13 @@ export function updateFeedFilterUi(
   const activeItems = buildActiveFilterItems(filters, categories);
   const hasFilter = activeItems.length > 0;
 
-  if (clearFilterButton) {
-    clearFilterButton.classList.toggle('d-none', !hasFilter);
-  }
+  (Array.isArray(clearFilterButtons) ? clearFilterButtons : Array.from(clearFilterButtons || [])).forEach((button) => {
+    if (!(button instanceof HTMLElement)) {
+      return;
+    }
+
+    button.classList.toggle('d-none', !hasFilter);
+  });
 
   if (filterCountBadges) {
     (Array.isArray(filterCountBadges) ? filterCountBadges : Array.from(filterCountBadges)).forEach((badge) => {

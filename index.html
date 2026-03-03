@@ -123,20 +123,19 @@
     </nav>
 
     <main class="container page-content" data-feed-section="forum">
-      <div class="aqua-feed-filter-bar mb-3">
+      <div class="aqua-feed-filter-bar mb-3" data-feed-filter-bar>
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
           <h1 class="h3 mb-0">Форум</h1>
           <div class="aqua-feed-filter-actions">
             <button
               type="button"
-              class="btn btn-outline-secondary btn-sm"
-              data-bs-toggle="collapse"
-              data-bs-target="#feed-advanced-filters"
+              class="btn btn-primary btn-sm"
+              data-feed-compact-toggle
               aria-expanded="false"
-              aria-controls="feed-advanced-filters"
+              aria-controls="feed-filter-panel"
             >
-              <i class="bi bi-sliders" aria-hidden="true"></i>
-              Още филтри
+              <i class="bi bi-chevron-down" aria-hidden="true"></i>
+              Филтри
               <span class="badge text-bg-secondary ms-1 d-none" data-feed-filter-count>0</span>
             </button>
             <button type="button" class="btn btn-outline-secondary btn-sm d-none" data-feed-clear-filter>
@@ -145,6 +144,8 @@
             </button>
           </div>
         </div>
+
+        <div class="aqua-feed-filter-panel" id="feed-filter-panel" data-feed-filter-panel>
 
         <div class="aqua-feed-filter-grid aqua-feed-filter-grid-primary">
         <div class="aqua-feed-filter-field aqua-feed-filter-field-lg">
@@ -186,8 +187,7 @@
         </div>
         </div>
 
-        <div class="collapse mt-3" id="feed-advanced-filters">
-          <div class="aqua-feed-filter-grid aqua-feed-filter-grid-advanced">
+          <div class="aqua-feed-filter-grid aqua-feed-filter-grid-advanced mt-3">
         <div class="aqua-feed-filter-field">
           <label class="form-label form-label-sm mb-1"><i class="bi bi-geo-alt me-1" aria-hidden="true"></i>Локация</label>
           <div class="input-group input-group-sm">
@@ -244,13 +244,13 @@
               <option value="100">100 км</option>
             </select>
           </div>
-        </div>
           </div>
         </div>
 
         <div class="aqua-feed-active-filters d-none mt-3" data-feed-active-filters></div>
 
         <div class="small text-secondary mt-2 mb-0 d-none aqua-feed-filter-status" data-feed-filter-status></div>
+        </div>
       </div>
 
       <div data-feed-notifications></div>

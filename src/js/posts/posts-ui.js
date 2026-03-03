@@ -60,6 +60,7 @@ const feedState = {
   quickViewBound: false,
   quickViewKeyBound: false,
   modalState: null,
+  filterDock: null,
   geolocation: {
     coords: null,
     resolvedAt: 0,
@@ -281,6 +282,140 @@ function forceCloseModal(modalElement) {
   document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
   document.body.classList.remove('modal-open');
   document.body.style.removeProperty('padding-right');
+}
+
+function cleanupFilterDock() {
+  const dock = feedState.filterDock;
+  if (!dock) {
+    return;
+  }
+
+  dock.toggleButton?.removeEventListener('click', dock.onToggleClick);
+  dock.panel?.removeEventListener('input', dock.onPanelInput);
+  dock.panel?.removeEventListener('change', dock.onPanelChange);
+  window.removeEventListener('scroll', dock.onScroll);
+  window.removeEventListener('keydown', dock.onKeyDown);
+  document.removeEventListener('pointerdown', dock.onPointerDown);
+
+  feedState.filterDock = null;
+}
+
+function initializeStickyFilterDock() {
+  const bar = document.querySelector('[data-feed-filter-bar]');
+  const panel = document.querySelector('[data-feed-filter-panel]');
+  const toggleButton = document.querySelector('[data-feed-compact-toggle]');
+
+  if (!(bar instanceof HTMLElement) || !(panel instanceof HTMLElement) || !(toggleButton instanceof HTMLButtonElement)) {
+    cleanupFilterDock();
+    return;
+  }
+
+  if (feedState.filterDock?.bar === bar) {
+    return;
+  }
+
+  cleanupFilterDock();
+
+  const setPanelOpen = (isOpen) => {
+    bar.classList.toggle('is-panel-open', isOpen);
+    toggleButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  };
+
+  const closePanel = () => {
+    setPanelOpen(false);
+  };
+
+  const onPanelInput = () => {
+    if (!bar.classList.contains('is-panel-open')) {
+      return;
+    }
+
+    if (feedState.filterDock) {
+      feedState.filterDock.shouldAutoCloseOnScroll = true;
+    }
+  };
+
+  const onPanelChange = () => {
+    if (!bar.classList.contains('is-panel-open')) {
+      return;
+    }
+
+    if (feedState.filterDock) {
+      feedState.filterDock.shouldAutoCloseOnScroll = true;
+    }
+  };
+
+  const onScroll = () => {
+    const dock = feedState.filterDock;
+    if (!dock || !bar.classList.contains('is-panel-open')) {
+      if (dock) {
+        dock.lastScrollY = window.scrollY;
+      }
+      return;
+    }
+
+    const currentY = window.scrollY;
+    const scrollingDown = currentY > (dock.lastScrollY + 4);
+    dock.lastScrollY = currentY;
+
+    if (!dock.shouldAutoCloseOnScroll || !scrollingDown) {
+      return;
+    }
+
+    closePanel();
+    dock.shouldAutoCloseOnScroll = false;
+  };
+
+  const onToggleClick = (event) => {
+    event.preventDefault();
+
+    const nextOpen = !bar.classList.contains('is-panel-open');
+    setPanelOpen(nextOpen);
+  };
+
+  const onKeyDown = (event) => {
+    if (event.key !== 'Escape') {
+      return;
+    }
+
+    closePanel();
+  };
+
+  const onPointerDown = (event) => {
+    const target = event.target;
+    if (!(target instanceof Node)) {
+      return;
+    }
+
+    if (bar.contains(target)) {
+      return;
+    }
+
+    closePanel();
+  };
+
+  toggleButton.addEventListener('click', onToggleClick);
+  panel.addEventListener('input', onPanelInput);
+  panel.addEventListener('change', onPanelChange);
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('keydown', onKeyDown);
+  document.addEventListener('pointerdown', onPointerDown);
+
+  setPanelOpen(false);
+
+  feedState.filterDock = {
+    bar,
+    panel,
+    toggleButton,
+    lastScrollY: window.scrollY,
+    shouldAutoCloseOnScroll: false,
+    onToggleClick,
+    onPanelInput,
+    onPanelChange,
+    onScroll,
+    onKeyDown,
+    onPointerDown
+  };
 }
 
 async function renderQuickViewBody(container, post, viewer) {
@@ -1544,7 +1679,7 @@ export async function loadFeed(options = {}) {
     radiusFilter,
     locationList,
     authorList,
-    clearFilterButton,
+    clearFilterButtons,
     filterStatus,
     activeFiltersContainer,
     filterCountBadges
@@ -1553,6 +1688,8 @@ export async function loadFeed(options = {}) {
   if (!feedContainer) {
     return;
   }
+
+  initializeStickyFilterDock();
 
   bindFeedPopstate(() => {
     if (!isFeedPagePath()) {
@@ -1590,9 +1727,11 @@ export async function loadFeed(options = {}) {
   if (radiusFilter instanceof HTMLSelectElement) {
     radiusFilter.disabled = true;
   }
-  if (clearFilterButton instanceof HTMLButtonElement) {
-    clearFilterButton.disabled = true;
-  }
+  (Array.isArray(clearFilterButtons) ? clearFilterButtons : Array.from(clearFilterButtons || [])).forEach((button) => {
+    if (button instanceof HTMLButtonElement) {
+      button.disabled = true;
+    }
+  });
   clearError(errorElement);
   if (notificationRoot) {
     notificationRoot.replaceChildren();
@@ -1787,7 +1926,7 @@ export async function loadFeed(options = {}) {
 
     if (categoryFilter) {
       setCategoryFilterOptions(categoryFilter, categories, selectedCategorySlugFromQuery, feedSection);
-      bindCategoryFilter(categoryFilter, clearFilterButton, (selectedSlug) => {
+      bindCategoryFilter(categoryFilter, null, (selectedSlug) => {
         setFeedFiltersInQuery({
           category: selectedSlug,
           photo: photoFilter instanceof HTMLSelectElement ? photoFilter.value : '',
@@ -1822,7 +1961,11 @@ export async function loadFeed(options = {}) {
     setDatalistOptions(locationList, filterSuggestions.locations);
     setDatalistOptions(authorList, filterSuggestions.authors);
 
-    if (clearFilterButton && clearFilterButton.dataset.bound !== 'true') {
+    (Array.isArray(clearFilterButtons) ? clearFilterButtons : Array.from(clearFilterButtons || [])).forEach((clearFilterButton) => {
+      if (!(clearFilterButton instanceof HTMLButtonElement) || clearFilterButton.dataset.bound === 'true') {
+        return;
+      }
+
       clearFilterButton.dataset.bound = 'true';
       clearFilterButton.addEventListener('click', () => {
         if (searchInput instanceof HTMLInputElement) {
@@ -1863,7 +2006,7 @@ export async function loadFeed(options = {}) {
         });
         scheduleFeedLoad();
       });
-    }
+    });
 
     if (activeFiltersContainer instanceof HTMLElement && activeFiltersContainer.dataset.bound !== 'true') {
       activeFiltersContainer.dataset.bound = 'true';
@@ -1965,7 +2108,7 @@ export async function loadFeed(options = {}) {
         radiusKm: radiusKmFromQuery,
         nearMeUnavailable
       },
-      clearFilterButton,
+      clearFilterButtons,
       filterStatus,
       activeFiltersContainer,
       filterCountBadges,
@@ -2036,9 +2179,11 @@ export async function loadFeed(options = {}) {
     if (radiusFilter instanceof HTMLSelectElement) {
       radiusFilter.disabled = false;
     }
-    if (clearFilterButton instanceof HTMLButtonElement) {
-      clearFilterButton.disabled = false;
-    }
+    (Array.isArray(clearFilterButtons) ? clearFilterButtons : Array.from(clearFilterButtons || [])).forEach((button) => {
+      if (button instanceof HTMLButtonElement) {
+        button.disabled = false;
+      }
+    });
     setLoadingState(false, loadingElement);
   }
 }

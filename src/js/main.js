@@ -29,6 +29,29 @@ function normalizeNavPathname(pathname) {
   return pathname === '/' ? '/index.html' : pathname;
 }
 
+let navbarMetricsBound = false;
+
+function syncNavbarHeightVariable() {
+  const navbar = document.querySelector('.navbar');
+  if (!(navbar instanceof HTMLElement)) {
+    return;
+  }
+
+  const nextHeight = Math.max(56, Math.round(navbar.getBoundingClientRect().height));
+  document.documentElement.style.setProperty('--aqua-navbar-height', `${nextHeight}px`);
+}
+
+function bindNavbarMetricsSync() {
+  syncNavbarHeightVariable();
+
+  if (navbarMetricsBound) {
+    return;
+  }
+
+  navbarMetricsBound = true;
+  window.addEventListener('resize', syncNavbarHeightVariable, { passive: true });
+}
+
 function isFeedPagePath(pathname) {
   const normalized = normalizeNavPathname(pathname);
   return normalized === '/index.html' || normalized === '/giveaway.html' || normalized === '/exchange.html' || normalized === '/wanted.html';
@@ -778,6 +801,7 @@ async function initializeNavbar() {
   await initializeNavbarCategories();
   setActiveNavbarLink();
   initializeNavbarSearch();
+  bindNavbarMetricsSync();
 
   if (!user) {
     toggleElements(guestElements, true);
