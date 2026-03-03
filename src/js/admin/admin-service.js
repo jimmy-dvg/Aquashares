@@ -90,7 +90,7 @@ export async function getAllPosts() {
 
   const { data, error } = await supabase
     .from('posts')
-    .select('id, user_id, title, body, created_at, categories(slug, name)')
+    .select('id, user_id, category_id, section, title, body, created_at, categories(slug, name, section), photos(id, post_id, user_id, storage_path, public_url, created_at)')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -100,13 +100,24 @@ export async function getAllPosts() {
   return (data ?? []).map((item) => ({
     id: item.id,
     userId: item.user_id,
+    categoryId: item.category_id || '',
+    section: item.section || item.categories?.section || 'forum',
     categorySlug: item.categories?.slug || '',
     categoryName: item.categories?.name || 'Uncategorized',
+    categorySection: item.categories?.section || item.section || 'forum',
     authorUsername: authorsById.get(item.user_id)?.username || '-',
     authorEmail: authorsById.get(item.user_id)?.email || '-',
     title: item.title,
     body: item.body,
-    createdAt: item.created_at
+    createdAt: item.created_at,
+    photos: (item.photos ?? []).map((photo) => ({
+      id: photo.id,
+      postId: photo.post_id,
+      userId: photo.user_id,
+      storagePath: photo.storage_path,
+      publicUrl: photo.public_url,
+      createdAt: photo.created_at
+    }))
   }));
 }
 
@@ -163,6 +174,55 @@ export async function deletePost(postId) {
   if (error) {
     throwServiceError(error, 'Failed to delete post.');
   }
+}
+
+export async function updatePostByAdmin(postId, payload) {
+  const updatePayload = {
+    title: payload.title,
+    body: payload.body,
+    category_id: payload.categoryId || null,
+    section: payload.section || undefined
+  };
+
+  const { data, error } = await supabase
+    .from('posts')
+    .update(updatePayload)
+    .eq('id', postId)
+    .select('id')
+    .limit(1);
+
+  if (error) {
+    throwServiceError(error, 'Failed to update post.');
+  }
+
+  if (!data?.length) {
+    throw new Error('Post not found.');
+  }
+}
+
+export async function getAdminCategories(section = '') {
+  let query = supabase
+    .from('categories')
+    .select('id, slug, name, section')
+    .order('name', { ascending: true });
+
+  const normalizedSection = (section || '').trim();
+  if (normalizedSection) {
+    query = query.eq('section', normalizedSection);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throwServiceError(error, 'Failed to load categories.');
+  }
+
+  return (data ?? []).map((item) => ({
+    id: item.id,
+    slug: item.slug,
+    name: item.name,
+    section: item.section || 'forum'
+  }));
 }
 
 export async function deleteComment(commentId) {

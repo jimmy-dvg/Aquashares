@@ -375,6 +375,106 @@
       </div>
     </div>
 
+    <div class="modal fade" id="adminEditPostModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <form data-admin-edit-form>
+            <div class="modal-header">
+              <h5 class="modal-title">Редактиране на публикация</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Затвори"></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" data-admin-edit-post-id />
+
+              <div class="row g-3 mb-3">
+                <div class="col-12 col-md-6">
+                  <label for="adminEditPostSection" class="form-label">Секция</label>
+                  <select
+                    id="adminEditPostSection"
+                    class="form-select"
+                    required
+                    data-admin-edit-section
+                  ></select>
+                </div>
+
+                <div class="col-12 col-md-6">
+                  <label for="adminEditPostCategory" class="form-label">Категория</label>
+                  <select
+                    id="adminEditPostCategory"
+                    class="form-select"
+                    data-admin-edit-category
+                  >
+                    <option value="">Избери категория</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <label for="adminEditPostTitle" class="form-label">Заглавие</label>
+                <input
+                  id="adminEditPostTitle"
+                  type="text"
+                  class="form-control"
+                  maxlength="120"
+                  required
+                  data-admin-edit-title
+                />
+              </div>
+
+              <div>
+                <label for="adminEditPostBody" class="form-label">Съдържание</label>
+                <textarea
+                  id="adminEditPostBody"
+                  class="form-control"
+                  rows="7"
+                  minlength="10"
+                  maxlength="5000"
+                  required
+                  data-admin-edit-body
+                ></textarea>
+              </div>
+
+              <section class="d-none mt-3" data-admin-edit-current-image-section>
+                <h6 class="mb-2">Текущи снимки</h6>
+                <div class="row g-2" data-admin-edit-current-image-list></div>
+              </section>
+
+              <div class="row g-3 mt-1">
+                <div class="col-12 col-md-6">
+                  <label for="adminEditPostImage" class="form-label">Добави снимки</label>
+                  <input
+                    id="adminEditPostImage"
+                    type="file"
+                    class="form-control"
+                    accept="image/*"
+                    multiple
+                    data-admin-edit-image
+                  />
+                </div>
+
+                <div class="col-12 col-md-6">
+                  <label for="adminEditPostImageCamera" class="form-label">Снимай с камера</label>
+                  <input
+                    id="adminEditPostImageCamera"
+                    type="file"
+                    class="form-control"
+                    accept="image/*"
+                    capture="environment"
+                    multiple
+                    data-admin-edit-image-camera
+                  />
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отказ</button>
+              <button type="submit" class="btn btn-primary" data-admin-edit-save>Запази промените</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
     <script
       src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
       integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"

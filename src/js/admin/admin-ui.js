@@ -10,7 +10,8 @@ import {
   attachAdminNotificationHandlers,
   attachDeleteHandlers,
   attachRoleChangeHandlers,
-  createConfirmationController
+  createConfirmationController,
+  createPostEditController
 } from './admin-ui-handlers.js';
 import {
   formatDate,
@@ -169,7 +170,19 @@ function getElements() {
     previewModalElement: document.getElementById('adminPreviewModal'),
     previewTitle: document.querySelector('[data-preview-title]'),
     previewMeta: document.querySelector('[data-preview-meta]'),
-    previewBody: document.querySelector('[data-preview-body]')
+    previewBody: document.querySelector('[data-preview-body]'),
+    editModalElement: document.getElementById('adminEditPostModal'),
+    editForm: document.querySelector('[data-admin-edit-form]'),
+    editPostIdInput: document.querySelector('[data-admin-edit-post-id]'),
+    editTitleInput: document.querySelector('[data-admin-edit-title]'),
+    editBodyInput: document.querySelector('[data-admin-edit-body]'),
+    editSectionInput: document.querySelector('[data-admin-edit-section]'),
+    editCategoryInput: document.querySelector('[data-admin-edit-category]'),
+    editImageInput: document.querySelector('[data-admin-edit-image]'),
+    editCameraInput: document.querySelector('[data-admin-edit-image-camera]'),
+    editCurrentImageSection: document.querySelector('[data-admin-edit-current-image-section]'),
+    editCurrentImageList: document.querySelector('[data-admin-edit-current-image-list]'),
+    editSaveButton: document.querySelector('[data-admin-edit-save]')
   };
 }
 
@@ -304,13 +317,22 @@ export async function loadDashboard() {
     }
   };
 
+  const postEditController = createPostEditController(elements, adminSession.user.id, refreshDashboard, showFeedback);
+
   attachRoleChangeHandlers(elements, refreshDashboard, showFeedback);
   filters.attachUsersFilterHandler();
   filters.attachPostsFilterHandler();
   filters.attachCommentsFilterHandler();
   filters.attachAdminNotificationsFilterHandler(adminSession.user.id);
   filters.attachPopstateHandler();
-  attachDeleteHandlers(elements, confirmController, refreshDashboard, showFeedback);
+  attachDeleteHandlers(
+    elements,
+    confirmController,
+    postEditController,
+    (postId) => adminState.posts.find((post) => post.id === postId) || null,
+    refreshDashboard,
+    showFeedback
+  );
   attachAdminNotificationHandlers(elements, adminSession.user.id, refreshDashboard, showFeedback);
 
   cleanupAutoRefresh();
