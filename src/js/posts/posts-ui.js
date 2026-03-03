@@ -133,12 +133,14 @@ function validatePostEditInput(title, body, categoryId, categories) {
   return null;
 }
 
-function getFilesFromInput(inputElement) {
-  if (!(inputElement instanceof HTMLInputElement) || !inputElement.files?.length) {
-    return [];
-  }
+function getFilesFromInputs(...inputElements) {
+  return inputElements.flatMap((inputElement) => {
+    if (!(inputElement instanceof HTMLInputElement) || !inputElement.files?.length) {
+      return [];
+    }
 
-  return [...inputElement.files];
+    return [...inputElement.files];
+  });
 }
 
 function renderExistingModalImages(imageSection, imageList, photos) {
@@ -468,8 +470,13 @@ function ensureModalState() {
             </div>
             <div>
               <label class="form-label" for="post-edit-image">Post Images</label>
-              <input id="post-edit-image" type="file" class="form-control" accept="image/*" multiple data-post-edit-image />
-              <div class="form-text">Optional. You can upload multiple images. Maximum file size per image: 5MB.</div>
+              <input id="post-edit-image" type="file" class="form-control" accept="image/*" capture="environment" multiple data-post-edit-image />
+              <div class="form-text">По избор. Можеш да качиш няколко снимки. Максимален размер на снимка: 5MB.</div>
+            </div>
+            <div>
+              <label class="form-label" for="post-edit-image-camera">Снимка от камера</label>
+              <input id="post-edit-image-camera" type="file" class="form-control" accept="image/*" capture="environment" data-post-edit-image-camera />
+              <div class="form-text">На мобилни устройства това поле отваря директно камерата.</div>
             </div>
             <section class="d-none" data-post-edit-current-image-section>
               <h3 class="h6 mb-2">Current Images</h3>
@@ -506,6 +513,7 @@ function ensureModalState() {
     editCategory: editModal.querySelector('[data-post-edit-category]'),
     editBody: editModal.querySelector('[data-post-edit-body]'),
     editImage: editModal.querySelector('[data-post-edit-image]'),
+    editCameraImage: editModal.querySelector('[data-post-edit-image-camera]'),
     editCurrentImageSection: editModal.querySelector('[data-post-edit-current-image-section]'),
     editCurrentImageList: editModal.querySelector('[data-post-edit-current-image-list]'),
     editSubmit: editModal.querySelector('[data-post-edit-submit]'),
@@ -576,7 +584,7 @@ function ensureModalState() {
         section: sourcePost.categorySection || 'forum'
       });
 
-      const files = getFilesFromInput(modalState.editImage);
+      const files = getFilesFromInputs(modalState.editImage, modalState.editCameraImage);
       const photosToRemove = getSelectedPhotosForRemoval(modalState.editCurrentImageList);
       const newlyCreatedPhotos = [];
 
@@ -686,6 +694,10 @@ function openEditModal(post) {
 
   if (modalState.editImage instanceof HTMLInputElement) {
     modalState.editImage.value = '';
+  }
+
+  if (modalState.editCameraImage instanceof HTMLInputElement) {
+    modalState.editCameraImage.value = '';
   }
 
   if (modalState.editCategory instanceof HTMLSelectElement) {

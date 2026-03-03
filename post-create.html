@@ -187,10 +187,25 @@
                     type="file"
                     class="form-control"
                     accept="image/*"
+                    capture="environment"
                     multiple
                     data-post-image
                   />
-                  <div class="form-text">Optional. You can upload multiple images. Maximum file size per image: 5MB.</div>
+                  <div class="form-text">По избор. Можеш да качиш няколко снимки. Максимален размер на снимка: 5MB.</div>
+                </div>
+
+                <div class="mb-3">
+                  <label for="post-image-camera" class="form-label">Снимка от камера</label>
+                  <input
+                    id="post-image-camera"
+                    name="camera-image"
+                    type="file"
+                    class="form-control"
+                    accept="image/*"
+                    capture="environment"
+                    data-post-image-camera
+                  />
+                  <div class="form-text">На мобилни устройства това поле отваря директно камерата.</div>
                 </div>
 
                 <div class="mb-3 d-none" data-current-image-section>

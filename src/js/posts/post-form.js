@@ -19,6 +19,7 @@ function getElements() {
     categoryInput: document.querySelector('[data-post-category]'),
     bodyInput: document.querySelector('[data-post-body]'),
     imageInput: document.querySelector('[data-post-image]'),
+    cameraInput: document.querySelector('[data-post-image-camera]'),
     currentImageSection: document.querySelector('[data-current-image-section]'),
     currentImageList: document.querySelector('[data-current-image-list]'),
     errorBox: document.querySelector('[data-post-form-error]'),
@@ -199,12 +200,14 @@ function setLoadingState(loadingBox, isLoading) {
   loadingBox.classList.add('d-none');
 }
 
-function getFilesFromInput(inputElement) {
-  if (!(inputElement instanceof HTMLInputElement) || !inputElement.files?.length) {
-    return [];
-  }
+function getFilesFromInputs(...inputElements) {
+  return inputElements.flatMap((inputElement) => {
+    if (!(inputElement instanceof HTMLInputElement) || !inputElement.files?.length) {
+      return [];
+    }
 
-  return [...inputElement.files];
+    return [...inputElement.files];
+  });
 }
 
 function renderExistingImages(elements, photos) {
@@ -448,7 +451,7 @@ export async function initializePostForm() {
       if (isEditMode) {
         await updatePost(postId, { title, body, categoryId, section: activeSection || 'forum' });
 
-        const files = getFilesFromInput(elements.imageInput);
+        const files = getFilesFromInputs(elements.imageInput, elements.cameraInput);
         const photosToRemove = getSelectedPhotosForRemoval(elements.currentImageList);
         const newlyCreatedPhotos = [];
 
@@ -474,7 +477,7 @@ export async function initializePostForm() {
           userId: session.user.id
         });
 
-        const files = getFilesFromInput(elements.imageInput);
+        const files = getFilesFromInputs(elements.imageInput, elements.cameraInput);
         const uploadedPhotos = [];
 
         try {
