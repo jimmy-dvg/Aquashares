@@ -9,8 +9,11 @@ const state = {
   notifications: [],
   unsubscribe: null,
   pollingId: null,
+  visibilityHandler: null,
   initialized: false
 };
+
+const NOTIFICATIONS_POLLING_INTERVAL_MS = 15000;
 
 function getNotificationHref(notification) {
   const referenceType = notification.referenceType || 'post';
@@ -53,18 +56,18 @@ function formatRelativeDate(value) {
   const day = 24 * hour;
 
   if (deltaMs < minute) {
-    return 'Just now';
+    return 'Току-що';
   }
 
   if (deltaMs < hour) {
-    return `${Math.floor(deltaMs / minute)}m ago`;
+    return `преди ${Math.floor(deltaMs / minute)} мин`;
   }
 
   if (deltaMs < day) {
-    return `${Math.floor(deltaMs / hour)}h ago`;
+    return `преди ${Math.floor(deltaMs / hour)} ч`;
   }
 
-  return `${Math.floor(deltaMs / day)}d ago`;
+  return `преди ${Math.floor(deltaMs / day)} д`;
 }
 
 function getNotificationIconClass(notification) {
@@ -95,26 +98,26 @@ function getNotificationTypeLabel(notification) {
   const referenceType = (notification.referenceType || '').toLowerCase();
 
   if (type === 'like' || referenceType === 'like') {
-    return 'New like';
+    return 'Ново харесване';
   }
 
   if (type === 'chat_message' || referenceType === 'chat') {
-    return 'New message';
+    return 'Ново съобщение';
   }
 
   if (type === 'comment' || referenceType === 'comment') {
-    return 'New comment';
+    return 'Нов коментар';
   }
 
   if (type === 'moderation') {
-    return 'Moderation';
+    return 'Модерация';
   }
 
   if (type === 'system') {
-    return 'System';
+    return 'Система';
   }
 
-  return 'Notification';
+  return 'Известие';
 }
 
 export function renderNotificationItem(notification) {
@@ -334,6 +337,38 @@ function bindEvents() {
   }
 }
 
+function startPolling() {
+  if (state.pollingId) {
+    window.clearInterval(state.pollingId);
+  }
+
+  state.pollingId = window.setInterval(async () => {
+    if (document.visibilityState === 'hidden') {
+      return;
+    }
+
+    try {
+      await refreshNotificationsFromServer();
+    } catch {
+    }
+  }, NOTIFICATIONS_POLLING_INTERVAL_MS);
+
+  if (typeof state.visibilityHandler !== 'function') {
+    state.visibilityHandler = async () => {
+      if (document.visibilityState !== 'visible') {
+        return;
+      }
+
+      try {
+        await refreshNotificationsFromServer();
+      } catch {
+      }
+    };
+
+    document.addEventListener('visibilitychange', state.visibilityHandler);
+  }
+}
+
 export async function initializeNotifications(userId) {
   const { root } = getElements();
   if (!root || !userId || state.initialized) {
@@ -352,22 +387,12 @@ export async function initializeNotifications(userId) {
       renderNotificationDropdown();
     });
 
-    state.pollingId = window.setInterval(async () => {
-      try {
-        await refreshNotificationsFromServer();
-      } catch {
-      }
-    }, 5000);
+    startPolling();
   } catch {
     state.notifications = [];
     renderNotificationDropdown();
 
-    state.pollingId = window.setInterval(async () => {
-      try {
-        await refreshNotificationsFromServer();
-      } catch {
-      }
-    }, 5000);
+    startPolling();
   }
 }
 
@@ -380,8 +405,13 @@ export function cleanupNotifications() {
     window.clearInterval(state.pollingId);
   }
 
+  if (typeof state.visibilityHandler === 'function') {
+    document.removeEventListener('visibilitychange', state.visibilityHandler);
+  }
+
   state.unsubscribe = null;
   state.pollingId = null;
+  state.visibilityHandler = null;
   state.notifications = [];
   state.initialized = false;
 }

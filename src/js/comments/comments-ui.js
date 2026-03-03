@@ -8,7 +8,6 @@ import {
 import { showCommentActionModal, showCommentErrorDialog } from './comments-action-modal.js';
 
 const realtimeSubscriptions = new Map();
-const pollingIntervals = new Map();
 const COMMENTS_PREVIEW_COUNT = 3;
 const commentsState = {
   viewerUserId: null
@@ -33,18 +32,18 @@ function formatDate(value) {
 function createEmptyCommentItem() {
   const empty = document.createElement('div');
   empty.className = 'text-secondary small';
-  empty.textContent = 'No comments yet.';
+  empty.textContent = 'Все още няма коментари.';
   return empty;
 }
 
 async function handleDeleteCommentAction(comment, listElement) {
   const result = await showCommentActionModal({
     mode: 'confirm',
-    title: 'Delete Comment',
-    message: 'Are you sure you want to delete this comment? This action cannot be undone.',
-    confirmLabel: 'Delete',
+    title: 'Изтриване на коментар',
+    message: 'Сигурни ли сте, че искате да изтриете този коментар? Това действие е необратимо.',
+    confirmLabel: 'Изтрий',
     confirmClass: 'btn-danger',
-    cancelLabel: 'Cancel'
+    cancelLabel: 'Отказ'
   });
 
   if (!result.confirmed) {
@@ -58,13 +57,13 @@ async function handleDeleteCommentAction(comment, listElement) {
 async function handleEditCommentAction(comment, listElement) {
   const result = await showCommentActionModal({
     mode: 'input',
-    title: 'Edit Comment',
-    message: 'Update your comment text:',
+    title: 'Редактиране на коментар',
+    message: 'Актуализирай текста на коментара:',
     initialValue: comment.body || '',
-    placeholder: 'Write your updated comment...',
-    confirmLabel: 'Save',
+    placeholder: 'Напиши обновения коментар...',
+    confirmLabel: 'Запази',
     confirmClass: 'btn-primary',
-    cancelLabel: 'Cancel'
+    cancelLabel: 'Отказ'
   });
 
   if (!result.confirmed || typeof result.value !== 'string') {
@@ -89,7 +88,7 @@ function renderCommentItem(comment, listElement) {
   author.href = `/profile.html?user=${encodeURIComponent(comment.userId)}`;
   author.textContent = comment.authorUsername
     ? `@${comment.authorUsername}`
-    : (comment.authorName || 'User');
+    : (comment.authorName || 'Потребител');
 
   const body = document.createElement('p');
   body.className = 'mb-1 small';
@@ -108,13 +107,13 @@ function renderCommentItem(comment, listElement) {
     editButton.className = 'btn btn-sm btn-link p-0';
     editButton.dataset.action = 'edit-comment';
     editButton.dataset.commentId = comment.id;
-    editButton.textContent = 'Edit';
+    editButton.textContent = 'Редактирай';
     editButton.addEventListener('click', async () => {
       editButton.disabled = true;
       try {
         await handleEditCommentAction(comment, listElement);
       } catch (error) {
-        await showCommentErrorDialog(error.message || 'Unable to update comment.');
+        await showCommentErrorDialog(error.message || 'Коментарът не можа да бъде обновен.');
       } finally {
         editButton.disabled = false;
       }
@@ -125,13 +124,13 @@ function renderCommentItem(comment, listElement) {
     deleteButton.className = 'btn btn-sm btn-link text-danger p-0';
     deleteButton.dataset.action = 'delete-comment';
     deleteButton.dataset.commentId = comment.id;
-    deleteButton.textContent = 'Delete';
+    deleteButton.textContent = 'Изтрий';
     deleteButton.addEventListener('click', async () => {
       deleteButton.disabled = true;
       try {
         await handleDeleteCommentAction(comment, listElement);
       } catch (error) {
-        await showCommentErrorDialog(error.message || 'Unable to delete comment.');
+        await showCommentErrorDialog(error.message || 'Коментарът не можа да бъде изтрит.');
       } finally {
         deleteButton.disabled = false;
       }
@@ -205,25 +204,6 @@ function bindRealtimeForPost(postId, listElement) {
   realtimeSubscriptions.set(postId, unsubscribe);
 }
 
-function bindPollingForPost(postId, listElement) {
-  if (!postId || pollingIntervals.has(postId)) {
-    return;
-  }
-
-  const intervalId = window.setInterval(async () => {
-    if (!document.body.contains(listElement)) {
-      return;
-    }
-
-    try {
-      await loadPostComments(postId, listElement);
-    } catch {
-    }
-  }, 4000);
-
-  pollingIntervals.set(postId, intervalId);
-}
-
 export function cleanupCommentsUi() {
   realtimeSubscriptions.forEach((unsubscribe) => {
     if (typeof unsubscribe === 'function') {
@@ -232,18 +212,12 @@ export function cleanupCommentsUi() {
   });
 
   realtimeSubscriptions.clear();
-
-  pollingIntervals.forEach((intervalId) => {
-    window.clearInterval(intervalId);
-  });
-
-  pollingIntervals.clear();
 }
 
 function setFormSubmittingState(submitButton, textarea, isSubmitting) {
   submitButton.disabled = isSubmitting;
   textarea.disabled = isSubmitting;
-  submitButton.textContent = isSubmitting ? 'Posting...' : 'Post Comment';
+  submitButton.textContent = isSubmitting ? 'Публикуване...' : 'Публикувай коментар';
 }
 
 function clearFormFeedback(form) {
@@ -285,12 +259,11 @@ export async function initializeCommentsUi(container, userId) {
       try {
         await loadPostComments(postId, listElement);
         bindRealtimeForPost(postId, listElement);
-        bindPollingForPost(postId, listElement);
       } catch {
         listElement.replaceChildren();
         const error = document.createElement('div');
         error.className = 'text-danger small';
-        error.textContent = 'Unable to load comments.';
+        error.textContent = 'Коментарите не можаха да бъдат заредени.';
         listElement.append(error);
       }
     })
@@ -319,12 +292,12 @@ export async function initializeCommentsUi(container, userId) {
       const body = textarea.value.trim();
 
       if (!body) {
-        setFormFeedback(target, 'Comment cannot be empty.');
+        setFormFeedback(target, 'Коментарът не може да бъде празен.');
         return;
       }
 
       if (body.length > 1000) {
-        setFormFeedback(target, 'Comment must be 1000 characters or less.');
+        setFormFeedback(target, 'Коментарът трябва да бъде до 1000 символа.');
         return;
       }
 
@@ -342,19 +315,19 @@ export async function initializeCommentsUi(container, userId) {
         const listElement = container.querySelector(`[data-comments-list][data-post-id="${postId}"]`);
         if (listElement instanceof HTMLElement) {
           const emptyState = listElement.querySelector('.text-secondary.small');
-          if (emptyState?.textContent === 'No comments yet.') {
+          if (emptyState?.textContent === 'Все още няма коментари.') {
             listElement.replaceChildren();
           }
 
           listElement.append(renderCommentItem({
             ...createdComment,
-            authorName: 'You'
+            authorName: 'Вие'
           }));
 
           await loadPostComments(postId, listElement);
         }
       } catch (error) {
-        setFormFeedback(target, error.message || 'Unable to post comment.');
+        setFormFeedback(target, error.message || 'Коментарът не можа да бъде публикуван.');
       } finally {
         setFormSubmittingState(submitButton, textarea, false);
       }
@@ -369,7 +342,7 @@ export function createCommentsBlock(postId, isAuthenticated) {
 
   const title = document.createElement('h3');
   title.className = 'h6 mb-2';
-  title.textContent = 'Comments';
+  title.textContent = 'Коментари';
 
   const list = document.createElement('div');
   list.className = 'd-flex flex-column gap-2 mb-2';
@@ -386,8 +359,9 @@ export function createCommentsBlock(postId, isAuthenticated) {
     textarea.className = 'form-control form-control-sm';
     textarea.rows = 2;
     textarea.maxLength = 1000;
-    textarea.placeholder = 'Write a comment...';
-    textarea.setAttribute('aria-label', 'Comment text');
+    textarea.placeholder = 'Напиши коментар...';
+    textarea.setAttribute('aria-label', 'Текст на коментара');
+    textarea.setAttribute('name', 'comment-body');
     textarea.dataset.commentInput = 'true';
 
     const actions = document.createElement('div');
@@ -396,7 +370,7 @@ export function createCommentsBlock(postId, isAuthenticated) {
     const submitButton = document.createElement('button');
     submitButton.type = 'submit';
     submitButton.className = 'btn btn-sm btn-primary';
-    submitButton.textContent = 'Post Comment';
+    submitButton.textContent = 'Публикувай коментар';
     submitButton.dataset.commentSubmit = 'true';
 
     const feedback = document.createElement('div');
@@ -412,7 +386,7 @@ export function createCommentsBlock(postId, isAuthenticated) {
 
   const loginHint = document.createElement('p');
   loginHint.className = 'small text-secondary mb-0';
-  loginHint.textContent = 'Log in to add a comment.';
+  loginHint.textContent = 'Влез в профила си, за да добавиш коментар.';
 
   section.append(title, list, loginHint);
   return section;

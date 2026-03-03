@@ -248,7 +248,7 @@ export function renderPostCard(post, canManage = false, isAuthenticated = false,
   authorLink.className = 'fw-semibold text-decoration-none d-inline-block aqua-truncate-1';
   authorLink.textContent = post.author.username
     ? `@${post.author.username}`
-    : (post.author.displayName || 'User');
+    : (post.author.displayName || 'Потребител');
 
   const subMeta = document.createElement('div');
   subMeta.className = 'd-flex align-items-center gap-2 text-muted small';

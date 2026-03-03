@@ -31,7 +31,7 @@ function ensureCommentActionModal() {
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" data-comment-modal-title></h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Затвори"></button>
         </div>
         <div class="modal-body">
           <p class="mb-2" data-comment-modal-message></p>
@@ -41,8 +41,8 @@ function ensureCommentActionModal() {
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" data-comment-modal-cancel>Cancel</button>
-          <button type="button" class="btn btn-primary" data-comment-modal-confirm>Confirm</button>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" data-comment-modal-cancel>Отказ</button>
+          <button type="button" class="btn btn-primary" data-comment-modal-confirm>Потвърди</button>
         </div>
       </div>
     </div>
@@ -93,10 +93,10 @@ export async function showCommentActionModal(config) {
   if (!modal) {
     if (config.mode === 'confirm') {
       const confirmed = await showConfirmModal({
-        title: config.title || 'Confirm',
-        message: config.message || 'Confirm action?',
-        confirmLabel: config.confirmLabel || 'Confirm',
-        cancelLabel: config.cancelLabel || 'Cancel',
+        title: config.title || 'Потвърждение',
+        message: config.message || 'Потвърди действието?',
+        confirmLabel: config.confirmLabel || 'Потвърди',
+        cancelLabel: config.cancelLabel || 'Отказ',
         confirmButtonClass: config.confirmClass || 'btn-primary'
       });
 
@@ -107,9 +107,9 @@ export async function showCommentActionModal(config) {
 
     if (config.mode === 'input') {
       await showConfirmModal({
-        title: config.title || 'Comment',
-        message: 'Comment editor is unavailable right now. Please refresh the page and try again.',
-        confirmLabel: 'Close',
+        title: config.title || 'Коментар',
+        message: 'Редакторът за коментари е временно недостъпен. Обнови страницата и опитай отново.',
+        confirmLabel: 'Затвори',
         confirmButtonClass: 'btn-secondary',
         hideCancel: true
       });
@@ -118,9 +118,9 @@ export async function showCommentActionModal(config) {
     }
 
     await showConfirmModal({
-      title: config.title || 'Comment Action',
-      message: config.message || 'Operation failed.',
-      confirmLabel: 'Close',
+      title: config.title || 'Действие с коментар',
+      message: config.message || 'Операцията не беше успешна.',
+      confirmLabel: 'Затвори',
       confirmButtonClass: 'btn-secondary',
       hideCancel: true
     });
@@ -129,7 +129,7 @@ export async function showCommentActionModal(config) {
   }
 
   if (modal.title) {
-    modal.title.textContent = config.title || 'Comment';
+    modal.title.textContent = config.title || 'Коментар';
   }
 
   if (modal.message) {
@@ -137,12 +137,12 @@ export async function showCommentActionModal(config) {
   }
 
   if (modal.cancelButton) {
-    modal.cancelButton.textContent = config.cancelLabel || 'Cancel';
+    modal.cancelButton.textContent = config.cancelLabel || 'Отказ';
     modal.cancelButton.classList.toggle('d-none', config.hideCancel === true);
   }
 
   if (modal.confirmButton) {
-    modal.confirmButton.textContent = config.confirmLabel || 'Confirm';
+    modal.confirmButton.textContent = config.confirmLabel || 'Потвърди';
     modal.confirmButton.className = `btn ${config.confirmClass || 'btn-primary'}`;
   }
 
@@ -190,12 +190,12 @@ export async function showCommentActionModal(config) {
         const value = modal.input.value.trim();
 
         if (!value) {
-          setModalError(modal, 'Comment cannot be empty.');
+          setModalError(modal, 'Коментарът не може да бъде празен.');
           return;
         }
 
         if (value.length > 1000) {
-          setModalError(modal, 'Comment must be 1000 characters or less.');
+          setModalError(modal, 'Коментарът трябва да бъде до 1000 символа.');
           return;
         }
 
@@ -217,9 +217,9 @@ export async function showCommentActionModal(config) {
 export async function showCommentErrorDialog(message) {
   await showCommentActionModal({
     mode: 'info',
-    title: 'Comment Action',
+    title: 'Действие с коментар',
     message,
-    confirmLabel: 'Close',
+    confirmLabel: 'Затвори',
     confirmClass: 'btn-secondary',
     hideCancel: true
   });

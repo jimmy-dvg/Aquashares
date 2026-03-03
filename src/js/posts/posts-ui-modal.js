@@ -287,7 +287,7 @@ export function createPostsModalController(deps) {
       modalState.editCategory.replaceChildren();
       const placeholder = document.createElement('option');
       placeholder.value = '';
-      placeholder.textContent = categories.length ? 'Select category' : 'Uncategorized';
+      placeholder.textContent = categories.length ? 'Избери категория' : 'Без категория';
       modalState.editCategory.append(placeholder);
       categories.forEach((category) => {
         const option = document.createElement('option');
