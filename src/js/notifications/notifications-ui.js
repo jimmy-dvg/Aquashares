@@ -120,6 +120,31 @@ function getNotificationTypeLabel(notification) {
   return 'Известие';
 }
 
+function localizeNotificationMessage(message) {
+  const value = typeof message === 'string' ? message.trim() : '';
+
+  if (!value) {
+    return '';
+  }
+
+  const commentedMatch = value.match(/^(.+?)\s+commented on your post\.$/i);
+  if (commentedMatch) {
+    return `${commentedMatch[1]} коментира твоя публикация.`;
+  }
+
+  const likedMatch = value.match(/^(.+?)\s+liked your post\.$/i);
+  if (likedMatch) {
+    return `${likedMatch[1]} хареса твоя публикация.`;
+  }
+
+  const chatMatch = value.match(/^(.+?)\s+sent you a message\.$/i);
+  if (chatMatch) {
+    return `${chatMatch[1]} ти изпрати съобщение.`;
+  }
+
+  return value;
+}
+
 export function renderNotificationItem(notification) {
   const item = document.createElement('a');
   item.href = getNotificationHref(notification);
@@ -149,7 +174,7 @@ export function renderNotificationItem(notification) {
 
   const message = document.createElement('div');
   message.className = 'small text-secondary-emphasis';
-  message.textContent = notification.message;
+  message.textContent = localizeNotificationMessage(notification.message);
 
   if (!notification.isRead) {
     const unreadDot = document.createElement('span');
